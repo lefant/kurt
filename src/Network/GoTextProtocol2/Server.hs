@@ -64,10 +64,26 @@ instance Ord Command where
 commands :: [Command]
 commands =
     [
-     (Command "play" cmd_play)
-    ,(Command "genmove" cmd_genmove)
-    ,(Command "boardsize" cmd_boardsize)
+     (Command "PLAY" cmd_play)
+    ,(Command "GENMOVE" cmd_genmove)
+    ,(Command "BOARDSIZE" cmd_boardsize)
+    ,(Command "QUIT" cmd_quit)
     ]
+
+{-
+protocol_version
+name
+version
+known_command
+list_commands
+quit
+boardsize
+clear_board
+komi
+play
+genmove
+-}
+
 
 commandLoop :: IO ()
 commandLoop =
@@ -103,7 +119,7 @@ lookupC cmd cl = find (\(Command x _) -> x == cmd) cl
 cmd_play :: CommandHandler
 cmd_play args =
     do print "play received"
-       return False
+       return True
 
 cmd_genmove :: CommandHandler
 cmd_genmove args =
@@ -112,6 +128,11 @@ cmd_genmove args =
 
 cmd_boardsize :: CommandHandler
 cmd_boardsize args =
-    do print "genmove received"
+    do print $ "boardsize " ++ show args ++ " received"
        return True
+
+cmd_quit :: CommandHandler
+cmd_quit args =
+    do print "quit received"
+       return False
 

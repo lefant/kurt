@@ -31,7 +31,8 @@ Written by Fabian Linzberger, e\@lefant.net
 
 
 import KurtLib()
+import Network.GoTextProtocol2.Server
 
 main :: IO ()
 main =
-    interact (unlines . lines)
+    commandLoop
