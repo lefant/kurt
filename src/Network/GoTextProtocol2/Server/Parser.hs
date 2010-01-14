@@ -38,7 +38,7 @@ import System.IO(Handle,hGetLine)
 import Data.Char
 
 alpha :: forall st. GenParser Char st Char
-alpha = oneOf (['A'..'Z'] ++ ['a'..'z']) <?> "alphabetic character"
+alpha = oneOf (['A'..'Z'] ++ ['a'..'z'] ++ ['_','-']) <?> "alphabetic character or _ or -"
 
 word :: forall st. GenParser Char st [Char]
 word = many1 alpha
@@ -56,7 +56,7 @@ command = do
           x <- word
           y <- args
           eof
-          return (map toUpper x, y)
+          return (map toLower x, y)
 
 
 parseCommand :: Handle -> IO (Either ParseError (String, String))
