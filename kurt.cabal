@@ -23,15 +23,23 @@ extra-source-files:
 
 
 library
+  hs-source-dirs: src
   exposed-modules:
                   KurtLib
-  Build-Depends:
+                 ,Network.GoTextProtocol2.Server
+                 ,Network.GoTextProtocol2.Server.Parser
+  build-depends:
                   base >= 3 && < 5
                  ,test-framework-quickcheck
                  ,test-framework-hunit
+                 ,parsec
+                 ,MissingH>=1.0.0
+                 ,hslogger
+  ghc-options: -O2
 
 executable kurt
   main-is:        kurt.hs
+  hs-source-dirs: src
   build-depends:
                   base >= 3 && < 5
                  ,bytestring
