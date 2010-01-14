@@ -5,7 +5,7 @@ synopsis:       Lefants haskell go engine
 description:
   Lefants haskell go engine - TODO: elaborate
 license:        GPL
-license-file:   LICENSE
+license-file:   COPYRIGHT
 copyright:      (c) 2010 Fabian Linzberger
 author:         Fabian Linzberger <e@lefant.net>
 maintainer:     Fabian Linzberger <e@lefant.net>
@@ -18,7 +18,9 @@ build-type:     Simple
 data-files:
 extra-tmp-files:
 extra-source-files:
+  COPYING
   README
+
 
 library
   exposed-modules:
