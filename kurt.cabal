@@ -1,0 +1,41 @@
+name:           kurt
+version:        0.0.1
+category:       AI, Game
+synopsis:       Lefants haskell go engine
+description:
+  Lefants haskell go engine - TODO: elaborate
+license:        GPL
+license-file:   LICENSE
+copyright:      (c) 2010 Fabian Linzberger
+author:         Fabian Linzberger <e@lefant.net>
+maintainer:     Fabian Linzberger <e@lefant.net>
+homepage:       http://lefant.net/
+stability:      experimental
+tested-with:    GHC==6.10
+cabal-version:  >= 1.6
+build-type:     Simple
+
+data-files:
+extra-tmp-files:
+extra-source-files:
+  README
+
+library
+  exposed-modules:
+                  KurtLib
+  Build-Depends:
+                  base >= 3 && < 5
+                 ,test-framework-quickcheck
+                 ,test-framework-hunit
+
+executable kurt
+  main-is:        kurt.hs
+  build-depends:
+                  base >= 3 && < 5
+                 ,bytestring
+                 ,test-framework-quickcheck
+                 ,test-framework-hunit
+
+source-repository head
+  type:     git
+  location: git://git.lefant.net/kurt.git
