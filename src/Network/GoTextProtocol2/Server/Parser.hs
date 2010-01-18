@@ -28,8 +28,6 @@ Parsing GTP protocol messages
 TODO:
 
  * handle #-prefix comments and empty lines
- * finish parsing expected arguments
-
 
 3.1 Preprocessing
 
@@ -152,13 +150,12 @@ noArgumentParser = return []
 
 
 stringArgParser :: Parser [Argument]
-stringArgParser = undefined
-commandString :: Parser String
-commandString =
+stringArgParser =
     do
+      space
+      spaces
       str <- many1 (letter <|> char '-' <|> char '_')
-      return (map toLower str)
-
+      return $ [StringArgument (map toLower str)]
 
 
 floatArgParser :: Parser [Argument]
