@@ -27,14 +27,14 @@ library
   exposed-modules:
                   KurtLib
                  ,Network.GoTextProtocol2.Server
+                 ,Network.GoTextProtocol2.Server.Types
                  ,Network.GoTextProtocol2.Server.Parser
   build-depends:
                   base >= 3 && < 5
                  ,test-framework-quickcheck
                  ,test-framework-hunit
-                 ,parsec
-                 ,MissingH>=1.0.0
-                 ,hslogger
+                 ,parsec >= 3
+                 ,haskell98
   ghc-options: -O2
 
 executable kurt
