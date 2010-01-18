@@ -35,4 +35,4 @@ import Network.GoTextProtocol2.Server
 
 main :: IO ()
 main =
-    commandLoop
+    startLoop

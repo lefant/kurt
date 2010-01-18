@@ -28,6 +28,7 @@ Parsing GTP protocol messages
 TODO:
 
  * handle #-prefix comments and empty lines
+ * handle preprocessing (as described below)
 
 3.1 Preprocessing
 
@@ -44,6 +45,7 @@ When a response arrives to a controller, it is expected only to do steps 1 and 3
 
 module Network.GoTextProtocol2.Server.Parser (
                                               parseCommand
+                                             ,pureParseCommand
                                              ,noArgumentParser
                                              ,intArgParser
                                              ,floatArgParser
@@ -64,11 +66,9 @@ import Network.GoTextProtocol2.Server.Types
 type CommandArgParserList = [(String, Parser [Argument])]
 
 
-parseCommand :: Handle -> CommandArgParserList -> IO (Either ParseError (Maybe Id, Command))
-parseCommand h commandargparserlist =
-    do input <- hGetLine h
-       return $ parse (line commandargparserlist) "(unknown)" input
-
+pureParseCommand :: String -> CommandArgParserList -> Either ParseError (Maybe Id, Command)
+pureParseCommand input commandargparserlist =
+    parse (line commandargparserlist) "(unknown)" input
 
 
 line :: CommandArgParserList -> Parser (Maybe Id, Command)

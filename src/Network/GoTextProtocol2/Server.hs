@@ -30,32 +30,25 @@ Written by Fabian Linzberger, e\@lefant.net
 
 
 module Network.GoTextProtocol2.Server (
-                                       commandLoop
+                                       startLoop
                                       ) where
     
 import Network.GoTextProtocol2.Server.Parser
 import Network.GoTextProtocol2.Server.Types
 
--- import System.IO.Utils
-import System.IO.Error
 import Data.Char
 import Data.List
 import System.IO
 
 
-type CommandHandler = [Argument] -> IO Bool
+data State = State Board History Komi
+             deriving (Show)
 
-{-
-instance Eq Command where
-    (Command x _) == (Command y _) = x == y
-instance Ord Command where
-    compare (Command x _) (Command y _) = compare x y
-instance Show Command where
-    show (Command cmd _) = cmd
--}
+type CommandHandler = [Argument] -> State -> Either String (String, State)
 
 lookupC :: String -> [(String, CommandHandler)] -> Maybe (String, CommandHandler)
 lookupC cmd cl = find (\(x, _) -> x == cmd) cl
+
 
 
 commandargparserlist =
@@ -96,116 +89,104 @@ commandHandlers =
     ]
 
 
+startLoop :: IO ()
+startLoop =
+    loop (State (Board 1 []) [] 0)
 
-commandLoop :: IO ()
-commandLoop =
-    let
-        errorhandler e =
-            do print ("Closing due to error: " ++ (show e))
-               return False
-    in
-      do
-        continue <- (flip catch) errorhandler
-                    (do
-                      x <- parseCommand stdin commandargparserlist
-                      case x of
+loop :: State -> IO ()
+loop oldState =
+    do
+      input <- getLine
+      parseResult <- return $ pureParseCommand input commandargparserlist
+      case parseResult of
+        Left err ->
+            do
+              putStrLn $ "? Couldn't parse command: " ++ (show err)
+              loop oldState
+        Right (maybeId, Command cmd args) ->
+            do
+              case lookupC cmd commandHandlers of
+                Nothing ->
+                    do
+                      putStrLn $ "?" ++ (outputIdOrBlank maybeId) ++ "Unrecognized command " ++ cmd
+                      loop oldState
+                Just (_, handler) ->
+                    do
+                      putStrLn $ "DEBUG: now running handler for " ++ cmd
+                      result <- return $ handler args oldState
+                      case result of
                         Left err ->
-                             do
-                               putStrLn $ "? Couldn't parse command: " ++ (show err)
-                               return True
-                        Right (maybeId, Command cmd args) ->
-                             do
-                               case lookupC cmd commandHandlers of
-                                 Nothing ->
-                                     do
-                                       putStrLn $ "?" ++ (outputIdOrBlank maybeId) ++ "Unrecognized command " ++ cmd
-                                       return True
-                                 Just (_, hdlr) ->
-                                     do
-                                       putStrLn $ "now running handler for " ++ cmd
-                                       -- FIXME: hdlr should be able to signal errors too
-                                       putStr $ "=" ++ (outputIdOrBlank maybeId)
-                                       result <- hdlr args
-                                       putStrLn ""
-                                       return result
-                    )
-        if continue
-          then commandLoop
-          else return ()
+                            putStrLn $ "?" ++ (outputIdOrBlank maybeId) ++ " error: " ++ err
+                        Right (msg, newState) ->
+                            do
+                              putStrLn $ "=" ++ (outputIdOrBlank maybeId) ++ msg
+                              putStrLn ""
+                              loop newState
 
 
 outputIdOrBlank :: Maybe Id -> String
 outputIdOrBlank Nothing = " "
 outputIdOrBlank (Just lineId) = "[" ++ (show lineId) ++ "] "
 
+
 cmd_known_command :: CommandHandler
-cmd_known_command [(StringArgument cmd)] =
-    do
-       case lookupC cmd commandHandlers of
-         Nothing -> putStrLn "false"
-         Just (_, _) -> putStrLn "true"
-       return True
+cmd_known_command [(StringArgument cmd)] state =
+    case lookupC cmd commandHandlers of
+      Nothing -> Right ("false", state)
+      Just (_, _) -> Right ("true", state)
 
 cmd_list_commands :: CommandHandler
-cmd_list_commands [] =
-    do putStr "= "
-       mapM (putStrLn . fst) commandHandlers
-       return True
+cmd_list_commands [] state =
+    Right ((unlines $ map fst commandHandlers), state)
 
 cmd_name :: CommandHandler
-cmd_name [] =
-    do putStrLn "Kurt"
-       return True
+cmd_name [] state =
+    Right ("kurt", state)
 
 cmd_protocol_version :: CommandHandler
-cmd_protocol_version _ =
-    do putStrLn "2"
-       return True
+cmd_protocol_version [] state =
+    Right ("2", state)
 
 cmd_quit :: CommandHandler
-cmd_quit _ =
-    do putStrLn "bye!"
-       return False
+cmd_quit [] _ =
+    error "bye!"
 
 cmd_version :: CommandHandler
-cmd_version _ =
-    do putStrLn "0.0.1"
-       return True
+cmd_version [] state =
+    Right ("0.0.1", state)
+
+
+cmd_clear_board :: CommandHandler
+cmd_clear_board [] _ =
+    Right ("clear_board received, clearing board", State (Board 1 []) [] 0)
+
+cmd_komi :: CommandHandler
+cmd_komi [(FloatArgument komi)] (State board history _) =
+    Right ("komi " ++ (show komi) ++ " received", State board history komi)
+
+cmd_boardsize :: CommandHandler
+cmd_boardsize [(IntArgument n)] (State _ history komi) =
+    Right ("boardsize " ++ (show n) ++ " received", State (Board n []) history komi)
+
+cmd_showboard :: CommandHandler
+cmd_showboard [] state =
+    Right ("showboard received" ++ (show state), state)
+
 
 -- TODO
 
 cmd_time_left :: CommandHandler
-cmd_time_left [(IntArgument n)] =
-    do putStrLn $ "time left: " ++ (show n)
-       return True
+cmd_time_left [(IntArgument n)] state =
+    Right ("time left: " ++ (show n), state)
 
-cmd_clear_board :: CommandHandler
-cmd_clear_board _ =
-    do putStrLn "clear_board received"
-       return True
-
-cmd_komi :: CommandHandler
-cmd_komi komi =
-    do putStrLn $ "komi " ++ (show komi) ++ " received"
-       return True
 
 cmd_play :: CommandHandler
-cmd_play move =
-    do putStrLn $ "play " ++ (show move) ++ " received"
-       return True
+cmd_play move state =
+    Right ("play " ++ (show move) ++ " received", state)
+
 
 cmd_genmove :: CommandHandler
-cmd_genmove color =
-    do putStrLn $ "genmove " ++ (show color) ++ " received"
-       return True
+cmd_genmove color state =
+    Right ("genmove " ++ (show color) ++ " received", state)
 
-cmd_boardsize :: CommandHandler
-cmd_boardsize [(IntArgument n)] =
-    do putStrLn $ "boardsize " ++ (show n) ++ " received"
-       return True
-
-cmd_showboard :: CommandHandler
-cmd_showboard [] =
-    do putStrLn "showboard received"
-       return True
 
