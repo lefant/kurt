@@ -29,6 +29,7 @@ TODO:
 
  * handle #-prefix comments and empty lines
  * handle preprocessing (as described below)
+ * less case sensitivity
 
 3.1 Preprocessing
 

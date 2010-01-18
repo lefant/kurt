@@ -212,12 +212,20 @@ cmd_time_left [(IntArgument n)] state =
 
 cmd_genmove :: CommandHandler
 cmd_genmove [(ColorArgument color)] (State oldBoard@(Board n board) history komi) =
-    Right ("pass", State oldBoard newHistory komi)
+    -- Right ("pass", State oldBoard newHistory komi)
+    Right (move, State (Board n ((vertex, color) : board)) newHistory komi)
     where
-      newHistory = (history ++ [(color, Nothing)])
-
-
+      newHistory = (history ++ [(color, Just vertex)])
+      move = [(chr (vX + 64))] ++ (show vY)
+      (vX, vY) = vertex
+      vertex = head $ (all_moves n) \\ full_vertices
+      full_vertices = map fst board
 
 lookupVertex :: Vertex -> [(Vertex, Color)] -> Maybe (Vertex, Color)
 lookupVertex vertex board =
     find (\(x, _) -> x == vertex) board
+
+
+all_moves :: Int -> [Vertex]
+all_moves n =
+    [(x, y) | x <- [1 .. n], y <- [1 .. n]]
