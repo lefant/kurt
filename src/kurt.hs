@@ -32,7 +32,11 @@ Written by Fabian Linzberger, e\@lefant.net
 
 import KurtLib()
 import Network.GoTextProtocol2.Server
+import System.IO
 
 main :: IO ()
-main =
-    startLoop
+main = do
+  hSetBuffering stdin NoBuffering
+  hSetBuffering stdout NoBuffering
+  -- putStrLn "here comes kurt"
+  startLoop

@@ -44,8 +44,7 @@ When a response arrives to a controller, it is expected only to do steps 1 and 3
 -}
 
 module Network.GoTextProtocol2.Server.Parser (
-                                              parseCommand
-                                             ,pureParseCommand
+                                              pureParseCommand
                                              ,noArgumentParser
                                              ,intArgParser
                                              ,floatArgParser
@@ -56,7 +55,6 @@ module Network.GoTextProtocol2.Server.Parser (
 
 import Text.ParserCombinators.Parsec
 import Text.Parsec.Char
-import System.IO(Handle,hGetLine)
 import Data.Char
 import Monad
 
@@ -181,6 +179,9 @@ moveArgParser =
                     try (string "pass")
                     return Nothing)
               <|> (do
+                    try (string "PASS")
+                    return Nothing)
+              <|> (do
                     l <- letter
                     n <- parseInt
                     return $ Just (((ord $ toUpper l) - 64), n))
@@ -203,14 +204,18 @@ colorParser =
       c <- (do
              try (string "white")
          <|> try (string "w")
+         <|> try (string "W")
          <|> try (string "black")
          <|> try (string "b")
-         <?> "string describing color (ie. white, black, w or b)")
+         <|> try (string "B")
+         <?> "string describing color (ie. white, black, w, W, b or B)")
       case c of
         "white" -> return $ ColorArgument White
         "w" -> return $ ColorArgument White
+        "W" -> return $ ColorArgument White
         "black" -> return $ ColorArgument Black
         "b" -> return $ ColorArgument Black
+        "B" -> return $ ColorArgument Black
         str -> error $ "colorArgParser: unexpected " ++ str
 
 

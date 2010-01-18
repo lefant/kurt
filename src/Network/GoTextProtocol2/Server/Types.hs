@@ -65,7 +65,7 @@ data Argument = IntArgument Int
               | FloatArgument Float
                 deriving (Show, Eq)
 
-data Board = Board Int [Vertex]
+data Board = Board Int [(Vertex, Color)]
              deriving (Show)
 
 type History = [Move]

@@ -23,7 +23,14 @@ GNU General Public License for more details.
    Stability  : experimental
    Portability: probably
 
-Nothing here yet, move on.
+initial stub command handlers directly here
+
+TODO:
+
+ * merge commandargparserlist and commandHandlers lists implement a
+ * way so commandHandlers can be passed in from an inheriting module
+   running startLoop
+
 
 Written by Fabian Linzberger, e\@lefant.net
 -}
@@ -102,6 +109,7 @@ loop oldState =
         Left err ->
             do
               putStrLn $ "? Couldn't parse command: " ++ (show err)
+              putStrLn ""
               loop oldState
         Right (maybeId, Command cmd args) ->
             do
@@ -109,19 +117,29 @@ loop oldState =
                 Nothing ->
                     do
                       putStrLn $ "?" ++ (outputIdOrBlank maybeId) ++ "Unrecognized command " ++ cmd
+                      newLineFlush
                       loop oldState
                 Just (_, handler) ->
                     do
-                      putStrLn $ "DEBUG: now running handler for " ++ cmd
                       result <- return $ handler args oldState
                       case result of
                         Left err ->
-                            putStrLn $ "?" ++ (outputIdOrBlank maybeId) ++ " error: " ++ err
+                            do
+                              putStrLn $ "?" ++ (outputIdOrBlank maybeId) ++ " error: " ++ err
+                              newLineFlush
+                              loop oldState
                         Right (msg, newState) ->
                             do
                               putStrLn $ "=" ++ (outputIdOrBlank maybeId) ++ msg
-                              putStrLn ""
+                              newLineFlush
                               loop newState
+
+newLineFlush :: IO ()
+newLineFlush =
+    do
+      putStrLn ""
+      hFlush stdout
+
 
 
 outputIdOrBlank :: Maybe Id -> String
@@ -137,7 +155,7 @@ cmd_known_command [(StringArgument cmd)] state =
 
 cmd_list_commands :: CommandHandler
 cmd_list_commands [] state =
-    Right ((unlines $ map fst commandHandlers), state)
+    Right ((reverse $ drop 1 $ reverse $ unlines $ map fst commandHandlers), state)
 
 cmd_name :: CommandHandler
 cmd_name [] state =
@@ -156,22 +174,34 @@ cmd_version [] state =
     Right ("0.0.1", state)
 
 
+
 cmd_clear_board :: CommandHandler
-cmd_clear_board [] _ =
-    Right ("clear_board received, clearing board", State (Board 1 []) [] 0)
+cmd_clear_board [] (State (Board size _) _ komi) =
+    Right ("", State (Board size []) [] komi)
 
 cmd_komi :: CommandHandler
-cmd_komi [(FloatArgument komi)] (State board history _) =
-    Right ("komi " ++ (show komi) ++ " received", State board history komi)
+cmd_komi [(FloatArgument komi)] (State board history _komi) =
+    Right ("", State board history komi)
 
 cmd_boardsize :: CommandHandler
-cmd_boardsize [(IntArgument n)] (State _ history komi) =
-    Right ("boardsize " ++ (show n) ++ " received", State (Board n []) history komi)
+cmd_boardsize [(IntArgument n)] (State _board history komi) =
+    Right ("", State (Board n []) history komi)
 
 cmd_showboard :: CommandHandler
 cmd_showboard [] state =
-    Right ("showboard received" ++ (show state), state)
+    Right ("showboard received: " ++ (show state), state)
 
+
+cmd_play :: CommandHandler
+cmd_play [(MoveArgument move)] (State oldBoard@(Board n board) history komi) =
+    case move of
+      (color, Nothing) -> Right ("", State oldBoard newHistory komi)
+      (color, Just vertex) ->
+          case lookupVertex vertex board of
+            Nothing -> Right ("", State (Board n ((vertex, color) : board)) newHistory komi)
+            Just stone -> Left ("there all ready is a stone: " ++ (show stone))
+    where
+      newHistory = (history ++ [move])
 
 -- TODO
 
@@ -180,13 +210,14 @@ cmd_time_left [(IntArgument n)] state =
     Right ("time left: " ++ (show n), state)
 
 
-cmd_play :: CommandHandler
-cmd_play move state =
-    Right ("play " ++ (show move) ++ " received", state)
-
-
 cmd_genmove :: CommandHandler
-cmd_genmove color state =
-    Right ("genmove " ++ (show color) ++ " received", state)
+cmd_genmove [(ColorArgument color)] (State oldBoard@(Board n board) history komi) =
+    Right ("pass", State oldBoard newHistory komi)
+    where
+      newHistory = (history ++ [(color, Nothing)])
 
 
+
+lookupVertex :: Vertex -> [(Vertex, Color)] -> Maybe (Vertex, Color)
+lookupVertex vertex board =
+    find (\(x, _) -> x == vertex) board
