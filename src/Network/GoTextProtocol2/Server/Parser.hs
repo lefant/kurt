@@ -52,6 +52,8 @@ module Network.GoTextProtocol2.Server.Parser (
                                              ,colorArgParser
                                              ,moveArgParser
                                              ,stringArgParser
+                                             ,xToLetter
+                                             ,letterToX
                                              ) where
 
 import Text.ParserCombinators.Parsec
@@ -67,7 +69,7 @@ type CommandArgParserList = [(String, Parser [Argument])]
 
 pureParseCommand :: String -> CommandArgParserList -> Either ParseError (Maybe Id, Command)
 pureParseCommand input commandargparserlist =
-    parse (line commandargparserlist) "(unknown)" input
+    parse (line commandargparserlist) "(unknown)" $ map toLower input
 
 
 line :: CommandArgParserList -> Parser (Maybe Id, Command)
@@ -180,12 +182,9 @@ moveArgParser =
                     try (string "pass")
                     return Nothing)
               <|> (do
-                    try (string "PASS")
-                    return Nothing)
-              <|> (do
                     l <- letter
                     n <- parseInt
-                    return $ Just (((ord $ toUpper l) - 64), n))
+                    return $ Just (letterToX l, n))
               <?> "vertex (ie. something like A1, H8, Z25 or pass)")
       return [MoveArgument (c, vertex)]
 
@@ -205,10 +204,8 @@ colorParser =
       c <- (do
              try (string "white")
          <|> try (string "w")
-         <|> try (string "W")
          <|> try (string "black")
          <|> try (string "b")
-         <|> try (string "B")
          <?> "string describing color (ie. white, black, w, W, b or B)")
       case c of
         "white" -> return $ ColorArgument White
@@ -227,6 +224,28 @@ intArgParser =
       spaces
       n <- parseInt
       return $ [IntArgument n]
+
+xToLetter :: Int -> Char
+xToLetter n =
+    if (n < 1) || (n > 25)
+    then error "letterToX: n out of bounds"
+    else
+        if n <= 8
+        then chr (n + 64)
+        else chr (n + 65)
+
+letterToX :: Char -> Int
+letterToX 'i' =
+    error "letterToX: the letter i is skipped for coordinates to avoid confusion with j"
+letterToX c =
+    if (n < 1) || (n > 25)
+    then error "letterToX: n out of bounds"
+    else
+        if n <= 8
+        then n
+        else n - 1
+    where
+      n = (ord $ toUpper c) - 64
 
 parseInt :: Parser Int
 parseInt = liftM read $ many1 digit

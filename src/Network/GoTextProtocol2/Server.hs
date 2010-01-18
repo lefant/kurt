@@ -30,7 +30,9 @@ TODO:
  * merge commandargparserlist and commandHandlers lists implement a
  * way so commandHandlers can be passed in from an inheriting module
    running startLoop
-
+ * filter illegal moves
+ ** suicide
+ ** ko (superko?)
 
 Written by Fabian Linzberger, e\@lefant.net
 -}
@@ -212,14 +214,21 @@ cmd_time_left [(IntArgument n)] state =
 
 cmd_genmove :: CommandHandler
 cmd_genmove [(ColorArgument color)] (State oldBoard@(Board n board) history komi) =
-    -- Right ("pass", State oldBoard newHistory komi)
-    Right (move, State (Board n ((vertex, color) : board)) newHistory komi)
+    case moveLst of
+      (firstMove : _) ->
+          Right (move, State (Board n ((vertex, color) : board)) newHistory komi)
+          where
+            newHistory = (history ++ [(color, Just vertex)])
+            move = [(xToLetter vX)] ++ (show vY)
+            (vX, vY) = vertex
+            vertex = head moveLst
+      [] ->
+          Right ("pass", State oldBoard (history ++ [(color, Nothing)]) komi)
+
     where
-      newHistory = (history ++ [(color, Just vertex)])
-      move = [(chr (vX + 64))] ++ (show vY)
-      (vX, vY) = vertex
-      vertex = head $ (all_moves n) \\ full_vertices
+      moveLst = (all_moves n) \\ full_vertices
       full_vertices = map fst board
+
 
 lookupVertex :: Vertex -> [(Vertex, Color)] -> Maybe (Vertex, Color)
 lookupVertex vertex board =
