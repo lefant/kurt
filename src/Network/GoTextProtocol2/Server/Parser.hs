@@ -121,7 +121,7 @@ commandId :: Parser Int
 commandId =
     do
       char '['
-      i <- parseNumber
+      i <- parseInt
       char ']'
       return i
 
@@ -137,11 +137,10 @@ command commandList =
 
 command2parser :: (String, Parser [Argument]) -> Parser Command
 command2parser (str, argParser) =
-    try
-    (do
-      cmd <- string str
+    do
+      cmd <- try (string str)
       args <- argParser
-      return (Command cmd args))
+      return (Command cmd args)
 
 
 
@@ -163,14 +162,59 @@ commandString =
 
 
 floatArgParser :: Parser [Argument]
-floatArgParser = undefined
+floatArgParser =
+    do
+      space
+      spaces
+      d1 <- many1 digit
+      char '.'
+      d2 <- many1 digit
+      n <- return $ read (d1 ++ ['.'] ++ d2)
+      return $ [FloatArgument n]
+
 
 moveArgParser :: Parser [Argument]
-moveArgParser = undefined
+moveArgParser =
+    do
+      (ColorArgument c) <- colorParser
+      space
+      spaces
+      vertex <- (do
+                  (do
+                    try (string "pass")
+                    return Nothing)
+              <|> (do
+                    l <- letter
+                    n <- parseInt
+                    return $ Just (((ord $ toUpper l) - 64), n))
+              <?> "vertex (ie. something like A1, H8, Z25 or pass)")
+      return [MoveArgument (c, vertex)]
+
+
 
 colorArgParser :: Parser [Argument]
-colorArgParser = undefined
+colorArgParser =
+    do
+      c <- colorParser
+      return [c]
 
+colorParser :: Parser Argument
+colorParser =
+    do
+      space
+      spaces
+      c <- (do
+             try (string "white")
+         <|> try (string "w")
+         <|> try (string "black")
+         <|> try (string "b")
+         <?> "string describing color (ie. white, black, w or b)")
+      case c of
+        "white" -> return $ ColorArgument White
+        "w" -> return $ ColorArgument White
+        "black" -> return $ ColorArgument Black
+        "b" -> return $ ColorArgument Black
+        str -> error $ "colorArgParser: unexpected " ++ str
 
 
 intArgParser :: Parser [Argument]
@@ -178,8 +222,8 @@ intArgParser =
     do
       space
       spaces
-      n <- parseNumber
+      n <- parseInt
       return $ [IntArgument n]
 
-parseNumber :: Parser Int
-parseNumber = liftM read $ many1 digit
+parseInt :: Parser Int
+parseInt = liftM read $ many1 digit

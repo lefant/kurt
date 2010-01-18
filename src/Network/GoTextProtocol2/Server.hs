@@ -125,7 +125,9 @@ commandLoop =
                                        putStrLn $ "now running handler for " ++ cmd
                                        -- FIXME: hdlr should be able to signal errors too
                                        putStr $ "=" ++ (outputIdOrBlank maybeId)
-                                       hdlr args
+                                       result <- hdlr args
+                                       putStrLn ""
+                                       return result
                     )
         if continue
           then commandLoop
@@ -148,31 +150,26 @@ cmd_list_commands :: CommandHandler
 cmd_list_commands [] =
     do putStr "= "
        mapM (putStrLn . fst) commandHandlers
-       putStrLn ""
        return True
 
 cmd_name :: CommandHandler
 cmd_name [] =
     do putStrLn "Kurt"
-       putStrLn ""
        return True
 
 cmd_protocol_version :: CommandHandler
 cmd_protocol_version _ =
     do putStrLn "2"
-       putStrLn ""
        return True
 
 cmd_quit :: CommandHandler
 cmd_quit _ =
     do putStrLn "bye!"
-       putStrLn ""
        return False
 
 cmd_version :: CommandHandler
 cmd_version _ =
     do putStrLn "0.0.1"
-       putStrLn ""
        return True
 
 -- TODO
@@ -180,41 +177,35 @@ cmd_version _ =
 cmd_time_left :: CommandHandler
 cmd_time_left [(IntArgument n)] =
     do putStrLn $ "time left: " ++ (show n)
-       putStrLn ""
        return True
 
 cmd_clear_board :: CommandHandler
 cmd_clear_board _ =
     do putStrLn "clear_board received"
-       putStrLn ""
        return True
 
 cmd_komi :: CommandHandler
-cmd_komi _ =
-    do putStrLn "komi received"
-       putStrLn ""
+cmd_komi komi =
+    do putStrLn $ "komi " ++ (show komi) ++ " received"
        return True
 
 cmd_play :: CommandHandler
-cmd_play _ =
-    do putStrLn "play received"
+cmd_play move =
+    do putStrLn $ "play " ++ (show move) ++ " received"
        return True
 
 cmd_genmove :: CommandHandler
-cmd_genmove _ =
-    do putStrLn "genmove received"
-       putStrLn ""
+cmd_genmove color =
+    do putStrLn $ "genmove " ++ (show color) ++ " received"
        return True
 
 cmd_boardsize :: CommandHandler
 cmd_boardsize [(IntArgument n)] =
     do putStrLn $ "boardsize " ++ (show n) ++ " received"
-       putStrLn ""
        return True
 
 cmd_showboard :: CommandHandler
-cmd_showboard _ =
+cmd_showboard [] =
     do putStrLn "showboard received"
-       putStrLn ""
        return True
 

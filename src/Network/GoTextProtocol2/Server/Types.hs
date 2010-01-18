@@ -39,8 +39,9 @@ module Network.GoTextProtocol2.Server.Types (
 
 data Color = Black
            | White
+             deriving (Show, Eq)
 
-type Move = (Int, Int)
+type Move = (Color, Maybe (Int, Int))
 
 type Time = Int
 
@@ -49,7 +50,11 @@ type Time = Int
 type Id = Int
 
 data Command = Command String [Argument]
+               deriving (Show, Eq)
 
 data Argument = IntArgument Int
               | StringArgument String
-
+              | MoveArgument Move
+              | ColorArgument Color
+              | FloatArgument Float
+                deriving (Show, Eq)
