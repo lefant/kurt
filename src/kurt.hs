@@ -36,7 +36,6 @@ import System.IO
 
 main :: IO ()
 main = do
-  hSetBuffering stdin NoBuffering
-  hSetBuffering stdout NoBuffering
-  -- putStrLn "here comes kurt"
+  hSetBuffering stdin LineBuffering
+  hSetBuffering stdout LineBuffering
   startLoop
