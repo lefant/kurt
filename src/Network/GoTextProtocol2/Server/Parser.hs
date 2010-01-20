@@ -52,8 +52,6 @@ module Network.GoTextProtocol2.Server.Parser (
                                              ,colorArgParser
                                              ,moveArgParser
                                              ,stringArgParser
-                                             ,xToLetter
-                                             ,letterToX
                                              ) where
 
 import Text.ParserCombinators.Parsec
@@ -62,6 +60,7 @@ import Data.Char
 import Monad
 
 import Network.GoTextProtocol2.Server.Types
+import Kurt.Utils (letterToX)
 import Data.Goban (Move(..), Stone(..), Color(..))
 
 type CommandArgParserList = [(String, Parser [Argument])]
@@ -224,28 +223,6 @@ intArgParser =
       spaces
       n <- parseInt
       return $ [IntArgument n]
-
-xToLetter :: Int -> Char
-xToLetter n =
-    if (n < 1) || (n > 25)
-    then error "letterToX: n out of bounds"
-    else
-        if n <= 8
-        then chr (n + 64)
-        else chr (n + 65)
-
-letterToX :: Char -> Int
-letterToX 'i' =
-    error "letterToX: the letter i is skipped for coordinates to avoid confusion with j"
-letterToX c =
-    if (n < 1) || (n > 25)
-    then error "letterToX: n out of bounds"
-    else
-        if n <= 8
-        then n
-        else n - 1
-    where
-      n = (ord $ toUpper c) - 64
 
 parseInt :: Parser Int
 parseInt = liftM read $ many1 digit

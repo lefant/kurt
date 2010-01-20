@@ -1,4 +1,4 @@
-{-# OPTIONS -O2 -Wall -Werror -Wwarn -XRankNTypes #-}
+{-# OPTIONS -O2 -Wall -Werror -Wwarn #-}
 
 {-
 Copyright (C) 2010 Fabian Linzberger <e@lefant.net>
@@ -15,7 +15,7 @@ GNU General Public License for more details.
 -}
 
 {- |
-   Module     : Network.GoTextProtocol2.Server.Types
+   Module     : Data.Goban
    Copyright  : Copyright (C) 2010 Fabian Linzberger
    License    : GNU GPL, version 3 or above
 
@@ -38,6 +38,7 @@ module Data.Goban (
                   ,updateGameState
                   ) where
 
+import Kurt.Utils (xToLetter)
 
 
 data GameState = GameState {
@@ -64,7 +65,13 @@ defaultGameState = GameState {
 
 data Move = StoneMove Stone
           | Pass Color
-            deriving (Show, Eq)
+            deriving (Eq)
+
+instance Show Move where
+    show (StoneMove (Stone ((x, y), _color))) =
+        [(xToLetter x)] ++ (show y)
+    show (Pass _color) = "pass"
+
 
 newtype Stone = Stone (Vertex, Color)
     deriving (Show, Eq)
@@ -114,3 +121,5 @@ updateGameState state move =
 moveColor :: Move -> Color
 moveColor (StoneMove (Stone (_vertex, color))) = color
 moveColor (Pass color) = color
+
+

@@ -31,12 +31,13 @@ TODO:
 * way so commandHandlers can be passed in from an inheriting module
   running startLoop
 * proper accessors for Board
-* filter illegal moves
+* proper legal move filter
 ** captures
 ** suicide - avoidance in testing
 ** ko (superko?)
 * scoring
-
+** track captures
+* testing
 
 Written by Fabian Linzberger, e\@lefant.net
 -}
@@ -48,6 +49,8 @@ module Network.GoTextProtocol2.Server (
     
 import Network.GoTextProtocol2.Server.Parser
 import Network.GoTextProtocol2.Server.Types
+import Data.Goban
+import Kurt.Move (genMove)
 
 import Data.Char
 import Data.List
@@ -55,10 +58,8 @@ import System.IO
 
 import Debug.Trace
 
-data State = State Board History Komi
-             deriving (Show)
 
-type CommandHandler = [Argument] -> State -> Either String (String, State)
+type CommandHandler = [Argument] -> GameState -> Either String (String, GameState)
 
 lookupC :: String -> [(String, CommandHandler)] -> Maybe (String, CommandHandler)
 lookupC cmd cl = find (\(x, _) -> x == cmd) cl
@@ -105,9 +106,9 @@ commandHandlers =
 
 startLoop :: IO ()
 startLoop =
-    loop (State (Board 1 []) [] 0)
+    loop defaultGameState
 
-loop :: State -> IO ()
+loop :: GameState -> IO ()
 loop oldState =
     do
       input <- getLine
@@ -183,16 +184,22 @@ cmd_version [] state =
 
 
 cmd_clear_board :: CommandHandler
-cmd_clear_board [] (State (Board size _) _ komi) =
-    Right ("", State (Board size []) [] komi)
+cmd_clear_board [] state =
+    Right ("", state { 
+                  toMove = Black
+                 ,stones = []
+                 ,moveHistory = []
+                 ,blackPrisoners = 0
+                 ,whitePrisoners = 0
+                 })
 
 cmd_komi :: CommandHandler
-cmd_komi [(FloatArgument komi)] (State board history _komi) =
-    Right ("", State board history komi)
+cmd_komi [(FloatArgument f)] state =
+    Right ("", state { komi = f })
 
 cmd_boardsize :: CommandHandler
-cmd_boardsize [(IntArgument n)] (State _board history komi) =
-    Right ("", State (Board n []) history komi)
+cmd_boardsize [(IntArgument n)] _ =
+    Right ("", defaultGameState { boardsize = n })
 
 cmd_showboard :: CommandHandler
 cmd_showboard [] state =
@@ -200,101 +207,20 @@ cmd_showboard [] state =
 
 
 cmd_play :: CommandHandler
-cmd_play [(MoveArgument move)] (State oldBoard@(Board n board) history komi) =
-    case move of
-      (color, Nothing) -> Right ("", State oldBoard newHistory komi)
-      (color, Just vertex) ->
-          case lookupVertex vertex board of
-            Nothing -> Right ("", State (Board n ((vertex, color) : board)) newHistory komi)
-            Just stone -> Left ("there all ready is a stone: " ++ (show stone))
+cmd_play [(MoveArgument move)] state =
+    Right ("", updateGameState state move)
+
+
+cmd_genmove :: CommandHandler
+cmd_genmove [(ColorArgument color)] state =
+    Right (show move, state')
     where
-      newHistory = (history ++ [move])
+      state' = updateGameState state move
+      move = genMove state color
+
 
 -- TODO
 
 cmd_time_left :: CommandHandler
 cmd_time_left [(IntArgument n)] state =
     Right ("time left: " ++ (show n), state)
-
-
-cmd_genmove :: CommandHandler
-cmd_genmove [(ColorArgument color)] (State oldBoard@(Board n board) history komi) =
-    -- trace ("cmd_genmove" ++ show (moveLst, moveLst'))
-    result
-    where
-      result =
-          case moveLst' of
-            (vertex : _) ->
-                Right (move, State (Board n ((vertex, color) : board)) newHistory komi)
-                where
-                  newHistory = (history ++ [(color, Just vertex)])
-                  move = [(xToLetter vX)] ++ (show vY)
-                  (vX, vY) = vertex
-            [] ->
-                Right ("pass", State oldBoard (history ++ [(color, Nothing)]) komi)
-
-      moveLst' = drop ((length moveLst) `div` 2) moveLst
-      -- moveLst = filter (\p -> (neighbours n p) `intersect` free /= []) free
-      moveLst = filter (\p -> (hypothetical_group_liberties color p oldBoard) > 0) free
-      free = free_vertices n board
-
-
-free_vertices n board =
-    (all_moves n) \\ (full_vertices board)
-
-full_vertices board = map fst board
-
-hypothetical_group_liberties color p b@(Board n board) =
-    liberties (groupstones color p b) (Board n hypothetical_board)
-    where
-      hypothetical_board = ((p, color) : board)
-
-groupstones :: Color -> Vertex -> Board -> [Vertex]
-groupstones color p board =
-    group' (color_neighbours color p board) [p]
-    where
-      group' [] gs = gs
-      group' (n : ns) gs =
-          group' (ns ++ (((color_neighbours color n board) \\ gs) \\ ns)) (n : gs)
-
-
-liberties :: [Vertex] -> Board -> Int
-liberties ps (Board n board) =
-    length ls
-    where
-      ls = nub ls'
-      ls' = concatMap ((free `intersect`) . (neighbours n)) ps
-      free = (free_vertices n board)
-
-neighbours :: Int -> Vertex -> [Vertex]
-neighbours boardsize (x, y) =
-    filter inBounds [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
-    where
-      inBounds (x', y') =
-          and [x' > 0, x' <= boardsize, y' > 0, y' <= boardsize]
-
-color_neighbours color p b@(Board boardsize _) =
-    filter sameColor (neighbours boardsize p)
-    where
-      sameColor p' =
-          case (colorOf b p') of
-            Just color' -> color == color'
-            Nothing -> False
-
-colorOf :: Board -> Vertex -> Maybe Color
-colorOf (Board _ board) p =
-    case maybeColor of
-      Just (_, color) -> Just color
-      Nothing -> Nothing
-    where
-      maybeColor = find (\(p', _) -> p' == p) board
-
-
-lookupVertex :: Vertex -> [(Vertex, Color)] -> Maybe (Vertex, Color)
-lookupVertex vertex board =
-    find (\(x, _) -> x == vertex) board
-
-
-all_moves :: Int -> [Vertex]
-all_moves n =
-    [(x, y) | x <- [1 .. n], y <- [1 .. n]]
