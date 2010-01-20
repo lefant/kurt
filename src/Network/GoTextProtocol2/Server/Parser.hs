@@ -85,10 +85,11 @@ line commandList =
   <?> "command"
 
 
+{-
+-- FIXME: not yet
+
 emptyline :: Parser ()
-emptyline =
-    do
-      spaces
+emptyline = spaces
 
 commentline :: Parser ()
 commentline =
@@ -96,7 +97,7 @@ commentline =
       char '#'
       return ()
       -- FIXME: need to do some more work here
-
+-}
 
 commandline :: CommandArgParserList -> Parser (Maybe Id, Command)
 commandline commandList =
