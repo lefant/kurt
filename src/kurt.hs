@@ -30,12 +30,8 @@ Written by Fabian Linzberger, e\@lefant.net
 
 
 
-import KurtLib()
-import Network.GoTextProtocol2.Server
-import System.IO
+import Network.GoTextProtocol2.Server (startLoop)
 
 main :: IO ()
 main = do
-  hSetBuffering stdin LineBuffering
-  hSetBuffering stdout LineBuffering
   startLoop

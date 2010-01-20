@@ -1,0 +1,22 @@
+General:
+* ko / superko
+* scoring
+* quickcheck / unit testing
+
+
+Kurt.Move:
+* better move generation logic ;)
+
+
+Data.Goban:
+* track ko state
+
+
+Network.GoTextProtocol2.Server:
+* merge commandargparserlist and commandHandlers lists
+* implement a way so commandHandlers can be passed in from an inheriting module running startLoop
+
+
+Network.GoTextProtocol2.Parser:
+* handle #-prefix comments and empty lines
+* handle preprocessing (as described on: http://www.lysator.liu.se/~gunnar/gtp/gtp2-spec-draft2/gtp2-spec.html)

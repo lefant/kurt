@@ -23,21 +23,8 @@ GNU General Public License for more details.
    Stability  : experimental
    Portability: probably
 
-initial stub command handlers directly here
 
-TODO:
-
-* merge commandargparserlist and commandHandlers lists implement a
-* way so commandHandlers can be passed in from an inheriting module
-  running startLoop
-* proper accessors for Board
-* proper legal move filter
-** captures
-** suicide - avoidance in testing
-** ko (superko?)
-* scoring
-** track captures
-* testing
+this module runs the main gtp handling loop via startLoop.
 
 Written by Fabian Linzberger, e\@lefant.net
 -}
@@ -106,7 +93,10 @@ commandHandlers =
 
 startLoop :: IO ()
 startLoop =
-    loop defaultGameState
+    do
+      hSetBuffering stdin LineBuffering
+      hSetBuffering stdout LineBuffering
+      loop defaultGameState
 
 loop :: GameState -> IO ()
 loop oldState =

@@ -15,7 +15,7 @@ GNU General Public License for more details.
 -}
 
 {- |
-   Module     : KurtLib
+   Module     : Kurt.Move
    Copyright  : Copyright (C) 2010 Fabian Linzberger
    License    : GNU GPL, version 3 or above
 
@@ -23,12 +23,31 @@ GNU General Public License for more details.
    Stability  : experimental
    Portability: probably
 
-Nothing here yet, move on.
 
-Written by Fabian Linzberger, e\@lefant.net
+Move generator logic
+
 -}
 
-module KurtLib (
+module Kurt.Move (
+                  genMove
+                 ) where
 
-              ) where
+import Data.Goban
 
+
+genMove :: GameState -> Color -> Move
+genMove state color =
+    case moveList'' of
+      [] -> Pass color
+      (p : _) -> StoneMove (Stone (p, color))
+
+    where
+      moveList'' = drop ((length moveList) `div` 2) moveList'
+      moveList' = filter (not . isSuicide') moveList
+      moveList = freeVertices bsize allStones
+
+      bsize = (boardsize state)
+      allStones = (stones state)
+
+      isSuicide' :: Vertex -> Bool
+      isSuicide' p = isSuicide bsize (Stone (p, color)) allStones
