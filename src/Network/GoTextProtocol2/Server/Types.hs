@@ -28,30 +28,12 @@ Shared types.
 -}
 
 module Network.GoTextProtocol2.Server.Types (
-                                             Color(..)
-                                            ,Move
-                                            ,Time
-                                            ,Id
+                                             Id
                                             ,Command(..)
                                             ,Argument(..)
-                                            ,Board(..)
-                                            ,History
-                                            ,Vertex
-                                            ,Komi
                                             ) where
 
-
-data Color = Black
-           | White
-             deriving (Show, Eq)
-
-type Move = (Color, Maybe Vertex)
-
-type Vertex = (Int, Int)
-
-type Time = Int
-
-type Komi = Float
+import Data.Goban (Move, Color)
 
 type Id = Int
 
@@ -64,8 +46,3 @@ data Argument = IntArgument Int
               | ColorArgument Color
               | FloatArgument Float
                 deriving (Show, Eq)
-
-data Board = Board Int [(Vertex, Color)]
-             deriving (Show)
-
-type History = [Move]

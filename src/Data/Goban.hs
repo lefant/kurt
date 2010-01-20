@@ -30,8 +30,8 @@ Goban Implementation
 module Data.Goban (
                    GameState(..)
                   ,Move(..)
-                  ,Stone
                   ,Color(..)
+                  ,Stone(..)
                   ,Vertex
                   ,Score
                   ) where
@@ -46,14 +46,15 @@ data GameState = GameState {
      ,moveHistory     :: [Move]
      ,blackPrisoners  :: Score
      ,whitePrisoners  :: Score
-    } deriving (Show)
+    } deriving (Show, Eq)
 
 
-data Move = Stone
-          | Pass
-            deriving (Show)
+data Move = StoneMove Stone
+          | Pass Color
+            deriving (Show, Eq)
 
-type Stone = (Vertex, Color)
+newtype Stone = Stone (Vertex, Color)
+    deriving (Show, Eq)
 
 data Color = Black
            | White

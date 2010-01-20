@@ -26,6 +26,7 @@ library
   hs-source-dirs: src
   exposed-modules:
                   KurtLib
+                 ,Data.Goban
                  ,Network.GoTextProtocol2.Server
                  ,Network.GoTextProtocol2.Server.Types
                  ,Network.GoTextProtocol2.Server.Parser
@@ -33,6 +34,7 @@ library
                   base >= 3 && < 5
                  ,test-framework-quickcheck
                  ,test-framework-hunit
+                 ,test-framework
                  ,parsec >= 3
                  ,haskell98
   ghc-options: -O2

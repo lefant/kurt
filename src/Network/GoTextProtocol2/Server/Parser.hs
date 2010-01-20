@@ -62,7 +62,7 @@ import Data.Char
 import Monad
 
 import Network.GoTextProtocol2.Server.Types
-
+import Data.Goban (Move(..), Stone(..), Color(..))
 
 type CommandArgParserList = [(String, Parser [Argument])]
 
@@ -177,16 +177,15 @@ moveArgParser =
       (ColorArgument c) <- colorParser
       space
       spaces
-      vertex <- (do
-                  (do
-                    try (string "pass")
-                    return Nothing)
-              <|> (do
-                    l <- letter
-                    n <- parseInt
-                    return $ Just (letterToX l, n))
-              <?> "vertex (ie. something like A1, H8, Z25 or pass)")
-      return [MoveArgument (c, vertex)]
+      (do
+        (do
+          try (string "pass")
+          return [MoveArgument (Pass c)])
+         <|> (do
+               l <- letter
+               n <- parseInt
+               return [MoveArgument $ StoneMove $ Stone ((letterToX l, n), c)])
+         <?> "vertex (ie. something like A1, H8, Z25 or pass)")
 
 
 
