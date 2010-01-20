@@ -29,24 +29,37 @@ Goban Implementation
 
 module Data.Goban (
                    GameState(..)
+                  ,defaultGameState
                   ,Move(..)
                   ,Color(..)
                   ,Stone(..)
                   ,Vertex
                   ,Score
+                  ,updateGameState
                   ) where
 
 
 
 data GameState = GameState {
       komi            :: Score
-     ,size            :: Int
+     ,boardsize       :: Int
      ,toMove          :: Color
      ,stones          :: [Stone]
      ,moveHistory     :: [Move]
      ,blackPrisoners  :: Score
      ,whitePrisoners  :: Score
     } deriving (Show, Eq)
+
+defaultGameState :: GameState
+defaultGameState = GameState {
+                     komi = 0
+                    ,boardsize = 1
+                    ,toMove = Black
+                    ,stones = []
+                    ,moveHistory = []
+                    ,blackPrisoners = 0
+                    ,whitePrisoners = 0
+                   }
 
 
 data Move = StoneMove Stone
@@ -63,3 +76,41 @@ data Color = Black
 type Vertex = (Int, Int)
 
 type Score = Float
+
+
+updateGameState :: GameState -> Move -> GameState
+updateGameState state move =
+    if (moveColor move) /= currentToMove
+    then error "updateGameState: move by wrong color received"
+    else state'
+    where
+      state' =
+          case move of
+            StoneMove stone ->
+                state {
+                     toMove = toMove'
+                    ,stones = (stone : (stones state))
+                    ,moveHistory = (moveHistory state) ++ [move]
+                    ,blackPrisoners =
+                        (blackPrisoners state) + blackPrisoners'
+                    ,whitePrisoners =
+                        (whitePrisoners state) + whitePrisoners'
+                    }
+            Pass _color ->
+                state {
+                     toMove = toMove'
+                    ,moveHistory = (moveHistory state) ++ [move]
+                    }
+
+      currentToMove = toMove state
+      toMove' = case currentToMove of
+                  Black -> White
+                  White -> Black
+      blackPrisoners' = 0
+      whitePrisoners' = 0
+
+
+
+moveColor :: Move -> Color
+moveColor (StoneMove (Stone (_vertex, color))) = color
+moveColor (Pass color) = color
