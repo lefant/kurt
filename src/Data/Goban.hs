@@ -38,13 +38,14 @@ module Data.Goban (
                   ,updateGameState
                   ,freeVertices
                   ,isSuicide
+                  ,otherColor
                   ) where
 
 import Kurt.Utils (xToLetter)
 
 import Data.List
 import Data.Maybe
-
+import Debug.Trace (trace)
 
 
 data GameState = GameState {
@@ -94,13 +95,13 @@ type Score = Float
 
 updateGameState :: GameState -> Move -> GameState
 updateGameState state move =
-    if (moveColor move) /= currentToMove
+    if (moveColor move) /= (toMove state)
     then error "updateGameState: move by wrong color received"
     else
         case move of
           StoneMove stone ->
               state {
-                    toMove = toMove'
+                    toMove = otherColor (toMove state)
                    ,stones = stones'''
                    ,moveHistory = (moveHistory state) ++ [move]
                    ,blackPrisoners = blackPrisoners'
@@ -128,14 +129,9 @@ updateGameState state move =
 
           Pass _color ->
               state {
-                    toMove = toMove'
+                    toMove = otherColor (toMove state)
                    ,moveHistory = (moveHistory state) ++ [move]
                   }
-    where
-      currentToMove = toMove state
-      toMove' = case currentToMove of
-                  Black -> White
-                  White -> Black
 
 
 
@@ -149,13 +145,16 @@ isSuicide bsize stone allStones =
 
 isDead :: Int -> Stone -> [Stone] -> Bool
 isDead bsize stone allStones =
-    liberties bsize (groupOfStone bsize stone allStones) allStones == 0
+    trace ("isDead called with: " ++ (show stone) ++ " liberties: " ++ (show libertyCount))
+    libertyCount == 0
+    where
+      libertyCount = liberties bsize (groupOfStone bsize stone allStones) allStones
 
 deadStones :: Int -> Stone -> [Stone] -> [Stone]
-deadStones bsize (Stone (p, _)) ss =
+deadStones bsize s ss =
     concatMap dead_stones' ns
     where
-      ns = neighbourStones bsize p ss
+      ns = neighbourStonesOtherColor bsize s ss
       dead_stones' n =
           if liberties bsize groupStones ss == 0
           then groupStones
@@ -195,6 +194,13 @@ groupOfStone bsize s ss =
       groupOfStone' (n : ns) gs =
           groupOfStone' (ns ++ (((neighbourStonesSameColor bsize n ss) \\ gs) \\ ns)) (n : gs)
 
+
+neighbourStonesOtherColor :: Int -> Stone -> [Stone] -> [Stone]
+neighbourStonesOtherColor bsize (Stone (p, color)) ss =
+    filter notSameColor $ neighbourStones bsize p ss
+    where
+      notSameColor (Stone (_p', color')) =
+          color /= color'
 
 neighbourStonesSameColor :: Int -> Stone -> [Stone] -> [Stone]
 neighbourStonesSameColor bsize (Stone (p, color)) ss =
@@ -253,3 +259,7 @@ allVertices n =
 moveColor :: Move -> Color
 moveColor (StoneMove (Stone (_vertex, color))) = color
 moveColor (Pass color) = color
+
+otherColor :: Color -> Color
+otherColor Black = White
+otherColor White = Black

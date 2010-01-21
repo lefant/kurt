@@ -33,21 +33,35 @@ module Kurt.Move (
                  ) where
 
 import Data.Goban
+-- import Debug.Trace (trace)
 
 
 genMove :: GameState -> Color -> Move
 genMove state color =
-    case moveList'' of
+    case moveList''' of
       [] -> Pass color
       (p : _) -> StoneMove (Stone (p, color))
 
     where
-      moveList'' = drop ((length moveList) `div` 2) moveList'
-      moveList' = filter (not . isSuicide') moveList
-      moveList = freeVertices bsize allStones
+      moveList''' = drop ((length moveList'') `div` 2) moveList''
+      moveList'' = filter (not . isOthersSuicide') moveList'
+      moveList' =
+          -- trace ("genMove, moveList': " ++ show resMoveList')
+          resMoveList'
+          where
+            resMoveList' = filter (not . isSuicide') moveList
+      moveList =
+          -- trace ("genMove, moveList: " ++ show resMoveList)
+          resMoveList
+          where
+            resMoveList = freeVertices bsize allStones
 
       bsize = (boardsize state)
       allStones = (stones state)
 
       isSuicide' :: Vertex -> Bool
       isSuicide' p = isSuicide bsize (Stone (p, color)) allStones
+
+      isOthersSuicide' :: Vertex -> Bool
+      isOthersSuicide' p =
+          isSuicide bsize (Stone (p, (otherColor color))) allStones
