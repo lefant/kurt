@@ -39,6 +39,9 @@ module Data.Goban (
                   ,freeVertices
                   ,isSuicide
                   ,otherColor
+                  ,neighbourStones
+                  ,neighbourStonesSameColor
+                  ,adjacentVertices
                   ) where
 
 import Kurt.Utils (xToLetter)
