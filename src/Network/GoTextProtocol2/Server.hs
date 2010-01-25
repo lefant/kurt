@@ -212,7 +212,7 @@ cmd_genmove [(ColorArgument color)] state =
     where
       state' = updateGameState state { ourRandomGen = g' } move
       -- move = genMove state color
-      move = genMoveRand g state color
+      move = genMoveRand state { ourRandomGen = g }
       (g, g') = split (ourRandomGen state)
 
 cmd_final_score :: CommandHandler

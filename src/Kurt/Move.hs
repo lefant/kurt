@@ -40,8 +40,105 @@ import Data.Goban
 -- import Debug.Trace (trace)
 
 
-genMoveRand :: StdGen -> GameState -> Color -> Move
-genMoveRand g state color =
+
+
+genMove :: GameState -> Move
+genMove state =
+    if l'' == 0
+    then Pass color
+    else StoneMove (Stone (p, color))
+
+    where
+      p = moveList''' !! r
+      (r, _g') = randomR (0, (l'' - 1)) g
+
+      l'' = length moveList''
+
+      -- moveList''' = drop ((length moveList'') `div` 2) moveList''
+      moveList''' =
+          -- trace ("genMove, moveList'': " ++ show resMoveList'')
+          resMoveList'''
+          where
+            resMoveList''' = map snd $ sort $ map whatifScore moveList''
+
+            whatifScore v =
+                (modifier * (runOneRandom (updateGameState state move)), v)
+                where
+                  move = StoneMove (Stone (v, color))
+
+
+            modifier = case color of
+                         Black -> -1
+                         White -> 1
+
+      moveList'' =
+          -- trace ("genMove, moveList'': " ++ show resMoveList'')
+          resMoveList''
+          where
+            resMoveList'' = filter (not . isEyeLike) moveList'
+      moveList' =
+          -- trace ("genMove, moveList': " ++ show resMoveList')
+          resMoveList'
+          where
+            resMoveList' = filter (not . isSuicide') moveList
+      moveList =
+          -- trace ("genMove, moveList: " ++ show resMoveList)
+          resMoveList
+          where
+            resMoveList = (freeVertices bsize allStones)
+                          \\ (koBlocked state)
+
+      bsize = (boardsize state)
+      allStones = (stones state)
+      color = (toMove state)
+      g = (ourRandomGen state)
+
+      isSuicide' :: Vertex -> Bool
+      isSuicide' v = isSuicide bsize (Stone (v, color)) allStones
+
+      isEyeLike :: Vertex -> Bool
+      isEyeLike v =
+          (length vs == length sns)
+          && isSuicide bsize (Stone (v, (otherColor color))) allStones
+          where
+            vs = adjacentVertices bsize v
+            sns = filter (\(Stone (_p', c')) -> color == c') ns
+            ns = neighbourStones bsize allStones (Stone (v, color))
+
+
+runOneRandom :: GameState -> Score
+runOneRandom initState =
+    -- signum $ run initState
+    id $ run initState
+    where
+      run state =
+        case move of
+          (Pass _) ->
+              case move' of
+                (Pass _) ->
+                    score state''
+                (StoneMove _) ->
+                    run state''
+              where
+                move' = genMoveRand state' { ourRandomGen = gg }
+                state'' =
+                    updateGameState state' { ourRandomGen = gg' } move'
+                (gg, gg') = split g'
+
+          (StoneMove _) ->
+              run state'
+
+        where
+          move = genMoveRand state { ourRandomGen = g }
+          state' =
+              updateGameState state { ourRandomGen = g' } move
+          (g, g') = split (ourRandomGen state)
+
+
+
+
+genMoveRand :: GameState -> Move
+genMoveRand state =
     if l'' == 0
     then Pass color
     else StoneMove (Stone (p, color))
@@ -71,70 +168,17 @@ genMoveRand g state color =
 
       bsize = (boardsize state)
       allStones = (stones state)
+      color = (toMove state)
+      g = (ourRandomGen state)
 
       isSuicide' :: Vertex -> Bool
       isSuicide' v = isSuicide bsize (Stone (v, color)) allStones
 
       isEyeLike :: Vertex -> Bool
       isEyeLike v =
-          length vs == length sns
+          (length vs == length sns)
+          && isSuicide bsize (Stone (v, (otherColor color))) allStones
           where
             vs = adjacentVertices bsize v
             sns = filter (\(Stone (_p', c')) -> color == c') ns
             ns = neighbourStones bsize allStones (Stone (v, color))
-
-
-
-genMove :: GameState -> Color -> Move
-genMove state color =
-    case moveList''' of
-      [] -> Pass color
-      (p : _) -> StoneMove (Stone (p, color))
-
-    where
-      -- moveList''' = drop ((length moveList'') `div` 2) moveList''
-      moveList''' =
-          -- trace ("genMove, moveList'': " ++ show resMoveList'')
-          resMoveList'''
-          where
-            resMoveList''' = map snd $ sort $ map whatifScore moveList''
-            whatifScore p =
-                (modifier * (score (updateGameState state move)), p)
-                where
-                  move = StoneMove (Stone (p, color))
-
-            modifier = case color of
-                         Black -> -1
-                         White -> 1
-
-      moveList'' =
-          -- trace ("genMove, moveList'': " ++ show resMoveList'')
-          resMoveList''
-          where
-            resMoveList'' = filter (not . isEyeLike) moveList'
-      moveList' =
-          -- trace ("genMove, moveList': " ++ show resMoveList')
-          resMoveList'
-          where
-            resMoveList' = filter (not . isSuicide') moveList
-      moveList =
-          -- trace ("genMove, moveList: " ++ show resMoveList)
-          resMoveList
-          where
-            resMoveList = (freeVertices bsize allStones)
-                          \\ (koBlocked state)
-
-      bsize = (boardsize state)
-      allStones = (stones state)
-
-      isSuicide' :: Vertex -> Bool
-      isSuicide' p = isSuicide bsize (Stone (p, color)) allStones
-
-      isEyeLike :: Vertex -> Bool
-      isEyeLike p =
-          length vs == length sns
-          where
-            vs = adjacentVertices bsize p
-            sns = filter (\(Stone (_p', c')) -> color == c') ns
-            ns = neighbourStones bsize allStones (Stone (p, color))
-
