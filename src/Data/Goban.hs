@@ -48,6 +48,7 @@ import Kurt.Utils (xToLetter)
 
 import Data.List
 import Data.Maybe
+import System.Random
 import Debug.Trace (trace)
 
 
@@ -60,10 +61,11 @@ data GameState = GameState {
      ,moveHistory     :: [Move]
      ,blackPrisoners  :: Score
      ,whitePrisoners  :: Score
-    } deriving (Show, Eq)
+     ,ourRandomGen    :: StdGen
+    } deriving (Show)
 
-defaultGameState :: GameState
-defaultGameState = GameState {
+defaultGameState :: StdGen -> GameState
+defaultGameState g = GameState {
                      komi = 0
                     ,boardsize = 1
                     ,toMove = Black
@@ -72,6 +74,7 @@ defaultGameState = GameState {
                     ,moveHistory = []
                     ,blackPrisoners = 0
                     ,whitePrisoners = 0
+                    ,ourRandomGen = g
                    }
 
 

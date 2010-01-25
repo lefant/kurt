@@ -37,11 +37,12 @@ module Network.GoTextProtocol2.Server (
 import Network.GoTextProtocol2.Server.Parser
 import Network.GoTextProtocol2.Server.Types
 import Data.Goban
-import Kurt.Move (genMove)
+import Kurt.Move (genMove, genMoveRand)
 
 import Data.Char
 import Data.List
 import System.IO
+import System.Random
 
 import Debug.Trace
 
@@ -98,7 +99,8 @@ startLoop =
     do
       hSetBuffering stdin LineBuffering
       hSetBuffering stdout LineBuffering
-      loop defaultGameState
+      g <- newStdGen
+      loop $ defaultGameState g
 
 loop :: GameState -> IO ()
 loop oldState =
@@ -191,8 +193,8 @@ cmd_komi [(FloatArgument f)] state =
     Right ("", state { komi = f })
 
 cmd_boardsize :: CommandHandler
-cmd_boardsize [(IntArgument n)] _ =
-    Right ("", defaultGameState { boardsize = n })
+cmd_boardsize [(IntArgument n)] state =
+    Right ("", state { boardsize = n })
 
 cmd_showboard :: CommandHandler
 cmd_showboard [] state =
@@ -208,8 +210,10 @@ cmd_genmove :: CommandHandler
 cmd_genmove [(ColorArgument color)] state =
     Right (show move, state')
     where
-      state' = updateGameState state move
-      move = genMove state color
+      state' = updateGameState state { ourRandomGen = g' } move
+      -- move = genMove state color
+      move = genMoveRand g state color
+      (g, g') = split (ourRandomGen state)
 
 cmd_final_score :: CommandHandler
 cmd_final_score [] state =

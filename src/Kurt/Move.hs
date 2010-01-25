@@ -30,12 +30,59 @@ Move generator logic
 
 module Kurt.Move (
                   genMove
+                 ,genMoveRand
                  ) where
 
+import System.Random
 import Data.List
 
 import Data.Goban
 -- import Debug.Trace (trace)
+
+
+genMoveRand :: StdGen -> GameState -> Color -> Move
+genMoveRand g state color =
+    if l'' == 0
+    then Pass color
+    else StoneMove (Stone (p, color))
+
+    where
+      p = moveList'' !! r
+      (r, _g') = randomR (0, (l'' - 1)) g
+
+      l'' = length moveList''
+
+      moveList'' =
+          -- trace ("genMove, moveList'': " ++ show resMoveList'')
+          resMoveList''
+          where
+            resMoveList'' = filter (not . isEyeLike) moveList'
+      moveList' =
+          -- trace ("genMove, moveList': " ++ show resMoveList')
+          resMoveList'
+          where
+            resMoveList' = filter (not . isSuicide') moveList
+      moveList =
+          -- trace ("genMove, moveList: " ++ show resMoveList)
+          resMoveList
+          where
+            resMoveList = (freeVertices bsize allStones)
+                          \\ (koBlocked state)
+
+      bsize = (boardsize state)
+      allStones = (stones state)
+
+      isSuicide' :: Vertex -> Bool
+      isSuicide' v = isSuicide bsize (Stone (v, color)) allStones
+
+      isEyeLike :: Vertex -> Bool
+      isEyeLike v =
+          length vs == length sns
+          where
+            vs = adjacentVertices bsize v
+            sns = filter (\(Stone (_p', c')) -> color == c') ns
+            ns = neighbourStones bsize allStones (Stone (v, color))
+
 
 
 genMove :: GameState -> Color -> Move
@@ -45,7 +92,21 @@ genMove state color =
       (p : _) -> StoneMove (Stone (p, color))
 
     where
-      moveList''' = drop ((length moveList'') `div` 2) moveList''
+      -- moveList''' = drop ((length moveList'') `div` 2) moveList''
+      moveList''' =
+          -- trace ("genMove, moveList'': " ++ show resMoveList'')
+          resMoveList'''
+          where
+            resMoveList''' = map snd $ sort $ map whatifScore moveList''
+            whatifScore p =
+                (modifier * (score (updateGameState state move)), p)
+                where
+                  move = StoneMove (Stone (p, color))
+
+            modifier = case color of
+                         Black -> -1
+                         White -> 1
+
       moveList'' =
           -- trace ("genMove, moveList'': " ++ show resMoveList'')
           resMoveList''

@@ -38,6 +38,7 @@ library
                  ,test-framework
                  ,parsec >= 3
                  ,haskell98
+                 ,random
   ghc-options: -O2
 
 executable kurt
