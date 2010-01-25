@@ -39,9 +39,9 @@ module Data.Goban (
                   ,freeVertices
                   ,isSuicide
                   ,otherColor
-                  ,neighbourStones
-                  ,neighbourStonesSameColor
                   ,adjacentVertices
+                  ,neighbourStones
+                  ,score
                   ) where
 
 import Kurt.Utils (xToLetter)
@@ -145,6 +145,12 @@ updateGameState state move =
                   }
 
 
+score :: GameState -> ((Color, Score), (Color, Score))
+score state =
+    ((Black, colorTerritory Black), (White, colorTerritory White))
+    where
+      colorTerritory = territory (boardsize state) (stones state)
+
 
 isSuicide :: Int -> Stone -> [Stone] -> Bool
 isSuicide bsize stone allStones =
@@ -162,17 +168,21 @@ isDead bsize stone allStones =
       libertyCount = liberties bsize (groupOfStone bsize stone allStones) allStones
 
 deadStones :: Int -> Stone -> [Stone] -> [Stone]
-deadStones bsize s ss =
+deadStones bsize stone@(Stone (_p, color)) allStones =
     concatMap dead_stones' ns
     where
-      ns = neighbourStonesOtherColor bsize s ss
       dead_stones' n =
-          if liberties bsize groupStones ss == 0
+          if liberties bsize groupStones allStones == 0
           then groupStones
           else []
           where
-            groupStones = groupOfStone bsize n ss
-            
+            groupStones = groupOfStone bsize n allStones
+
+      ns = filter hasOtherColor $ neighbourStones bsize allStones stone
+
+      hasOtherColor (Stone (_p', color')) =
+          (otherColor color) == color'
+
 
 
 liberties :: Int -> [Stone] -> [Stone] -> Int
@@ -180,71 +190,74 @@ liberties bsize groupStones allStones =
     length ls
     where
       ls = nub ls'
-      ls' = concatMap freeAdjacentVertices groupVertices
-
+      ls' = concatMap (adjacentFree bsize allStones) groupVertices
       groupVertices = (verticesFromStones groupStones)
 
-      freeAdjacentVertices :: Vertex -> [Vertex]
-      freeAdjacentVertices p =
-          (adjacentVertices bsize p) `intersect` free
 
-      free = (freeVertices bsize allStones)
+territory :: Int -> [Stone] -> Color -> Score
+territory bsize allStones color =
+    sum $ map (fromIntegral . length)
+            $ filter f (emptyStrings bsize allStones)
+    where
+      f :: [Vertex] -> Bool
+      f gs =
+          all (((==) color) . stoneColor)
+                  $ concatMap (adjacentStones bsize allStones) gs
 
 
--- groupOfVertex :: Int -> Vertex -> [Stone] -> [Stone]
--- groupOfVertex bsize p ss =
---     case toStone p ss of
---       Nothing -> []
---       Just stone -> groupOfStone bsize stone ss
+emptyStrings :: Int -> [Stone] -> [[Vertex]]
+emptyStrings bsize allStones =
+    emptyStrings' empties []
+    where
+      empties = (freeVertices bsize allStones)
+
+      emptyStrings' [] gs = gs
+      emptyStrings' (a : as) gs =
+          emptyStrings' (as \\ ma) (ma : gs)
+          where
+            ma = maxEmptyString a
+
+      maxEmptyString = maxString (adjacentVertices bsize) isEmptyVertex
+
+      isEmptyVertex v = (toStone allStones v) == Nothing
+
+
+
+maxString :: (Eq a) => (a -> [a]) -> (a -> Bool) -> a -> [a]
+maxString genF filterF p =
+    maxString' [p] []
+    where
+      maxString' [] gs = gs
+      maxString' (n : ns) gs =
+          maxString' (ns ++ (((fgen n) \\ gs) \\ ns)) (n : gs)
+      fgen n =
+          filter filterF $ genF n
+
 
 groupOfStone :: Int -> Stone -> [Stone] -> [Stone]
-groupOfStone bsize s ss =
-    groupOfStone' (neighbourStonesSameColor bsize s ss) [s]
+groupOfStone bsize stone@(Stone (_p, color)) allStone =
+    maxString genF' filterF' stone
     where
-      groupOfStone' [] gs = gs
-      groupOfStone' (n : ns) gs =
-          groupOfStone' (ns ++ (((neighbourStonesSameColor bsize n ss) \\ gs) \\ ns)) (n : gs)
-
-
-neighbourStonesOtherColor :: Int -> Stone -> [Stone] -> [Stone]
-neighbourStonesOtherColor bsize (Stone (p, color)) ss =
-    filter notSameColor $ neighbourStones bsize p ss
-    where
-      notSameColor (Stone (_p', color')) =
-          color /= color'
-
-neighbourStonesSameColor :: Int -> Stone -> [Stone] -> [Stone]
-neighbourStonesSameColor bsize (Stone (p, color)) ss =
-    filter sameColor $ neighbourStones bsize p ss
-    where
-      sameColor (Stone (_p', color')) =
+      genF' stone' = neighbourStones bsize allStone stone'
+      filterF' (Stone (_p', color')) =
           color == color'
 
-neighbourStones :: Int -> Vertex -> [Stone] -> [Stone]
-neighbourStones bsize p ss =
+neighbourStones :: Int -> [Stone] -> Stone -> [Stone]
+neighbourStones bsize allStones (Stone (p, _)) =
+    adjacentStones bsize allStones p
+
+adjacentStones :: Int -> [Stone] -> Vertex -> [Stone]
+adjacentStones bsize allStones p =
     concatMap toStoneList $ adjacentVertices bsize p
     where
       toStoneList p' =
-          case toStone p' ss of
+          case toStone allStones p' of
             Nothing -> []
             Just stone -> [stone]
 
--- isStone :: Vertex -> [Stone] -> Bool
--- isStone p ss =
---     case toStone p ss of
---       Nothing -> False
---       Just _ -> True
-
-toStone :: Vertex -> [Stone] -> Maybe Stone
-toStone p ss =
-    case lookup p ss' of
-      Nothing -> Nothing
-      Just color -> Just $ Stone (p, color)
-    where
-      ss' = map (\(Stone s) -> s) ss
-
--- vertexFromStone :: Stone -> Vertex
--- vertexFromStone (Stone (p, _color)) = p
+adjacentFree :: Int -> [Stone] -> Vertex -> [Vertex]
+adjacentFree bsize allStones p =
+    filter (((==) Nothing) . (toStone allStones)) $ adjacentVertices bsize p
 
 adjacentVertices :: Int -> Vertex -> [Vertex]
 adjacentVertices bsize (x, y) =
@@ -258,19 +271,80 @@ freeVertices :: Int -> [Stone] -> [Vertex]
 freeVertices n ss =
     (allVertices n) \\ (verticesFromStones ss)
 
-verticesFromStones :: [Stone] -> [Vertex]
-verticesFromStones ss = map (\(Stone (p, _c)) -> p) ss
-
 
 allVertices :: Int -> [Vertex]
 allVertices n =
     [(x, y) | x <- [1 .. n], y <- [1 .. n]]
 
 
+
+verticesFromStones :: [Stone] -> [Vertex]
+verticesFromStones ss = map (\(Stone (p, _c)) -> p) ss
+
+toStone :: [Stone] -> Vertex -> Maybe Stone
+toStone allStones p =
+    case lookup p allStones' of
+      Nothing -> Nothing
+      Just color -> Just $ Stone (p, color)
+    where
+      allStones' = map (\(Stone s) -> s) allStones
+
+
 moveColor :: Move -> Color
-moveColor (StoneMove (Stone (_vertex, color))) = color
+moveColor (StoneMove stone) = stoneColor stone
 moveColor (Pass color) = color
+
+stoneColor :: Stone -> Color
+stoneColor (Stone (_vertex, color)) = color
 
 otherColor :: Color -> Color
 otherColor Black = White
 otherColor White = Black
+
+
+
+-- maxVertexString :: Int -> (Vertex -> Bool) -> Vertex -> [Vertex]
+-- maxVertexString bsize f p =
+--     maxString' [p] []
+--     where
+--       maxString' [] gs = gs
+--       maxString' (n : ns) gs =
+--           maxString' (ns ++ (((helper n) \\ gs) \\ ns)) (n : gs)
+--       helper n =
+--           filter f $ adjacentVertices bsize n
+
+
+
+-- groupOfVertex :: Int -> Vertex -> [Stone] -> [Stone]
+-- groupOfVertex bsize p ss =
+--     case toStone p ss of
+--       Nothing -> []
+--       Just stone -> groupOfStone bsize stone ss
+
+-- groupOfStone' :: Int -> Stone -> [Stone] -> [Stone]
+-- groupOfStone' bsize s ss =
+--     groupOfStone' [s] []
+--     where
+--       groupOfStone' [] gs = gs
+--       groupOfStone' (n : ns) gs =
+--           groupOfStone' (ns ++ (((neighbourStonesSameColor bsize n ss) \\ gs) \\ ns)) (n : gs)
+
+
+-- neighbourStonesSameColor :: Int -> Stone -> [Stone] -> [Stone]
+-- neighbourStonesSameColor bsize (Stone (p, color)) ss =
+--     filter sameColor $ neighbourStones bsize p ss
+--     where
+--       sameColor (Stone (_p', color')) =
+--           color == color'
+
+
+
+-- isStone :: Vertex -> [Stone] -> Bool
+-- isStone p ss =
+--     case toStone p ss of
+--       Nothing -> False
+--       Just _ -> True
+
+
+-- vertexFromStone :: Stone -> Vertex
+-- vertexFromStone (Stone (p, _color)) = p

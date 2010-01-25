@@ -71,4 +71,9 @@ genMove state color =
 
       isEyeLike :: Vertex -> Bool
       isEyeLike p =
-          (length (neighbourStonesSameColor bsize (Stone (p, color)) allStones)) == (length (adjacentVertices bsize p))
+          length vs == length sns
+          where
+            vs = adjacentVertices bsize p
+            sns = filter (\(Stone (_p', c')) -> color == c') ns
+            ns = neighbourStones bsize allStones (Stone (p, color))
+
