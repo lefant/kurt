@@ -162,17 +162,17 @@ updateGameState state move =
 
 score :: GameState -> Score
 score state =
-    trace ("score: "
-           ++ show (
-                    ("s: ", s),
-                    ("b: ", b),
-                    ("w: ", w),
-                    ("bt: ", bt),
-                    ("bp: ", bp),
-                    ("wt: ", wt),
-                    ("wp: ", wp),
-                    ("k: ", k)
-                   ))
+    -- trace ("score: "
+    --        ++ show (
+    --                 ("s: ", s),
+    --                 ("b: ", b),
+    --                 ("w: ", w),
+    --                 ("bt: ", bt),
+    --                 ("bp: ", bp),
+    --                 ("wt: ", wt),
+    --                 ("wp: ", wp),
+    --                 ("k: ", k)
+    --                ))
     s
     where
       s = b - w

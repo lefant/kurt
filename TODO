@@ -1,12 +1,17 @@
 General:
 * ko / superko
+** mostly done
+** fix bug where snapback(-like?) moves are marked as koBlocked
 * scoring
+** territory done
 * quickcheck / unit testing
 
 
 Kurt.Move:
 * better move generation logic ;)
-
+** we are trying...
+** initial primitive monte carlo player
+** need to tune for speed!!!
 
 Data.Goban:
 * track ko state

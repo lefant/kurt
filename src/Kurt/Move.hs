@@ -37,7 +37,7 @@ import System.Random
 import Data.List
 
 import Data.Goban
--- import Debug.Trace (trace)
+import Debug.Trace (trace)
 
 
 
@@ -49,20 +49,21 @@ genMove state =
     else StoneMove (Stone (p, color))
 
     where
-      p = moveList''' !! r
-      (r, _g') = randomR (0, (l'' - 1)) g
+      p = head moveList'''
 
       l'' = length moveList''
 
       -- moveList''' = drop ((length moveList'') `div` 2) moveList''
-      moveList''' =
-          -- trace ("genMove, moveList'': " ++ show resMoveList'')
+      moveList''' = 
+          trace ("genMove, moveList'': " ++ show resMoveListScored)
           resMoveList'''
           where
-            resMoveList''' = map snd $ sort $ map whatifScore moveList''
+            resMoveList''' = map snd $ resMoveListScored
+
+            resMoveListScored = sort $ map whatifScore moveList''
 
             whatifScore v =
-                (modifier * (runOneRandom (updateGameState state move)), v)
+                (modifier * (runRandom 1 (updateGameState state move)), v)
                 where
                   move = StoneMove (Stone (v, color))
 
@@ -91,7 +92,6 @@ genMove state =
       bsize = (boardsize state)
       allStones = (stones state)
       color = (toMove state)
-      g = (ourRandomGen state)
 
       isSuicide' :: Vertex -> Bool
       isSuicide' v = isSuicide bsize (Stone (v, color)) allStones
@@ -105,6 +105,19 @@ genMove state =
             sns = filter (\(Stone (_p', c')) -> color == c') ns
             ns = neighbourStones bsize allStones (Stone (v, color))
 
+
+runRandom :: Int -> GameState -> Score
+runRandom n initState =
+    (runRandom' n initState 0) / (fromIntegral n)
+    where
+      runRandom' n' state totalScore =
+          if n' == 0
+          then totalScore
+          else runRandom' (n' - 1) state' (totalScore + s)
+          where
+            s = runOneRandom state { ourRandomGen = g' }
+            state' = state { ourRandomGen = g }
+            (g, g') = split (ourRandomGen state)
 
 runOneRandom :: GameState -> Score
 runOneRandom initState =
