@@ -107,7 +107,18 @@ updateGameState state move =
           StoneMove stone@(Stone (p, _)) ->
               if p `elem` (koBlocked state)
               then error "updateGameState: move in ko violation"
-              else state {
+              else
+                  -- trace ("updateGameState: "
+                  --        ++ show (
+                  --                 (" move ", move)
+                  --                 ,(" bp: ", blackPrisoners')
+                  --                 ,(" wp: ", whitePrisoners')
+                  --                 ,(" dead: ", dead)
+                  --                 ,(" dead': ", dead')
+                  --                 ,(" bdead': ", bDead)
+                  --                 ,(" wdead': ", wDead)
+                  --                ))
+                  state {
                        toMove = otherColor (toMove state)
                       ,stones = stones'''
                       ,moveHistory = (moveHistory state) ++ [move]
@@ -142,14 +153,37 @@ updateGameState state move =
               state {
                     toMove = otherColor (toMove state)
                    ,moveHistory = (moveHistory state) ++ [move]
+                   ,koBlocked = []
                   }
 
 
-score :: GameState -> ((Color, Score), (Color, Score))
+score :: GameState -> Score
 score state =
-    ((Black, colorTerritory Black), (White, colorTerritory White))
+    trace ("score: "
+           ++ show (
+                    ("s: ", s),
+                    ("b: ", b),
+                    ("w: ", w),
+                    ("bt: ", bt),
+                    ("bp: ", bp),
+                    ("wt: ", wt),
+                    ("wp: ", wp),
+                    ("k: ", k)
+                   ))
+    s
     where
-      colorTerritory = territory (boardsize state) (stones state)
+      s = b - w
+      b = bt + bp
+      w = wt + wp + k
+      bt = colorTerritory Black
+      bp = whitePrisoners state
+      wt = colorTerritory White
+      wp = blackPrisoners state
+      k = (komi state)
+
+      colorTerritory =
+          territory (boardsize state) (stones state)
+
 
 
 isSuicide :: Int -> Stone -> [Stone] -> Bool
@@ -162,14 +196,19 @@ isSuicide bsize stone allStones =
 
 isDead :: Int -> Stone -> [Stone] -> Bool
 isDead bsize stone allStones =
-    trace ("isDead called with: " ++ (show stone) ++ " liberties: " ++ (show libertyCount))
+    -- trace ("isDead called with: " ++ (show stone) ++ " liberties: " ++ (show libertyCount))
     libertyCount == 0
     where
       libertyCount = liberties bsize (groupOfStone bsize stone allStones) allStones
 
+
+-- FIXME:
+-- if several killed neighbouring stones are part of the same
+-- group it will be found twice here
+-- nub at the end works around for scoring
 deadStones :: Int -> Stone -> [Stone] -> [Stone]
 deadStones bsize stone@(Stone (_p, color)) allStones =
-    concatMap dead_stones' ns
+    nub $ concatMap dead_stones' ns
     where
       dead_stones' n =
           if liberties bsize groupStones allStones == 0

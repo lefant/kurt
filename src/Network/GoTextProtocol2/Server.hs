@@ -57,6 +57,7 @@ commandargparserlist =
     [
      ("boardsize", intArgParser)
     ,("clear_board", noArgumentParser)
+    ,("final_score", noArgumentParser)
     ,("genmove", colorArgParser)
     ,("known_command", stringArgParser)
     ,("komi", floatArgParser)
@@ -77,6 +78,7 @@ commandHandlers =
     [
      ("boardsize", cmd_boardsize)
     ,("clear_board", cmd_clear_board)
+    ,("final_score", cmd_final_score)
     ,("genmove", cmd_genmove)
     ,("known_command", cmd_known_command)
     ,("komi", cmd_komi)
@@ -208,6 +210,18 @@ cmd_genmove [(ColorArgument color)] state =
     where
       state' = updateGameState state move
       move = genMove state color
+
+cmd_final_score :: CommandHandler
+cmd_final_score [] state =
+    Right (scoreString scoreFloat, state)
+    where
+      scoreString s
+          | s == 0 = "0"
+          | s < 0 = "W+" ++ (show (-1 * s))
+          | s > 0 = "B+" ++ (show s)
+      scoreFloat = (score state)
+
+
 
 
 -- TODO

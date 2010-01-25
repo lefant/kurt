@@ -35,7 +35,7 @@ module Kurt.Move (
 import Data.List
 
 import Data.Goban
-import Debug.Trace (trace)
+-- import Debug.Trace (trace)
 
 
 genMove :: GameState -> Color -> Move
@@ -47,17 +47,17 @@ genMove state color =
     where
       moveList''' = drop ((length moveList'') `div` 2) moveList''
       moveList'' =
-          trace ("genMove, moveList'': " ++ show resMoveList'')
+          -- trace ("genMove, moveList'': " ++ show resMoveList'')
           resMoveList''
           where
             resMoveList'' = filter (not . isEyeLike) moveList'
       moveList' =
-          trace ("genMove, moveList': " ++ show resMoveList')
+          -- trace ("genMove, moveList': " ++ show resMoveList')
           resMoveList'
           where
             resMoveList' = filter (not . isSuicide') moveList
       moveList =
-          trace ("genMove, moveList: " ++ show resMoveList)
+          -- trace ("genMove, moveList: " ++ show resMoveList)
           resMoveList
           where
             resMoveList = (freeVertices bsize allStones)
