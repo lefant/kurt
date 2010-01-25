@@ -56,6 +56,7 @@ data GameState = GameState {
      ,boardsize       :: Int
      ,toMove          :: Color
      ,stones          :: [Stone]
+     ,koBlocked       :: [Vertex]
      ,moveHistory     :: [Move]
      ,blackPrisoners  :: Score
      ,whitePrisoners  :: Score
@@ -67,6 +68,7 @@ defaultGameState = GameState {
                     ,boardsize = 1
                     ,toMove = Black
                     ,stones = []
+                    ,koBlocked = []
                     ,moveHistory = []
                     ,blackPrisoners = 0
                     ,whitePrisoners = 0
@@ -102,14 +104,17 @@ updateGameState state move =
     then error "updateGameState: move by wrong color received"
     else
         case move of
-          StoneMove stone ->
-              state {
-                    toMove = otherColor (toMove state)
-                   ,stones = stones'''
-                   ,moveHistory = (moveHistory state) ++ [move]
-                   ,blackPrisoners = blackPrisoners'
-                   ,whitePrisoners = whitePrisoners'
-                  }
+          StoneMove stone@(Stone (p, _)) ->
+              if p `elem` (koBlocked state)
+              then error "updateGameState: move in ko violation"
+              else state {
+                       toMove = otherColor (toMove state)
+                      ,stones = stones'''
+                      ,moveHistory = (moveHistory state) ++ [move]
+                      ,blackPrisoners = blackPrisoners'
+                      ,whitePrisoners = whitePrisoners'
+                      ,koBlocked = koBlocked'
+                       }
               where
                 dead = deadStones bsize stone stones'
                 stones' = (stone : (stones state))
@@ -129,6 +134,9 @@ updateGameState state move =
                 (bDead, wDead) = partition
                                  (\(Stone (_, c)) -> c == Black)
                                  (dead ++ dead')
+                koBlocked' = if (length dead) == 1
+                             then verticesFromStones dead
+                             else []
 
           Pass _color ->
               state {

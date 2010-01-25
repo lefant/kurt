@@ -32,6 +32,8 @@ module Kurt.Move (
                   genMove
                  ) where
 
+import Data.List
+
 import Data.Goban
 import Debug.Trace (trace)
 
@@ -58,7 +60,8 @@ genMove state color =
           trace ("genMove, moveList: " ++ show resMoveList)
           resMoveList
           where
-            resMoveList = freeVertices bsize allStones
+            resMoveList = (freeVertices bsize allStones)
+                          \\ (koBlocked state)
 
       bsize = (boardsize state)
       allStones = (stones state)

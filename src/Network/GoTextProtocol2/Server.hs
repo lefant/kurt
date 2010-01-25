@@ -179,6 +179,7 @@ cmd_clear_board [] state =
                   toMove = Black
                  ,stones = []
                  ,moveHistory = []
+                 ,koBlocked = []
                  ,blackPrisoners = 0
                  ,whitePrisoners = 0
                  })
