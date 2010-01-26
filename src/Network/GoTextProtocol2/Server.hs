@@ -37,14 +37,14 @@ module Network.GoTextProtocol2.Server (
 import Network.GoTextProtocol2.Server.Parser
 import Network.GoTextProtocol2.Server.Types
 import Data.Goban
-import Kurt.Move (genMove, genMoveRand)
+import Kurt.Move (genMove)
 
 import Data.Char
 import Data.List
 import System.IO
 import System.Random
 
-import Debug.Trace
+-- import Debug.Trace
 
 
 type CommandHandler = [Argument] -> GameState -> Either String (String, GameState)
@@ -154,27 +154,27 @@ cmd_known_command [(StringArgument cmd)] state =
     case lookupC cmd commandHandlers of
       Nothing -> Right ("false", state)
       Just (_, _) -> Right ("true", state)
+cmd_known_command _ _ = error "cmd_known_command called with illegal argument type"
 
 cmd_list_commands :: CommandHandler
-cmd_list_commands [] state =
+cmd_list_commands _ state =
     Right ((reverse $ drop 1 $ reverse $ unlines $ map fst commandHandlers), state)
 
 cmd_name :: CommandHandler
-cmd_name [] state =
+cmd_name _ state =
     Right ("kurt", state)
 
 cmd_protocol_version :: CommandHandler
-cmd_protocol_version [] state =
+cmd_protocol_version _ state =
     Right ("2", state)
 
 cmd_quit :: CommandHandler
-cmd_quit [] _ =
+cmd_quit _ _ =
     error "bye!"
 
 cmd_version :: CommandHandler
-cmd_version [] state =
+cmd_version _ state =
     Right ("0.0.1", state)
-
 
 
 cmd_clear_board :: CommandHandler
@@ -187,44 +187,50 @@ cmd_clear_board [] state =
                  ,blackPrisoners = 0
                  ,whitePrisoners = 0
                  })
+cmd_clear_board _ _ = error "cmd_clear_board called with illegal argument type"
 
 cmd_komi :: CommandHandler
 cmd_komi [(FloatArgument f)] state =
     Right ("", state { komi = f })
+cmd_komi _ _ = error "cmd_komi called with illegal argument type"
 
 cmd_boardsize :: CommandHandler
 cmd_boardsize [(IntArgument n)] state =
     Right ("", state { boardsize = n })
+cmd_boardsize _ _ = error "cmd_boardsize called with illegal argument type"
 
 cmd_showboard :: CommandHandler
 cmd_showboard [] state =
     Right ("showboard received: " ++ (show state), state)
-
+cmd_showboard _ _ = error "cmd_showboard called with illegal argument type"
 
 cmd_play :: CommandHandler
 cmd_play [(MoveArgument move)] state =
     Right ("", updateGameState state move)
-
+cmd_play _ _ = error "cmd_play called with illegal argument type"
 
 cmd_genmove :: CommandHandler
 cmd_genmove [(ColorArgument color)] state =
-    Right (show move, state')
+    if (toMove state) /= color
+    then error "state and genmove parameter disagree about color to move next"
+    else Right (show move, state')
     where
       state' = updateGameState state { ourRandomGen = g' } move
       -- move = genMoveRand state { ourRandomGen = g }
       move = genMove state { ourRandomGen = g }
       (g, g') = split (ourRandomGen state)
+cmd_genmove _ _ = error "cmd_genmove called with illegal argument type"
 
 cmd_final_score :: CommandHandler
 cmd_final_score [] state =
     Right (scoreString scoreFloat, state)
     where
       scoreString s
-          | s == 0 = "0"
           | s < 0 = "W+" ++ (show (-1 * s))
           | s > 0 = "B+" ++ (show s)
+          | otherwise = "0"
       scoreFloat = (score state)
-
+cmd_final_score _ _ = error "cmd_final_score called with illegal argument type"
 
 
 
@@ -233,3 +239,5 @@ cmd_final_score [] state =
 cmd_time_left :: CommandHandler
 cmd_time_left [(IntArgument n)] state =
     Right ("time left: " ++ (show n), state)
+cmd_time_left _ _ = error "cmd_time_left called with illegal argument type"
+
