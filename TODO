@@ -4,7 +4,16 @@ General:
 ** fix bug where snapback(-like?) moves are marked as koBlocked
 * scoring
 ** territory done
-* quickcheck / unit testing
+* testing
+** quickcheck
+** hunit
+* profile infrastructure
+** http://www.haskell.org/haskellwiki/How_to_profile_a_Haskell_program
+* benchmark
+** criterion
+* better board representation
+** immutable array
+** abstract implementation
 
 
 Kurt.Move:

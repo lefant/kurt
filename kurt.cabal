@@ -39,7 +39,7 @@ library
                  ,parsec >= 3
                  ,haskell98
                  ,random
-  ghc-options: -O2 -auto-all -caf-all -prof
+  ghc-options: -O2
 
 executable kurt
   main-is:        kurt.hs
@@ -49,7 +49,7 @@ executable kurt
                  ,bytestring
                  ,test-framework-quickcheck
                  ,test-framework-hunit
-  ghc-options: -O2 -auto-all -caf-all -prof
+  ghc-options: -O2
 
 source-repository head
   type:     git

@@ -34,6 +34,7 @@ module Kurt.Move (
                  ) where
 
 import System.Random
+-- import System.Random.Shuffle (shuffle')
 import Data.List
 
 import Data.Goban
@@ -49,18 +50,17 @@ genMove state =
     else StoneMove (Stone (p, color))
 
     where
-      p = head moveList'''
-
-      l'' = length moveList''
+      p = head moveList''''
+      l'' = length moveList''''
 
       -- moveList''' = drop ((length moveList'') `div` 2) moveList''
-      moveList''' = 
+      moveList'''' =
           trace ("genMove, moveList'': " ++ show resMoveListScored)
           resMoveList'''
           where
             resMoveList''' = map snd $ resMoveListScored
 
-            resMoveListScored = sort $ map whatifScore moveList''
+            resMoveListScored = sort $ map whatifScore moveList'''
 
             whatifScore v =
                 (modifier * (runRandom 1 (updateGameState state move)), v)
@@ -71,6 +71,8 @@ genMove state =
             modifier = case color of
                          Black -> -1
                          White -> 1
+
+      moveList''' = pickN 10 (ourRandomGen state) moveList''
 
       moveList'' =
           -- trace ("genMove, moveList'': " ++ show resMoveList'')
@@ -152,15 +154,15 @@ runOneRandom initState =
 
 genMoveRand :: GameState -> Move
 genMoveRand state =
-    if l'' == 0
+    if length moveList'' == 0
     then Pass color
     else StoneMove (Stone (p, color))
 
     where
-      p = moveList'' !! r
-      (r, _g') = randomR (0, (l'' - 1)) g
-
-      l'' = length moveList''
+      p = pick g moveList''
+      -- p = moveList'' !! r
+      -- (r, _g') = randomR (0, (l'' - 1)) g
+      -- l'' = length moveList''
 
       moveList'' =
           -- trace ("genMove, moveList'': " ++ show resMoveList'')
@@ -195,3 +197,22 @@ genMoveRand state =
             vs = adjacentVertices bsize v
             sns = filter (\(Stone (_p', c')) -> color == c') ns
             ns = neighbourStones bsize allStones (Stone (v, color))
+
+
+pick :: StdGen -> [a] -> a
+pick g as =
+    as !! i
+    where
+      (i, _g) = randomR (0, ((length as) - 1)) g
+
+pickN :: (Eq a) => Int -> StdGen -> [a] -> [a]
+pickN n g as =
+    pickN' n as []
+    where
+      pickN' n' as' bs
+             | n' == 0 = bs
+             | as' == [] = bs
+             | otherwise =
+                 pickN' (n' - 1) (as' \\ [a]) (a : bs)
+             where
+               a = pick g as'
