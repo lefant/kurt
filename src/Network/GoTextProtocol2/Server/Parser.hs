@@ -147,11 +147,19 @@ floatArgParser =
     do
       space
       spaces
-      d1 <- many1 digit
-      char '.'
-      d2 <- many1 digit
-      n <- return $ read (d1 ++ ['.'] ++ d2)
-      return $ [FloatArgument n]
+      (do
+        (try
+         (do
+           d1 <- many1 digit
+           char '.'
+           d2 <- many1 digit
+           n <- return $ read (d1 ++ ['.'] ++ d2)
+           return $ [FloatArgument n]))
+        <|> (do
+              d1 <- many1 digit
+              n <- return $ read (d1 ++ ".0")
+              return $ [FloatArgument n])
+        <?> "komi value (ie. something like 6.5 or 0)")
 
 
 moveArgParser :: Parser [Argument]

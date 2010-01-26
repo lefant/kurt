@@ -103,14 +103,11 @@ type Score = Float
 
 updateGameState :: GameState -> Move -> GameState
 updateGameState state move =
-    if (moveColor move) /= (toMove state)
-    then error "updateGameState: move by wrong color received"
-    else
-        case move of
-          StoneMove stone@(Stone (p, _)) ->
-              if p `elem` (koBlocked state)
-              then error "updateGameState: move in ko violation"
-              else
+    case move of
+      StoneMove stone@(Stone (p, _)) ->
+          if p `elem` (koBlocked state)
+          then error "updateGameState: move in ko violation"
+          else
                   -- trace ("updateGameState: "
                   --        ++ show (
                   --                 (" move ", move)
@@ -121,43 +118,43 @@ updateGameState state move =
                   --                 ,(" bdead': ", bDead)
                   --                 ,(" wdead': ", wDead)
                   --                ))
-                  state {
+              state {
                        toMove = otherColor (toMove state)
                       ,stones = stones'''
                       ,moveHistory = (moveHistory state) ++ [move]
                       ,blackPrisoners = blackPrisoners'
                       ,whitePrisoners = whitePrisoners'
                       ,koBlocked = koBlocked'
-                       }
-              where
-                dead = deadStones bsize stone stones'
-                stones' = (stone : (stones state))
-                stones'' = stones' \\ dead
-                stones''' = stones'' \\ dead'
-                dead' =
-                    if isDead bsize stone stones''
-                    then (groupOfStone bsize stone stones'')
-                    else []
-                bsize = (boardsize state)
-                blackPrisoners' =
-                    (blackPrisoners state)
-                    + (fromIntegral $ length bDead)
-                whitePrisoners' =
-                    (whitePrisoners state)
-                    + (fromIntegral $ length wDead)
-                (bDead, wDead) = partition
-                                 (\(Stone (_, c)) -> c == Black)
-                                 (dead ++ dead')
-                koBlocked' = if (length dead) == 1
-                             then verticesFromStones dead
-                             else []
+              }
+          where
+            dead = deadStones bsize stone stones'
+            stones' = (stone : (stones state))
+            stones'' = stones' \\ dead
+            stones''' = stones'' \\ dead'
+            dead' =
+                if isDead bsize stone stones''
+                then (groupOfStone bsize stone stones'')
+                else []
+            bsize = (boardsize state)
+            blackPrisoners' =
+                (blackPrisoners state)
+                + (fromIntegral $ length bDead)
+            whitePrisoners' =
+                (whitePrisoners state)
+                + (fromIntegral $ length wDead)
+            (bDead, wDead) = partition
+                             (\(Stone (_, c)) -> c == Black)
+                             (dead ++ dead')
+            koBlocked' = if (length dead) == 1
+                         then verticesFromStones dead
+                         else []
 
-          Pass _color ->
-              state {
-                    toMove = otherColor (toMove state)
-                   ,moveHistory = (moveHistory state) ++ [move]
-                   ,koBlocked = []
-                  }
+      Pass _color ->
+          state {
+                toMove = otherColor (toMove state)
+               ,moveHistory = (moveHistory state) ++ [move]
+               ,koBlocked = []
+              }
 
 
 score :: GameState -> Score

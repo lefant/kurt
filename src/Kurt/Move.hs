@@ -72,7 +72,7 @@ genMove state =
                          Black -> -1
                          White -> 1
 
-      moveList''' = pickN 10 (ourRandomGen state) moveList''
+      moveList''' = pickN 5 (ourRandomGen state) moveList''
 
       moveList'' =
           -- trace ("genMove, moveList'': " ++ show resMoveList'')
