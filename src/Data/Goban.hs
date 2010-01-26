@@ -49,7 +49,7 @@ import Kurt.Utils (xToLetter)
 import Data.List
 import Data.Maybe
 import System.Random
-import Debug.Trace (trace)
+-- import Debug.Trace (trace)
 
 
 data GameState = GameState {

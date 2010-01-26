@@ -39,6 +39,9 @@ import Network.GoTextProtocol2.Server.Types
 import Data.Goban
 import Kurt.Move (genMove)
 
+
+import Text.Parsec.String (Parser)
+
 import Data.Char
 import Data.List
 import System.IO
@@ -53,7 +56,7 @@ lookupC :: String -> [(String, CommandHandler)] -> Maybe (String, CommandHandler
 lookupC cmd cl = find (\(x, _) -> x == cmd) cl
 
 
-
+commandargparserlist :: [([Char], Text.Parsec.String.Parser [Argument])]
 commandargparserlist =
     [
      ("boardsize", intArgParser)
