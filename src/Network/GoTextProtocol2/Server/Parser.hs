@@ -39,12 +39,17 @@ module Network.GoTextProtocol2.Server.Parser (
 
 import Text.ParserCombinators.Parsec
 import Text.Parsec.Char
-import Data.Char
-import Monad
+import Data.Char (toLower)
+import Monad (liftM)
 
 import Network.GoTextProtocol2.Server.Types
-import Kurt.Utils (letterToX)
-import Data.Goban (Move(..), Stone(..), Color(..))
+import Data.Goban.Utils (
+                         Move(..)
+                        ,Stone(..)
+                        ,Color(..)
+                        ,letterToX
+                        )
+
 
 type CommandArgParserList = [(String, Parser [Argument])]
 

@@ -44,7 +44,7 @@ module Data.Goban (
                   ,score
                   ) where
 
-import Kurt.Utils (xToLetter)
+import Data.Goban.Utils (xToLetter)
 
 import Data.List
 import Data.Maybe
@@ -329,10 +329,6 @@ toStone allStones p =
       allStones' = map (\(Stone s) -> s) allStones
 
 
-moveColor :: Move -> Color
-moveColor (StoneMove stone) = stoneColor stone
-moveColor (Pass color) = color
-
 stoneColor :: Stone -> Color
 stoneColor (Stone (_vertex, color)) = color
 
@@ -341,49 +337,3 @@ otherColor Black = White
 otherColor White = Black
 
 
-
--- maxVertexString :: Int -> (Vertex -> Bool) -> Vertex -> [Vertex]
--- maxVertexString bsize f p =
---     maxString' [p] []
---     where
---       maxString' [] gs = gs
---       maxString' (n : ns) gs =
---           maxString' (ns ++ (((helper n) \\ gs) \\ ns)) (n : gs)
---       helper n =
---           filter f $ adjacentVertices bsize n
-
-
-
--- groupOfVertex :: Int -> Vertex -> [Stone] -> [Stone]
--- groupOfVertex bsize p ss =
---     case toStone p ss of
---       Nothing -> []
---       Just stone -> groupOfStone bsize stone ss
-
--- groupOfStone' :: Int -> Stone -> [Stone] -> [Stone]
--- groupOfStone' bsize s ss =
---     groupOfStone' [s] []
---     where
---       groupOfStone' [] gs = gs
---       groupOfStone' (n : ns) gs =
---           groupOfStone' (ns ++ (((neighbourStonesSameColor bsize n ss) \\ gs) \\ ns)) (n : gs)
-
-
--- neighbourStonesSameColor :: Int -> Stone -> [Stone] -> [Stone]
--- neighbourStonesSameColor bsize (Stone (p, color)) ss =
---     filter sameColor $ neighbourStones bsize p ss
---     where
---       sameColor (Stone (_p', color')) =
---           color == color'
-
-
-
--- isStone :: Vertex -> [Stone] -> Bool
--- isStone p ss =
---     case toStone p ss of
---       Nothing -> False
---       Just _ -> True
-
-
--- vertexFromStone :: Stone -> Vertex
--- vertexFromStone (Stone (p, _color)) = p

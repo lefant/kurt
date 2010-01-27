@@ -33,7 +33,7 @@ module Network.GoTextProtocol2.Server.Types (
                                             ,Argument(..)
                                             ) where
 
-import Data.Goban (Move, Color)
+import Data.Goban.Utils (Move, Color)
 
 type Id = Int
 

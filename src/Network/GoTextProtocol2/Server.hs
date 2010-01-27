@@ -34,20 +34,20 @@ module Network.GoTextProtocol2.Server (
                                        startLoop
                                       ) where
     
-import Network.GoTextProtocol2.Server.Parser
-import Network.GoTextProtocol2.Server.Types
-import Data.Goban
-import Kurt.Move (genMove)
-
-
-import Text.Parsec.String (Parser)
 
 import Data.Char
 import Data.List
 import System.IO
 import System.Random
+import Text.Parsec.String (Parser)
 
--- import Debug.Trace
+
+import Network.GoTextProtocol2.Server.Parser
+import Network.GoTextProtocol2.Server.Types
+import Data.Goban.Utils
+import Data.GobanModular
+import Kurt.Move (genMove)
+
 
 
 type CommandHandler = [Argument] -> GameState -> Either String (String, GameState)
