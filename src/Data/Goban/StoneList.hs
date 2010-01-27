@@ -58,11 +58,6 @@ instance Goban StoneListGoban where
         where
           result = lookup p $ map (\(Stone s) -> s) stones
 
-    clearGoban goban =
-        StoneListGoban (boardsize, [])
-        where
-          boardsize = sizeFromGoban goban
-
-    sizeFromGoban (StoneListGoban (boardsize, _)) = boardsize
+    sizeOfGoban (StoneListGoban (boardsize, _)) = boardsize
 
     newGoban boardsize = StoneListGoban (boardsize, [])

@@ -37,7 +37,7 @@ module Data.Goban.Array (
 import Data.Array.Diff
 import Data.Goban.Utils
 
-newtype ArrayGoban = ArrayGoban (DiffArray (Int, Int) VertexState)
+newtype ArrayGoban = ArrayGoban (Int, (DiffArray (Int, Int) VertexState))
     deriving (Show)
 
 data VertexState = VertexColor Color | Empty
@@ -45,30 +45,25 @@ data VertexState = VertexColor Color | Empty
 
 instance Goban ArrayGoban where
 
-    clearGoban goban =
-        newGoban boardsize
-        where
-          boardsize = sizeFromGoban goban
+    addStone (ArrayGoban (bsize, goban)) (Stone (vertex, color)) =
+        ArrayGoban (bsize, (goban // [(vertex, VertexColor color)]))
 
-    addStone (ArrayGoban goban) (Stone (vertex, color)) =
-        ArrayGoban (goban // [(vertex, VertexColor color)])
-
-    deleteStones (ArrayGoban goban) stones =
-        ArrayGoban (goban // updates)
+    deleteStones (ArrayGoban (bsize, goban)) stones =
+        ArrayGoban (bsize, (goban // updates))
         where
           updates = zip (verticesFromStones stones) $ repeat Empty
 
-    freeVertices (ArrayGoban goban) =
+    freeVertices (ArrayGoban (_, goban)) =
         map fst $ filter ((Empty ==) . snd) $ assocs goban
 
-    sizeFromGoban (ArrayGoban goban) =
-          fst $ last $ indices goban
-
-    vertexToStone (ArrayGoban goban) p =
+    vertexToStone (ArrayGoban (_, goban)) p =
         case goban ! p of
           VertexColor color -> Just $ Stone (p, color)
           Empty -> Nothing
 
+    sizeOfGoban (ArrayGoban (boardsize, _)) = boardsize
+
     newGoban boardsize =
-        ArrayGoban $ listArray ((1,1),(boardsize, boardsize))
-                       $ repeat Empty
+        ArrayGoban (boardsize,
+                    (listArray ((1,1),(boardsize, boardsize))
+                                   $ repeat Empty))

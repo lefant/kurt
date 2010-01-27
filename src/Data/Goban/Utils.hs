@@ -39,7 +39,6 @@ module Data.Goban.Utils (
                         ,isDead
                         ,deadStones
                         ,liberties
-                        ,adjacentVertices
                         ,allVertices
                         ,verticesFromStones
                         ,groupOfStone
@@ -61,9 +60,21 @@ class Goban a where
     deleteStones :: a -> [Stone] -> a
     freeVertices :: a -> [Vertex]
     vertexToStone :: a -> Vertex -> Maybe Stone
-    clearGoban :: a -> a
-    sizeFromGoban :: a -> Int
+    sizeOfGoban :: a -> Int
     newGoban :: Int -> a
+
+    clearGoban :: a -> a
+    clearGoban goban = newGoban $ sizeOfGoban goban
+
+    adjacentVertices :: a -> Vertex -> [Vertex]
+    adjacentVertices goban (x, y) =
+        filter inBounds [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
+        where
+          inBounds (x', y') =
+              and [x' > 0, x' <= boardsize, y' > 0, y' <= boardsize]
+          boardsize = sizeOfGoban goban
+
+
 
 data Move = StoneMove Stone
           | Pass Color
@@ -201,14 +212,6 @@ adjacentFree :: (Goban a) => a -> Vertex -> [Vertex]
 adjacentFree goban p =
     filter (((==) Nothing) . (vertexToStone goban)) $ adjacentVertices goban p
 
-
-adjacentVertices :: (Goban a) => a -> Vertex -> [Vertex]
-adjacentVertices goban (x, y) =
-    filter inBounds [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
-    where
-      inBounds (x', y') =
-          and [x' > 0, x' <= boardsize, y' > 0, y' <= boardsize]
-      boardsize = sizeFromGoban goban
 
 
 allVertices :: Int -> [Vertex]
