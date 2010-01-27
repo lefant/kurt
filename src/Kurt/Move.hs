@@ -33,11 +33,12 @@ module Kurt.Move (
                  ,genMoveRand
                  ) where
 
-import System.Random
--- import System.Random.Shuffle (shuffle')
-import Data.List
 
-import Data.Goban
+import System.Random (split, randomR, StdGen)
+import Data.List (sort, (\\))
+
+import Data.Goban.Utils
+import Data.Goban (GameState(..), updateGameState, score)
 import Debug.Trace (trace)
 
 
@@ -88,24 +89,23 @@ genMove state =
           -- trace ("genMove, moveList: " ++ show resMoveList)
           resMoveList
           where
-            resMoveList = (freeVertices bsize allStones)
+            resMoveList = (freeVertices goban')
                           \\ (koBlocked state)
 
-      bsize = (boardsize state)
-      allStones = (stones state)
       color = (toMove state)
+      goban' = (goban state)
 
       isSuicide' :: Vertex -> Bool
-      isSuicide' v = isSuicide bsize (Stone (v, color)) allStones
+      isSuicide' v = isSuicide goban' (Stone (v, color))
 
       isEyeLike :: Vertex -> Bool
       isEyeLike v =
           (length vs == length sns)
-          && isSuicide bsize (Stone (v, (otherColor color))) allStones
+          && isSuicide goban' (Stone (v, (otherColor color)))
           where
-            vs = adjacentVertices bsize v
+            vs = adjacentVertices goban' v
             sns = filter (\(Stone (_p', c')) -> color == c') ns
-            ns = neighbourStones bsize allStones (Stone (v, color))
+            ns = neighbourStones goban' (Stone (v, color))
 
 
 runRandom :: Int -> GameState -> Score
@@ -178,25 +178,24 @@ genMoveRand state =
           -- trace ("genMove, moveList: " ++ show resMoveList)
           resMoveList
           where
-            resMoveList = (freeVertices bsize allStones)
+            resMoveList = (freeVertices goban')
                           \\ (koBlocked state)
 
-      bsize = (boardsize state)
-      allStones = (stones state)
-      color = (toMove state)
-      g = (ourRandomGen state)
+      goban' = goban state
+      color = toMove state
+      g = ourRandomGen state
 
       isSuicide' :: Vertex -> Bool
-      isSuicide' v = isSuicide bsize (Stone (v, color)) allStones
+      isSuicide' v = isSuicide goban' (Stone (v, color))
 
       isEyeLike :: Vertex -> Bool
       isEyeLike v =
           (length vs == length sns)
-          && isSuicide bsize (Stone (v, (otherColor color))) allStones
+          && isSuicide goban' (Stone (v, (otherColor color)))
           where
-            vs = adjacentVertices bsize v
+            vs = adjacentVertices goban' v
             sns = filter (\(Stone (_p', c')) -> color == c') ns
-            ns = neighbourStones bsize allStones (Stone (v, color))
+            ns = neighbourStones goban' (Stone (v, color))
 
 
 pick :: StdGen -> [a] -> a

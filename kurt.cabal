@@ -25,11 +25,10 @@ extra-source-files:
 library
   hs-source-dirs: src
   exposed-modules:
-                  Data.Goban
-                  Data.GobanModular
-                  Data.Goban.StoneList
+                  Data.Goban.Utils
+                 ,Data.Goban
+                 ,Data.Goban.StoneList
                  ,Kurt.Move
-                 ,Kurt.Utils
                  ,Network.GoTextProtocol2.Server
                  ,Network.GoTextProtocol2.Server.Types
                  ,Network.GoTextProtocol2.Server.Parser

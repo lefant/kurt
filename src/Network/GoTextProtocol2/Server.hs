@@ -45,7 +45,8 @@ import Text.Parsec.String (Parser)
 import Network.GoTextProtocol2.Server.Parser
 import Network.GoTextProtocol2.Server.Types
 import Data.Goban.Utils
-import Data.GobanModular
+import Data.Goban (GameState(..), defaultGameState, updateGameState, score)
+import Data.Goban.StoneList (defaultStoneListGoban)
 import Kurt.Move (genMove)
 
 
@@ -183,8 +184,8 @@ cmd_version _ state =
 cmd_clear_board :: CommandHandler
 cmd_clear_board [] state =
     Right ("", state { 
-                  toMove = Black
-                 ,stones = []
+                  goban = (defaultStoneListGoban 1)
+                 ,toMove = Black
                  ,moveHistory = []
                  ,koBlocked = []
                  ,blackPrisoners = 0
@@ -199,7 +200,7 @@ cmd_komi _ _ = error "cmd_komi called with illegal argument type"
 
 cmd_boardsize :: CommandHandler
 cmd_boardsize [(IntArgument n)] state =
-    Right ("", state { boardsize = n })
+    Right ("", state { goban = (defaultStoneListGoban n) })
 cmd_boardsize _ _ = error "cmd_boardsize called with illegal argument type"
 
 cmd_showboard :: CommandHandler
