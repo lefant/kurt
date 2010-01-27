@@ -42,7 +42,8 @@ library
                  ,haskell98
                  ,random
                  ,array
-  ghc-options: -O2
+  ghc-options: -O1
+  ghc-prof-options: -auto-all -caf-all
 
 executable kurt
   main-is:        kurt.hs
@@ -52,7 +53,8 @@ executable kurt
                  ,bytestring
                  ,test-framework-quickcheck
                  ,test-framework-hunit
-  ghc-options: -O2
+  ghc-options: -O1
+  ghc-prof-options: -auto-all -caf-all
 
 source-repository head
   type:     git
