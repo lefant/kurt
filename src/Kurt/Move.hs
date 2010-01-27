@@ -64,7 +64,7 @@ genMove state =
             resMoveListScored = sort $ map whatifScore moveList'''
 
             whatifScore v =
-                (modifier * (runRandom 1 (updateGameState state move)), v)
+                (modifier * (runRandom 4 (updateGameState state move)), v)
                 where
                   move = StoneMove (Stone (v, color))
 
@@ -73,7 +73,7 @@ genMove state =
                          Black -> -1
                          White -> 1
 
-      moveList''' = pickN 5 (ourRandomGen state) moveList''
+      moveList''' = pickN 10 (ourRandomGen state) moveList''
 
       moveList'' =
           -- trace ("genMove, moveList'': " ++ show resMoveList'')
@@ -110,16 +110,21 @@ genMove state =
 
 runRandom :: Int -> GameState -> Score
 runRandom n initState =
-    (runRandom' n initState 0) / (fromIntegral n)
+    runRandom' n initState 0
     where
       runRandom' n' state totalScore =
           if n' == 0
-          then totalScore
+          then normalize totalScore
           else runRandom' (n' - 1) state' (totalScore + s)
           where
             s = runOneRandom state { ourRandomGen = g' }
             state' = state { ourRandomGen = g }
             (g, g') = split (ourRandomGen state)
+      normalize tScore =
+          sign * rt
+          where
+            rt = sqrt $ abs tScore
+            sign = signum tScore
 
 runOneRandom :: GameState -> Score
 runOneRandom initState =
