@@ -54,19 +54,17 @@ instance Goban StoneListGoban where
     freeVertices (StoneListGoban (boardsize, stones)) =
         (allVertices boardsize) \\ (verticesFromStones stones)
 
-    adjacentVertices (StoneListGoban (boardsize, _)) (x, y) =
-        filter inBounds [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
-        where
-          inBounds (x', y') =
-              and [x' > 0, x' <= boardsize, y' > 0, y' <= boardsize]
-
     vertexToStone (StoneListGoban (_b, stones)) p =
         fmap (\color -> Stone (p, color)) result
         where
           result = lookup p $ map (\(Stone s) -> s) stones
 
-    clearGoban (StoneListGoban (boardsize, _)) =
+    clearGoban goban =
         StoneListGoban (boardsize, [])
+        where
+          boardsize = sizeFromGoban goban
+
+    sizeFromGoban (StoneListGoban (boardsize, _)) = boardsize
 
 
 defaultStoneListGoban :: Int -> StoneListGoban

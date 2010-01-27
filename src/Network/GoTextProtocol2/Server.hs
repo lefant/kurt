@@ -45,8 +45,7 @@ import Text.Parsec.String (Parser)
 import Network.GoTextProtocol2.Server.Parser
 import Network.GoTextProtocol2.Server.Types
 import Data.Goban.Utils
-import Data.Goban (GameState(..), defaultGameState, updateGameState, score)
-import Data.Goban.StoneList (defaultStoneListGoban)
+import Data.Goban (GameState(..), defaultGameState, updateGameState, score, defaultGoban)
 import Kurt.Move (genMove)
 
 
@@ -200,7 +199,7 @@ cmd_komi _ _ = error "cmd_komi called with illegal argument type"
 
 cmd_boardsize :: CommandHandler
 cmd_boardsize [(IntArgument n)] state =
-    Right ("", state { goban = (defaultStoneListGoban n) })
+    Right ("", state { goban = (defaultGoban n) })
 cmd_boardsize _ _ = error "cmd_boardsize called with illegal argument type"
 
 cmd_showboard :: CommandHandler

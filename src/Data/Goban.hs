@@ -54,7 +54,7 @@ data GameState = GameState {
 
 defaultGameState :: StdGen -> GameState
 defaultGameState g = GameState {
-                     goban = defaultGoban
+                     goban = (defaultGoban 1)
                     ,komi = 0
                     ,toMove = Black
                     ,koBlocked = []
@@ -65,8 +65,8 @@ defaultGameState g = GameState {
                    }
 
 
-defaultGoban :: StoneListGoban
-defaultGoban = (defaultStoneListGoban 1)
+defaultGoban :: Int -> StoneListGoban
+defaultGoban boardsize = (defaultStoneListGoban boardsize)
 
 
 updateGameState :: GameState -> Move -> GameState
