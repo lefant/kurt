@@ -61,6 +61,7 @@ class Goban a where
     freeVertices :: a -> [Vertex]
     adjacentVertices :: a -> Vertex -> [Vertex]
     vertexToStone :: a -> Vertex -> Maybe Stone
+    clearGoban :: a -> a
 
 data Move = StoneMove Stone
           | Pass Color

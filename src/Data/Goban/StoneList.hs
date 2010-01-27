@@ -65,6 +65,8 @@ instance Goban StoneListGoban where
         where
           result = lookup p $ map (\(Stone s) -> s) stones
 
+    clearGoban (StoneListGoban (boardsize, _)) =
+        StoneListGoban (boardsize, [])
 
 
 defaultStoneListGoban :: Int -> StoneListGoban

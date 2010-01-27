@@ -183,8 +183,8 @@ cmd_version _ state =
 
 cmd_clear_board :: CommandHandler
 cmd_clear_board [] state =
-    Right ("", state { 
-                  goban = (defaultStoneListGoban 1)
+    Right ("", state {
+                  goban = clearGoban (goban state)
                  ,toMove = Black
                  ,moveHistory = []
                  ,koBlocked = []
