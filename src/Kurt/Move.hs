@@ -48,7 +48,10 @@ genMove :: GameState -> Move
 genMove state =
     if l'' == 0
     then Pass color
-    else StoneMove (Stone (p, color))
+    else
+        if bestScore > 10
+        then Resign color
+        else StoneMove (Stone (p, color))
 
     where
       p = head moveList''''
@@ -61,19 +64,19 @@ genMove state =
           where
             resMoveList''' = map snd $ resMoveListScored
 
-            resMoveListScored = sort $ map whatifScore moveList'''
+      bestScore = fst $ head resMoveListScored
 
-            whatifScore v =
-                (modifier * (runRandom 4 (updateGameState state move)), v)
-                where
-                  move = StoneMove (Stone (v, color))
+      resMoveListScored = sort $ map whatifScore moveList'''
 
-
+      whatifScore v =
+          (modifier * (runRandom 4 (updateGameState state move)), v)
+          where
+            move = StoneMove (Stone (v, color))
             modifier = case color of
                          Black -> -1
                          White -> 1
 
-      moveList''' = pickN 10 (ourRandomGen state) moveList''
+      moveList''' = pickN 20 (ourRandomGen state) moveList''
 
       moveList'' =
           -- trace ("genMove, moveList'': " ++ show resMoveList'')
@@ -139,6 +142,8 @@ runOneRandom initState =
                     score state''
                 (StoneMove _) ->
                     run state''
+                (Resign _) ->
+                    error "runOneRandom encountered Resign"
               where
                 move' = genMoveRand state' { ourRandomGen = gg }
                 state'' =
@@ -147,6 +152,8 @@ runOneRandom initState =
 
           (StoneMove _) ->
               run state'
+          (Resign _) ->
+              error "runOneRandom encountered Resign"
 
         where
           move = genMoveRand state { ourRandomGen = g }

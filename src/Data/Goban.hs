@@ -132,6 +132,13 @@ updateGameState state move =
                ,koBlocked = []
               }
 
+      Resign _color ->
+          state {
+                toMove = otherColor (toMove state)
+               ,moveHistory = (moveHistory state) ++ [move]
+               ,koBlocked = []
+              }
+
 
 score :: GameState -> Score
 score state =

@@ -78,12 +78,14 @@ class Goban a where
 
 data Move = StoneMove Stone
           | Pass Color
+          | Resign Color
             deriving (Eq)
 
 instance Show Move where
     show (StoneMove (Stone ((x, y), _color))) =
         [(xToLetter x)] ++ (show y)
     show (Pass _color) = "pass"
+    show (Resign _color) = "resign"
 
 
 newtype Stone = Stone (Vertex, Color)
