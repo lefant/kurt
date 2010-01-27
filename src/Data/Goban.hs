@@ -90,7 +90,7 @@ updateGameState state move =
                   --                ))
               state {
                        toMove = otherColor (toMove state)
-                      ,goban = goban'''
+                      ,goban = goban''
                       ,moveHistory = (moveHistory state) ++ [move]
                       ,blackPrisoners = blackPrisoners'
                       ,whitePrisoners = whitePrisoners'
@@ -100,11 +100,11 @@ updateGameState state move =
             dead = deadStones goban' stone
             goban' = addStone (goban state) stone
             goban'' = deleteStones goban' dead
-            goban''' = deleteStones goban'' dead'
-            dead' =
-                if isDead goban'' stone
-                then (groupOfStone goban'' stone)
-                else []
+            -- goban''' = deleteStones goban'' dead'
+            -- dead' =
+            --     if isDead goban'' stone
+            --     then (groupOfStone goban'' stone)
+            --     else []
             blackPrisoners' =
                 (blackPrisoners state)
                 + (fromIntegral $ length bDead)
@@ -113,14 +113,17 @@ updateGameState state move =
                 + (fromIntegral $ length wDead)
             (bDead, wDead) = partition
                              (\(Stone (_, c)) -> c == Black)
-                             (dead ++ dead')
+                             -- (dead ++ dead')
+                             dead
 
-            -- FIXME: should also check if the dead stone would only
-            -- capture the stone that was just played to avoid
-            -- koblocking legal snapbacks
-            koBlocked' = if (length dead) == 1
-                         then verticesFromStones dead
-                         else []
+            koBlocked' =
+                case dead of
+                  [koStone@(Stone (v,_))] ->
+                      if [stone] == (deadStones goban' koStone)
+                      then [v]
+                      else []
+                  _ -> []
+
 
       Pass _color ->
           state {

@@ -1,7 +1,6 @@
 General:
 * ko / superko
-** mostly done
-** fix bug where snapback(-like?) moves are marked as koBlocked
+** naive implementation done
 * scoring
 ** territory done
 * testing
