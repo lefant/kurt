@@ -40,10 +40,11 @@ import System.Random (StdGen)
 
 import Data.Goban.Utils
 -- import Data.Goban.StoneList (StoneListGoban)
-import Data.Goban.Array (ArrayGoban)
+-- import Data.Goban.Array (ArrayGoban)
+import Data.Goban.DataMap (DataMapGoban)
 
 data GameState = GameState {
-      goban           :: ArrayGoban
+      goban           :: DataMapGoban
      ,komi            :: Score
      ,toMove          :: Color
      ,koBlocked       :: [Vertex]

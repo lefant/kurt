@@ -28,11 +28,8 @@ Goban Implementation using Data.Array
 -}
 
 module Data.Goban.Array (
-                             ArrayGoban(..)
-                            ,freeVertices
-                            ,isSuicide
-                            ,neighbourStones
-                            ) where
+                         ArrayGoban(..)
+                        ) where
 
 import Data.Array.Diff
 import Data.Goban.Utils

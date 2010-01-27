@@ -31,9 +31,6 @@ the whole list.
 
 module Data.Goban.StoneList (
                              StoneListGoban(..)
-                            ,freeVertices
-                            ,isSuicide
-                            ,neighbourStones
                             ) where
 
 import Data.List ((\\))
