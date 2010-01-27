@@ -214,13 +214,10 @@ cmd_play _ _ = error "cmd_play called with illegal argument type"
 
 cmd_genmove :: CommandHandler
 cmd_genmove [(ColorArgument color)] state =
-    if (toMove state) /= color
-    then error "state and genmove parameter disagree about color to move next"
-    else Right (show move, state')
+    Right (show move, state')
     where
       state' = updateGameState state { ourRandomGen = g' } move
-      -- move = genMoveRand state { ourRandomGen = g }
-      move = genMove state { ourRandomGen = g }
+      move = genMove state { toMove = color, ourRandomGen = g }
       (g, g') = split (ourRandomGen state)
 cmd_genmove _ _ = error "cmd_genmove called with illegal argument type"
 
