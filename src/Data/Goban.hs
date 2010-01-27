@@ -39,10 +39,11 @@ import Data.List (partition)
 import System.Random (StdGen)
 
 import Data.Goban.Utils
-import Data.Goban.StoneList (StoneListGoban, defaultStoneListGoban)
+-- import Data.Goban.StoneList (StoneListGoban)
+import Data.Goban.Array (ArrayGoban)
 
 data GameState = GameState {
-      goban           :: StoneListGoban
+      goban           :: ArrayGoban
      ,komi            :: Score
      ,toMove          :: Color
      ,koBlocked       :: [Vertex]
@@ -65,8 +66,8 @@ defaultGameState g = GameState {
                    }
 
 
-defaultGoban :: Int -> StoneListGoban
-defaultGoban boardsize = (defaultStoneListGoban boardsize)
+defaultGoban :: (Goban a) => Int -> a
+defaultGoban = newGoban
 
 
 updateGameState :: GameState -> Move -> GameState

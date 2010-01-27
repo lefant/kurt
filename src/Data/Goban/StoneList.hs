@@ -31,7 +31,6 @@ the whole list.
 
 module Data.Goban.StoneList (
                              StoneListGoban(..)
-                            ,defaultStoneListGoban
                             ,freeVertices
                             ,isSuicide
                             ,neighbourStones
@@ -66,8 +65,4 @@ instance Goban StoneListGoban where
 
     sizeFromGoban (StoneListGoban (boardsize, _)) = boardsize
 
-
-defaultStoneListGoban :: Int -> StoneListGoban
-defaultStoneListGoban boardsize = StoneListGoban (boardsize, [])
-
-
+    newGoban boardsize = StoneListGoban (boardsize, [])

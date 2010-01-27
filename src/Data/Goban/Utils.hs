@@ -63,6 +63,7 @@ class Goban a where
     vertexToStone :: a -> Vertex -> Maybe Stone
     clearGoban :: a -> a
     sizeFromGoban :: a -> Int
+    newGoban :: Int -> a
 
 data Move = StoneMove Stone
           | Pass Color
