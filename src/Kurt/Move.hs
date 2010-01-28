@@ -44,8 +44,8 @@ import Debug.Trace (trace)
 
 
 
-genMove :: GameState -> Move
-genMove state =
+genMove :: GameState -> Color -> Move
+genMove state color =
     if l'' == 0
     then Pass color
     else
@@ -69,7 +69,7 @@ genMove state =
       resMoveListScored = sort $ map whatifScore moveList'''
 
       whatifScore v =
-          (modifier * (runRandom 4 (updateGameState state move)), v)
+          (modifier * (runRandom 4 (updateGameState state move) color), v)
           where
             move = StoneMove (Stone (v, color))
             modifier = case color of
@@ -82,45 +82,32 @@ genMove state =
           -- trace ("genMove, moveList'': " ++ show resMoveList'')
           resMoveList''
           where
-            resMoveList'' = filter (not . isEyeLike) moveList'
+            resMoveList'' = filter (not . (isEyeLike g color)) moveList'
       moveList' =
           -- trace ("genMove, moveList': " ++ show resMoveList')
           resMoveList'
           where
-            resMoveList' = filter (not . isSuicide') moveList
+            resMoveList' = filter (not . (isSuicideVertex g color)) moveList
       moveList =
           -- trace ("genMove, moveList: " ++ show resMoveList)
           resMoveList
           where
-            resMoveList = (freeVertices goban')
+            resMoveList = (freeVertices g)
                           \\ (koBlocked state)
 
-      color = (toMove state)
-      goban' = (goban state)
-
-      isSuicide' :: Vertex -> Bool
-      isSuicide' v = isSuicide goban' (Stone (v, color))
-
-      isEyeLike :: Vertex -> Bool
-      isEyeLike v =
-          (length vs == length sns)
-          && isSuicide goban' (Stone (v, (otherColor color)))
-          where
-            vs = adjacentVertices goban' v
-            sns = filter (\(Stone (_p', c')) -> color == c') ns
-            ns = neighbourStones goban' (Stone (v, color))
+      g = (goban state)
 
 
-runRandom :: Int -> GameState -> Score
-runRandom n initState =
-    runRandom' n initState 0
+runRandom :: Int -> GameState -> Color -> Score
+runRandom n initState initColor =
+    runRandom' n initState 0 initColor
     where
-      runRandom' n' state totalScore =
+      runRandom' n' state totalScore color =
           if n' == 0
           then normalize totalScore
-          else runRandom' (n' - 1) state' (totalScore + s)
+          else runRandom' (n' - 1) state' (totalScore + s) (otherColor color)
           where
-            s = runOneRandom state { ourRandomGen = g' }
+            s = runOneRandom (state { ourRandomGen = g' }) color
             state' = state { ourRandomGen = g }
             (g, g') = split (ourRandomGen state)
       normalize tScore =
@@ -129,8 +116,8 @@ runRandom n initState =
             rt = sqrt $ abs tScore
             sign = signum tScore
 
-runOneRandom :: GameState -> Score
-runOneRandom initState =
+runOneRandom :: GameState -> Color -> Score
+runOneRandom initState color =
     -- signum $ run initState
     id $ run initState
     where
@@ -145,7 +132,7 @@ runOneRandom initState =
                 (Resign _) ->
                     error "runOneRandom encountered Resign"
               where
-                move' = genMoveRand state' { ourRandomGen = gg }
+                move' = genMoveRand (state' { ourRandomGen = gg }) color
                 state'' =
                     updateGameState state' { ourRandomGen = gg' } move'
                 (gg, gg') = split g'
@@ -156,7 +143,7 @@ runOneRandom initState =
               error "runOneRandom encountered Resign"
 
         where
-          move = genMoveRand state { ourRandomGen = g }
+          move = genMoveRand (state { ourRandomGen = g }) color
           state' =
               updateGameState state { ourRandomGen = g' } move
           (g, g') = split (ourRandomGen state)
@@ -164,8 +151,8 @@ runOneRandom initState =
 
 
 
-genMoveRand :: GameState -> Move
-genMoveRand state =
+genMoveRand :: GameState -> Color -> Move
+genMoveRand state color =
     if length moveList'' == 0
     then Pass color
     else StoneMove (Stone (p, color))
@@ -180,34 +167,21 @@ genMoveRand state =
           -- trace ("genMove, moveList'': " ++ show resMoveList'')
           resMoveList''
           where
-            resMoveList'' = filter (not . isEyeLike) moveList'
+            resMoveList'' = filter (not . (isEyeLike gob color)) moveList'
       moveList' =
           -- trace ("genMove, moveList': " ++ show resMoveList')
           resMoveList'
           where
-            resMoveList' = filter (not . isSuicide') moveList
+            resMoveList' = filter (not . (isSuicideVertex gob color)) moveList
       moveList =
           -- trace ("genMove, moveList: " ++ show resMoveList)
           resMoveList
           where
-            resMoveList = (freeVertices goban')
+            resMoveList = (freeVertices gob)
                           \\ (koBlocked state)
 
-      goban' = goban state
-      color = toMove state
+      gob = goban state
       g = ourRandomGen state
-
-      isSuicide' :: Vertex -> Bool
-      isSuicide' v = isSuicide goban' (Stone (v, color))
-
-      isEyeLike :: Vertex -> Bool
-      isEyeLike v =
-          (length vs == length sns)
-          && isSuicide goban' (Stone (v, (otherColor color)))
-          where
-            vs = adjacentVertices goban' v
-            sns = filter (\(Stone (_p', c')) -> color == c') ns
-            ns = neighbourStones goban' (Stone (v, color))
 
 
 pick :: StdGen -> [a] -> a

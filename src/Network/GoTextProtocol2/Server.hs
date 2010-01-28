@@ -217,7 +217,7 @@ cmd_genmove [(ColorArgument color)] state =
     Right (show move, state')
     where
       state' = updateGameState state { ourRandomGen = g' } move
-      move = genMove state { toMove = color, ourRandomGen = g }
+      move = genMove state { ourRandomGen = g } color
       (g, g') = split (ourRandomGen state)
 cmd_genmove _ _ = error "cmd_genmove called with illegal argument type"
 

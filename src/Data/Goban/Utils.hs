@@ -36,6 +36,8 @@ module Data.Goban.Utils (
                         ,Score
                         ,territory
                         ,isSuicide
+                        ,isSuicideVertex
+                        ,isEyeLike
                         ,isDead
                         ,deadStones
                         ,liberties
@@ -134,7 +136,18 @@ emptyStrings goban =
       isEmptyVertex v = (vertexToStone goban v) == Nothing
 
 
+isSuicideVertex :: (Goban a) => a -> Color -> Vertex -> Bool
+isSuicideVertex goban color v =
+    isSuicide goban (Stone (v, color))
 
+isEyeLike :: (Goban a) => a -> Color -> Vertex -> Bool
+isEyeLike goban color v =
+    (length vs == length sns)
+    && isSuicide goban (Stone (v, (otherColor color)))
+    where
+      vs = adjacentVertices goban v
+      sns = filter (\(Stone (_p', c')) -> color == c') ns
+      ns = neighbourStones goban (Stone (v, color))
 
 
 isSuicide :: Goban a => a -> Stone -> Bool
