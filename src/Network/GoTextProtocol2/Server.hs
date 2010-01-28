@@ -73,6 +73,7 @@ commandargparserlist =
     ,("showboard", noArgumentParser)
     ,("time_left", intArgParser)
     ,("version", noArgumentParser)
+    ,("kurt_simuls", intArgParser)
     ]
 
 
@@ -94,6 +95,7 @@ commandHandlers =
     ,("showboard", cmd_showboard)
     ,("time_left", cmd_time_left)
     ,("version", cmd_version)
+    ,("kurt_simuls", cmd_kurt_simuls)
     ]
 
 
@@ -231,6 +233,13 @@ cmd_final_score [] state =
           | otherwise = "0"
       scoreFloat = (score state)
 cmd_final_score _ _ = error "cmd_final_score called with illegal argument type"
+
+
+cmd_kurt_simuls :: CommandHandler
+cmd_kurt_simuls [(IntArgument n)] state =
+    Right ("", state { simulCount = n })
+cmd_kurt_simuls _ _ = error "cmd_boardsize called with illegal argument type"
+
 
 
 
