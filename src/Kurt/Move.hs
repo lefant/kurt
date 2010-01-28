@@ -30,12 +30,14 @@ Move generator logic
 
 module Kurt.Move (
                   genMove
+                 ,genMoveMc
                  ,genMoveRand
                  ) where
 
 
 import System.Random (split, randomR, StdGen)
-import Data.List (sort, (\\))
+import Data.List (sort, sortBy, (\\))
+import Data.Map as M (Map, fromList, toList, insertWith, assocs)
 
 import Data.Goban.Utils
 import Data.Goban (GameState(..), updateGameState, score)
@@ -46,6 +48,73 @@ import Debug.Trace (trace)
 
 genMove :: GameState -> Color -> Move
 genMove state color =
+    case orderdMoves of
+      ((p, (bestScore, _n)) : _) ->
+          if bestScore < 0.1
+          then Resign color
+          else StoneMove (Stone (p, color))
+      [] -> Pass color
+
+    where
+      orderdMoves =
+          trace ("genMoves: " ++ show orderdMoves')
+          orderdMoves'
+          where
+            orderdMoves' = uct state color
+
+
+
+uct :: GameState -> Color -> [(Vertex, (Float, Int))]
+uct state color =
+    reverse $ sortBy compareSnd $
+            uct' initialMap (ourRandomGen state) (simulCount state)
+    where
+      uct' :: M.Map Vertex (Float, Int) -> StdGen -> Int -> [(Vertex, (Float, Int))]
+      uct' m gen n
+          | n < 1 = M.toList m
+          | otherwise =
+              uct' m' gen' (n - 1)
+              where
+                m' = M.insertWith combineProb a (result, 1) m
+
+                result =
+                    if (runScore < 0 && color == White) || (runScore > 0 && color == Black)
+                    then 1
+                    else 0
+
+                runScore = runOneRandom state' color
+                state' =
+                    trace ("uct' runOneRandom for: " ++ show aMove)
+                          updateGameState state aMove
+                aMove = StoneMove (Stone (a, color))
+                -- (a, gen') = pick' gen moves
+                (a, gen') =
+                    frequency gen $
+                              map (\(v, (prob, _)) -> (prob, v)) $
+                                  M.assocs m
+
+      initialMap :: M.Map Vertex (Float, Int)
+      initialMap = M.fromList $ initList
+
+      initList =
+          trace ("initList: " ++ show initList')
+          initList'
+          where
+            initList' = zip moves $ take (length moves) (repeat (0.5, 1))
+
+      moves = saneMoves state color
+
+combineProb :: (Float, Int) -> (Float, Int) -> (Float, Int)
+combineProb (prob, count) (oldProb, oldCount) =
+    trace ("combineProb " ++ show (("old" ,oldProb, oldCount), ("new", prob, count), ("consolidated",prob', count')))
+    (prob', count')
+    where
+      prob' = ((oldProb * (fromIntegral oldCount)) + prob) / (fromIntegral count')
+      count' = oldCount + count
+
+
+genMoveMc :: GameState -> Color -> Move
+genMoveMc state color =
     if l'' == 0
     then Pass color
     else
@@ -100,10 +169,10 @@ runRandom n initState initColor =
             rt = sqrt $ abs tScore
             sign = signum tScore
 
+
 runOneRandom :: GameState -> Color -> Score
 runOneRandom initState color =
-    -- signum $ run initState
-    id $ run initState
+    run initState
     where
       run state =
         case move of
@@ -163,6 +232,30 @@ pick g as =
     where
       (i, _g) = randomR (0, ((length as) - 1)) g
 
+pick' :: StdGen -> [a] -> (a, StdGen)
+pick' g as =
+    (as !! i, g')
+    where
+      (i, g') = randomR (0, ((length as) - 1)) g
+
+frequency :: StdGen -> [(Float, a)] -> (a, StdGen)
+frequency _g [] = error "frequency used with empty list"
+frequency g as =
+    (pickF i as', g')
+    where
+      tot = sum (map fst as')
+      as' = map fstToInt as
+      fstToInt (a, b) =
+          ((round (a * 1000) :: Int), b)
+
+      (i, g') = randomR (0, tot) g
+
+      pickF n ((k,x):xs)
+          | n <= k    = x
+          | otherwise = pickF (n-k) xs
+      pickF _ _  = error "pick used with empty list"
+
+
 pickN :: (Eq a) => Int -> StdGen -> [a] -> [a]
 pickN n g as =
     pickN' n as []
@@ -174,3 +267,6 @@ pickN n g as =
                  pickN' (n' - 1) (as' \\ [a]) (a : bs)
              where
                a = pick g as'
+
+compareSnd :: (Ord t1) => (t, t1) -> (t2, t1) -> Ordering
+compareSnd (_, a) (_, b) = compare a b

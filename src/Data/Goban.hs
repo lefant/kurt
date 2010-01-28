@@ -52,6 +52,7 @@ data GameState = GameState {
      ,blackPrisoners  :: Score
      ,whitePrisoners  :: Score
      ,ourRandomGen    :: StdGen
+     ,simulCount      :: Int
     } deriving (Show)
 
 defaultGameState :: StdGen -> GameState
@@ -64,6 +65,7 @@ defaultGameState g = GameState {
                     ,blackPrisoners = 0
                     ,whitePrisoners = 0
                     ,ourRandomGen = g
+                    ,simulCount = 100
                    }
 
 
