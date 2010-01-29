@@ -82,7 +82,11 @@ uct state color =
                     then 1
                     else 0
 
-                runScore = runOneRandom state' color
+                runScore =
+                    trace ("uct' random run score: " ++ show runScore')
+                    runScore'
+                    where
+                      runScore' = runOneRandom state' color
                 state' =
                     trace ("uct' runOneRandom for: " ++ show aMove)
                           updateGameState state aMove
@@ -232,11 +236,11 @@ pick g as =
     where
       (i, _g) = randomR (0, ((length as) - 1)) g
 
-pick' :: StdGen -> [a] -> (a, StdGen)
-pick' g as =
-    (as !! i, g')
-    where
-      (i, g') = randomR (0, ((length as) - 1)) g
+-- pick' :: StdGen -> [a] -> (a, StdGen)
+-- pick' g as =
+--     (as !! i, g')
+--     where
+--       (i, g') = randomR (0, ((length as) - 1)) g
 
 frequency :: StdGen -> [(Float, a)] -> (a, StdGen)
 frequency _g [] = error "frequency used with empty list"
