@@ -46,7 +46,8 @@ import Network.GoTextProtocol2.Server.Parser
 import Network.GoTextProtocol2.Server.Types
 import Data.Goban.Utils
 import Data.Goban (GameState(..), defaultGameState, updateGameState, score, defaultGoban)
-import Kurt.Move (genMove)
+-- import Kurt.Move (genMove)
+import Data.Tree.UCT (genMove)
 
 
 

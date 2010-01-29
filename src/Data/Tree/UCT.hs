@@ -39,7 +39,7 @@ import Data.Tree
 
 import Data.Goban.Utils
 import Data.Goban (GameState(..), updateGameState, score)
--- import Debug.Trace (trace)
+import Debug.Trace (trace)
 
 
 
@@ -49,7 +49,7 @@ type UctNode = ((UctProb, Vertex), GameState)
 type UctProb = (Float, Int)
 
 data Result = Win | Loss
-
+            deriving (Show,Eq)
 
 
 
@@ -64,7 +64,7 @@ genMove state color =
 
     where
       orderdMoves =
-          -- trace ("genMoves: " ++ show orderdMoves')
+          trace ("genMoves: " ++ show orderdMoves')
           orderdMoves'
           where
             orderdMoves' = reverse $ sortBy compareSnd weightedMoves
@@ -73,22 +73,17 @@ genMove state color =
       forest =
           uctRunN 
           (ourRandomGen state)
-          (simulCount state) $ initForest state
+          (simulCount state) $
+                             initForest (state { toMove = color })
 
 
 uctRunN :: StdGen -> Int -> Forest UctNode -> Forest UctNode
-uctRunN gen n forest =
-    uctRunN g (n - 1) $ fst (uctRun g' forest)
-    where
-      (g, g') = split gen
-
--- newTree :: UctProb -> Vertex -> GameState -> Tree UctNode
--- newTree prob vertex state =
---     Node { rootLabel = (((0.5, 1), (0,0)), state),
---          subForest = initForest }
---     where
---       initForest = map (vertexToTree state) $
---                    saneMoves state (toMove state)
+uctRunN gen n forest
+        | n == 0 = forest
+        | otherwise =
+            uctRunN g (n - 1) $ fst (uctRun g' forest)
+            where
+              (g, g') = split gen
 
 initTree :: UctProb -> Vertex -> GameState -> Tree UctNode
 initTree prob vertex state =
@@ -105,51 +100,60 @@ initForest state =
 
 
 treeFromMove :: GameState -> Vertex -> Tree UctNode
-treeFromMove state v =
+treeFromMove state vertex =
     Node { rootLabel =
-               (((0.5, 1), v), state'),
+               (((0.5, 1), vertex), state),
            subForest = [] }
-    where
-      state' =
-          updateGameState state $ StoneMove (Stone (v, color))
-      color = toMove state
 
 
-uctRun :: StdGen -> Forest UctNode -> (Forest UctNode, Result)
+uctRun :: StdGen -> Forest UctNode -> (Forest UctNode, Float)
+uctRun _gen [] =
+    ([], 0.0)
 uctRun gen forest =
-    (forest', result)
+    -- trace ("uctRun returning")
+    (forest', thisScore)
     where
       forest' = tree' : (deleteBy treeEq tree forest)
 
-      (tree', result) =
+      (tree', thisScore) =
           case subForest tree of
             -- leaf node, run simulation
             -- return fresh subtree
             [] ->
-                (initTree prob vertex state, runResult)
+                trace ("uctRun leaf "
+                       ++ show (color,vertex,prob,runScore,runResult,(goban state')))
+                (initTree prob vertex state', runScore)
                 where
                   prob = updateProb oldProb runResult
                   runResult = scoreToResult runScore color
                   runScore = runOneRandom state color
-                  color = (toMove state)
+                  state' = 
+                      updateGameState state move
+                  move = StoneMove (Stone (vertex, color))
+
+
 
             -- recurse, update win ratio with result
             childForest ->
+                trace ("uctRun branch "
+                       ++ show ((otherColor color),vertex,prob,childScore,childResult,(goban state)))
                 (Node {
                    rootLabel =
-                       (((updateProb oldProb result), vertex), state),
+                       ((prob, vertex), state),
                    subForest = childForest' },
-                 childResult)
+                 childScore)
                 where
-                  (childForest', childResult) = uctRun gen' childForest
+                  prob = updateProb oldProb childResult
+                  childResult = scoreToResult childScore (otherColor color)
+                  (childForest', childScore) = uctRun gen' childForest
 
-
+      color = toMove state
       ((oldProb, vertex), state) = rootLabel tree
 
       -- randomly pick one respecting weights
       (tree, gen') = frequency gen weightForest
 
-      weightForest = map weightTree forest 
+      weightForest = map weightTree forest
 
 
 
@@ -179,6 +183,10 @@ scoreToResult aScore color =
            (aScore > 0 && color == Black)
     then Win
     else Loss
+
+-- otherResult :: Result -> Result
+-- otherResult Win = Loss
+-- otherResult Loss = Win
 
 moveFromTree :: Tree UctNode -> (Vertex, UctProb)
 moveFromTree tree =
