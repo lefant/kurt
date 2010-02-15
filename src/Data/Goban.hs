@@ -33,15 +33,21 @@ module Data.Goban (
                   ,defaultGoban
                   ,updateGameState
                   ,score
+                  ,saneMoves
                   ) where
 
 import Data.List (partition)
-import System.Random (StdGen)
+import System.Random (StdGen, RandomGen)
+import Control.Monad.Random (Rand, getRandomR)
+import Data.List ((\\))
+import Debug.Trace (trace)
 
 import Data.Goban.Utils
 -- import Data.Goban.StoneList (StoneListGoban)
 -- import Data.Goban.Array (ArrayGoban)
 import Data.Goban.DataMap (DataMapGoban)
+import Data.Tree.UCT
+
 
 data GameState = GameState {
       goban           :: DataMapGoban
@@ -53,7 +59,79 @@ data GameState = GameState {
      ,whitePrisoners  :: Score
      ,ourRandomGen    :: StdGen
      ,simulCount      :: Int
-    } deriving (Show)
+    }
+
+instance Show GameState where
+    show state =
+        case moveHistory state of
+          [] -> ""
+          moves -> m
+            where
+              m = case last moves of
+               (StoneMove (Stone ((x, y), color))) ->
+                   c ++ [(xToLetter x)] ++ (show y)
+                   where
+                     c = case color of
+                           Black -> "b "
+                           White -> "w "
+               (Pass _color) -> "pass"
+               (Resign _color) -> "resign"
+
+
+
+
+instance UctNode GameState where
+    isTerminalNode state =
+        case reverse $ moveHistory state of
+          [] -> False
+          [_] -> False
+          ((Pass _) : (Pass _) : _) -> True
+          _ -> False
+
+    finalResult state =
+        case toMove state of
+          Black ->
+              if s < 0
+              then 1.0
+              else 0.0
+          White ->
+              if s > 0
+              then 1.0
+              else 0.0
+        where
+          s = score state
+
+    -- randomEvalOnce _state =
+    --     getRandomR (0, 1)
+    randomEvalOnce state = do
+        s <- runOneRandom state color
+        return $ trace ("randomEvalOnce: " ++ (show (show color, show s, show (res s)))) (res s)
+          where
+            color = toMove state
+            res :: Score -> Float
+            res s =
+                case color of
+                  Black ->
+                      if s < 0
+                      then 1.0
+                      else 0.0
+                  White ->
+                      if s > 0
+                      then 1.0
+                      else 0.0
+
+
+
+    children state =
+        case saneMoves state color of
+          [] -> [updateGameState state (Pass color)]
+          vs -> map (\v ->
+                         updateGameState state (StoneMove (Stone (v, color)))) vs
+        where
+          color = toMove state
+
+
+
 
 defaultGameState :: StdGen -> GameState
 defaultGameState g = GameState {
@@ -168,3 +246,57 @@ score state =
 
       colorTerritory =
           territory (goban state)
+
+
+
+runOneRandom :: (RandomGen g) => GameState -> Color -> Rand g Score
+runOneRandom initState color =
+    run initState
+    where
+      run state = do
+        move <- genMoveRand state color
+        state' <- return $ updateGameState state move
+        case move of
+          (Pass _) -> do
+                    move' <- genMoveRand state' color
+                    state'' <- return $ updateGameState state' move'
+                    case move' of
+                      (Pass _) ->
+                          return $ score state''
+                      (StoneMove _) ->
+                          run state''
+                      (Resign _) ->
+                          error "runOneRandom encountered Resign"
+          (StoneMove _) ->
+              run $ updateGameState state move
+          (Resign _) ->
+              error "runOneRandom encountered Resign"
+
+
+
+genMoveRand :: (RandomGen g) => GameState -> Color -> Rand g Move
+genMoveRand state color =
+    if length moves == 0
+    then return $ Pass color
+    else (do
+           p <- pick moves
+           return $ StoneMove (Stone (p, color)))
+    where
+      moves = saneMoves state color
+
+
+saneMoves :: GameState -> Color -> [Vertex]
+saneMoves state color =
+    filter (not . (isEyeLike g color)) $
+           filter (not . (isSuicideVertex g color)) $
+                      (freeVertices g) \\ (koBlocked state)
+    where
+      g = goban state
+
+
+
+pick :: (RandomGen g) => [a] -> Rand g a
+pick as = do
+  i <- getRandomR (0, ((length as) - 1))
+  return $ as !! i
+

@@ -38,11 +38,10 @@ module Data.Tree.UCT (
 -- import Control.Monad (liftM)
 import Control.Monad.Random (Rand, RandomGen, getRandomR, evalRand)
 import Data.Maybe (fromJust)
-import Data.List (unfoldr)
+import Data.List (unfoldr, sort)
 import Data.Tree (Tree(..))
 import Data.Tree.Zipper (TreeLoc, tree, fromTree, hasChildren, setTree, parent, getChild)
-
--- import Debug.Trace (trace)
+import Debug.Trace (trace)
 
 
 
@@ -55,7 +54,7 @@ class (Show a) => UctNode a where
 
 instance (UctNode a) => Show (UctLabel a) where
     show label =
-        "\n\n" ++ show (winningProb label, runs label, isDone label)
+        "\n" ++ show (winningProb label, runs label, isDone label)
                  ++ " " ++
                     show (nodeState label)
                  
@@ -70,13 +69,19 @@ data UctLabel a = UctLabel {
 
 
 instance Eq (UctLabel a) where
+    (==) a b =
+        (winningProb a == winningProb b)
+        && (runs a == runs b)
+        && (isDone a == isDone b)
 
 instance Ord (Tree (UctLabel b)) where
     compare x y =
-        compare (f x) (f y)
+        case compare (f x) (f y) of
+          EQ -> compare (g x) (g y)
+          order -> order
         where
           f = winningProb . rootLabel
-
+          g = runs . rootLabel
 
 defaultUctLabel :: UctLabel a
 defaultUctLabel = UctLabel {
@@ -116,7 +121,7 @@ uctZipperDown loc =
         if isTerminalNode state
         then uctZipperUp loc (finalResult state) True
         else (do
-               result <- randomEvalOnce state
+               result <- randomEvalOnce $ trace ("uctZipperDown randomEvalOnce " ++ show (rootLabel node)) state
                uctZipperUp loc' result False)
     where
       state = nodeState $ rootLabel node
@@ -255,7 +260,7 @@ updateProb oldProb oldCount result =
 
 principalVariation :: (UctNode a) => Tree (UctLabel a) -> [(UctLabel a)]
 principalVariation t =
-    -- trace ("PV: " ++ show (t, subForest t))
+    trace ("PV: \n" ++ (show (map rootLabel $ reverse $ sort $ subForest t)))
     unfoldr maxChild t
 
 maxChild :: Tree (UctLabel a) -> Maybe ((UctLabel a), Tree (UctLabel a))
