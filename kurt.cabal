@@ -3,7 +3,7 @@ version:        0.0.1
 category:       AI, Game
 synopsis:       Lefants haskell go engine
 description:
-  Lefants haskell go engine - TODO: elaborate
+  Lefants haskell go engine
 license:        GPL
 license-file:   COPYRIGHT
 copyright:      (c) 2010 Fabian Linzberger
@@ -45,6 +45,7 @@ library
                  ,random
                  ,array
                  ,containers
+                 ,MonadRandom
   ghc-options: -O1
   ghc-prof-options: -auto-all -caf-all
 

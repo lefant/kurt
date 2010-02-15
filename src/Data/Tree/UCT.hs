@@ -1,4 +1,4 @@
-{-# OPTIONS -O2 -Wall -Werror -Wwarn #-}
+{-# OPTIONS -O2 -Wall -Werror -Wwarn -XFlexibleInstances #-}
 
 {-
 Copyright (C) 2010 Fabian Linzberger <e@lefant.net>
@@ -24,284 +24,248 @@ GNU General Public License for more details.
    Portability: probably
 
 
-UCT tree search
+UCT tree search using Data.Tree.Zipper
 
 -}
 
 module Data.Tree.UCT (
-                      genMove
+                      uct
+                     ,UctNode(..)
                      ) where
 
 
-import System.Random (split, randomR, StdGen)
-import Data.List (deleteBy, sortBy, (\\))
-import Data.Tree
+-- import Control.Monad (liftM)
+import Control.Monad.Random (Rand, RandomGen, getRandomR, evalRand)
+import Data.Maybe (fromJust)
+import Data.List (unfoldr)
+import Data.Tree (Tree(..))
+import Data.Tree.Zipper (TreeLoc, tree, fromTree, hasChildren, setTree, parent, getChild)
 
-import Data.Goban.Utils
-import Data.Goban (GameState(..), updateGameState, score)
-import Debug.Trace (trace)
-
-
-
-
-type UctNode = ((UctProb, Vertex), GameState)
-
-type UctProb = (Float, Int)
-
-data Result = Win | Loss
-            deriving (Show,Eq)
+-- import Debug.Trace (trace)
 
 
 
-genMove :: GameState -> Color -> Move
-genMove state color =
-    case orderdMoves of
-      ((p, (bestScore, _n)) : _) ->
-          if bestScore < 0.1
-          then Resign color
-          else StoneMove (Stone (p, color))
-      [] -> Pass color
+class (Show a) => UctNode a where
+    isTerminalNode :: a -> Bool
+    finalResult :: a -> Float
+    randomEvalOnce :: (RandomGen g) => a -> Rand g Float
+    children :: a -> [a]
+    -- humanReadable :: a -> String
 
+instance (UctNode a) => Show (UctLabel a) where
+    show label =
+        "\n\n" ++ show (winningProb label, runs label, isDone label)
+                 ++ " " ++
+                    show (nodeState label)
+                 
+
+data UctLabel a = UctLabel {
+     nodeState       :: a
+    ,winningProb     :: Float
+    ,runs            :: Int
+    ,isDone          :: Bool
+    }
+
+
+
+instance Eq (UctLabel a) where
+
+-- instance Ord (UctLabel a) where
+--     compare x y =
+--         compare (winningProb x) (winningProb y)
+
+instance Ord (Tree (UctLabel b)) where
+    compare x y =
+        compare (f x) (f y)
+        where
+          f = winningProb . rootLabel
+
+
+defaultUctLabel :: UctLabel a
+defaultUctLabel = UctLabel {
+                    nodeState = undefined
+                  , winningProb = 0.1
+                  , runs = 0
+                  , isDone = False
+                  }
+
+
+uct :: (UctNode a, RandomGen g) => a -> Int -> g -> [(UctLabel a)]
+uct initState n rGen =
+    principalVariation $ tree $ evalRand (uctZipper (fromTree $ makeNodeWithChildren initState) n) rGen
+
+
+uctZipper :: (UctNode a, RandomGen g) =>
+             TreeLoc (UctLabel a) ->
+             Int ->
+             Rand g (TreeLoc (UctLabel a))
+uctZipper loc 0 = return loc
+uctZipper loc n = do
+  (loc', done) <- uctZipperDown loc
+  case done of
+    True -> return loc'
+    False -> uctZipper loc' (n-1)
+
+
+uctZipperDown  :: (UctNode a, RandomGen g) => TreeLoc (UctLabel a) -> Rand g ((TreeLoc (UctLabel a)), Bool)
+uctZipperDown loc =
+    if hasChildren loc
+    then 
+        -- trace ("uctZipperDown with children " ++ show (rootLabel node))
+        (do
+          childLoc <- chooseOne loc
+          uctZipperDown childLoc)
+    else
+        if isTerminalNode state
+        then uctZipperUp loc (finalResult state) True
+        else (do
+               result <- randomEvalOnce state
+               uctZipperUp loc' result False)
     where
-      orderdMoves =
-          trace ("genMoves: " ++ show orderdMoves')
-          orderdMoves'
+      state = nodeState $ rootLabel node
+      node = tree loc
+
+      loc' = setTree node' loc
+      node' = node { subForest = makeSubForest state }
+
+
+
+uctZipperUp  :: (UctNode a, RandomGen g) => TreeLoc (UctLabel a) -> Float -> Bool -> Rand g ((TreeLoc (UctLabel a)), Bool)
+uctZipperUp loc result done =
+    case parent loc' of
+      Nothing ->
+          return (loc', done)
+      Just parentLoc ->
+          -- if evaluating this subtree is finished
+          if done
+          then
+              -- one perfect move is enough to make parent
+              -- a losing move
+              if result == 1
+              then
+                  -- trace ("uctZipperUp: result 1, done "
+                  --            ++ show ("parent", rootLabel parentNode)
+                  --            ++ show ("label'", label')
+                  --           )
+                  uctZipperUp parentLoc 0 True
+              else
+                  -- if all siblings are also done, then parent
+                  -- is also done with 1 - (max of sibling scores)
+                  if all (isDone . rootLabel) $ subForest parentNode
+                  then
+                      -- trace ("uctZipperUp: all done "
+                      --        ++ show ("parent", rootLabel parentNode)
+                      --        ++ show ("label'", label')
+                      --        ++ show ("result''", result'')
+                      --        ++ "\n\nsubforest\n"
+                      --        ++ (show $ map rootLabel $ subForest parentNode)
+                      --       )
+                      uctZipperUp parentLoc result'' True
+                  else
+                      -- trace ("uctZipperUp: done, but active siblings left " ++ show label' ++ (show $ map rootLabel $ filter (not . isDone . rootLabel) $ subForest parentNode))
+                      uctZipperUp parentLoc result' False
+          else
+              uctZipperUp parentLoc result' False
           where
-            orderdMoves' = reverse $ sortBy compareSnd weightedMoves
-
-      weightedMoves = map moveFromTree forest
-      forest =
-          uctRunN 
-          (ourRandomGen state)
-          (simulCount state) $
-                             initForest (state { toMove = color })
-
-
-uctRunN :: StdGen -> Int -> Forest UctNode -> Forest UctNode
-uctRunN gen n forest
-        | n == 0 = forest
-        | otherwise =
-            uctRunN g (n - 1) $ fst (uctRun g' forest)
-            where
-              (g, g') = split gen
-
-initTree :: UctProb -> Vertex -> GameState -> Tree UctNode
-initTree prob vertex state =
-    Node { rootLabel = ((prob, vertex), state),
-           subForest = (initForest state) }
-
-initForest :: GameState -> Forest UctNode
-initForest state =
-    case saneMoves state color of
-      [] -> []
-      moves -> map (treeFromMove state) moves
+            parentNode = tree parentLoc
+            maxResult = winningProb $ rootLabel $ maximum $ subForest parentNode
+            result'' = 1 - maxResult
     where
-      color = toMove state
+      loc' = setTree node' loc
+      node' = node { rootLabel = label' }
+      label' = label { winningProb = newProb, runs = (oldCount + 1), isDone = done }
+
+      newProb =
+          if done
+          then result
+          else updateProb oldProb oldCount result
+      oldProb = winningProb label
+      oldCount = runs label
+      label = rootLabel node
+      node = tree loc
+
+      result' = 1 - result
 
 
-treeFromMove :: GameState -> Vertex -> Tree UctNode
-treeFromMove state vertex =
-    Node { rootLabel =
-               (((0.5, 1), vertex), state),
+
+makeNodeWithChildren :: (UctNode a) => a -> Tree (UctLabel a)
+makeNodeWithChildren state =
+    Node { rootLabel = defaultUctLabel { nodeState = state }
+         , subForest = makeSubForest state
+         }
+
+makeSubForest :: (UctNode a) => a -> [Tree (UctLabel a)]
+makeSubForest state =
+    map makeLeafNode $ children state
+
+makeLeafNode :: (UctNode a) => a -> Tree (UctLabel a)
+makeLeafNode state =
+    Node { rootLabel = defaultUctLabel { nodeState = state },
            subForest = [] }
 
 
-uctRun :: StdGen -> Forest UctNode -> (Forest UctNode, Float)
-uctRun _gen [] =
-    ([], 0.0)
-uctRun gen forest =
-    -- trace ("uctRun returning")
-    (forest', thisScore)
+
+
+chooseOne :: (UctNode a, RandomGen g) => TreeLoc (UctLabel a) -> Rand g (TreeLoc (UctLabel a))
+chooseOne loc = do
+  index <- weightedChoose weightedList
+  return $ fromJust $ getChild index loc
+      where
+        weightedList =
+            -- trace ("activeSubtrees "
+            --        ++ (show $ map (rootLabel . fst) numberedForest)
+            --        ++ " after filtering "
+            --        ++ (show $ map (rootLabel.fst) activeSubtrees))
+            map weightTree activeSubtrees
+        activeSubtrees =
+            filter (not . isDone . rootLabel . fst) numberedForest
+        numberedForest = zip (subForest (tree loc)) [1..]
+
+
+weightTree :: (Tree (UctLabel a), Int) -> (Float, Int)
+weightTree (node, n) =
+    (prob, n)
     where
-      forest' = tree' : (deleteBy treeEq tree forest)
+      prob = winningProb $ rootLabel node
 
-      (tree', thisScore) =
-          case subForest tree of
-            -- leaf node, run simulation
-            -- return fresh subtree
-            [] ->
-                trace ("uctRun leaf "
-                       ++ show (color,vertex,prob,runScore,runResult,(goban state')))
-                (initTree prob vertex state', runScore)
-                where
-                  prob = updateProb oldProb runResult
-                  runResult = scoreToResult runScore color
-                  runScore = runOneRandom state color
-                  state' = 
-                      updateGameState state move
-                  move = StoneMove (Stone (vertex, color))
-
-
-
-            -- recurse, update win ratio with result
-            childForest ->
-                trace ("uctRun branch "
-                       ++ show ((otherColor color),vertex,prob,childScore,childResult,(goban state)))
-                (Node {
-                   rootLabel =
-                       ((prob, vertex), state),
-                   subForest = childForest' },
-                 childScore)
-                where
-                  prob = updateProb oldProb childResult
-                  childResult = scoreToResult childScore (otherColor color)
-                  (childForest', childScore) = uctRun gen' childForest
-
-      color = toMove state
-      ((oldProb, vertex), state) = rootLabel tree
-
-      -- randomly pick one respecting weights
-      (tree, gen') = frequency gen weightForest
-
-      weightForest = map weightTree forest
-
-
-
-treeEq :: Tree UctNode -> Tree UctNode -> Bool
-treeEq a b =
-    va == vb
-    where
-      ((_, va), _) = rootLabel a
-      ((_, vb), _) = rootLabel b
-
-updateProb :: UctProb -> Result -> UctProb
-updateProb (oldProb, oldCount) result =
-    (prob, count)
-    where
-      prob =
-          case result of
-            Win ->
-                ((oldProb * (fromIntegral oldCount)) + 1) / (fromIntegral count)
-            Loss ->
-                (oldProb * (fromIntegral oldCount)) / (fromIntegral count)
-      count = oldCount + 1
-
-
-scoreToResult :: Float -> Color -> Result
-scoreToResult aScore color =
-    if (aScore < 0 && color == White) ||
-           (aScore > 0 && color == Black)
-    then Win
-    else Loss
-
--- otherResult :: Result -> Result
--- otherResult Win = Loss
--- otherResult Loss = Win
-
-moveFromTree :: Tree UctNode -> (Vertex, UctProb)
-moveFromTree tree =
-    (vertex, prob)
-    where
-      ((prob, vertex), _state) = rootLabel tree
-
-
-weightTree :: Tree UctNode -> (Float, Tree UctNode)
-weightTree tree =
-    (prob, tree)
-    where
-      (((prob, _simuls), _vertex), _state) = rootLabel tree
-
-
-
-
-runOneRandom :: GameState -> Color -> Score
-runOneRandom initState color =
-    run initState
-    where
-      run state =
-        case move of
-          (Pass _) ->
-              case move' of
-                (Pass _) ->
-                    score state''
-                (StoneMove _) ->
-                    run state''
-                (Resign _) ->
-                    error "runOneRandom encountered Resign"
-              where
-                move' = genMoveRand (state' { ourRandomGen = gg }) color
-                state'' =
-                    updateGameState state' { ourRandomGen = gg' } move'
-                (gg, gg') = split g'
-
-          (StoneMove _) ->
-              run state'
-          (Resign _) ->
-              error "runOneRandom encountered Resign"
-
-        where
-          move = genMoveRand (state { ourRandomGen = g }) color
-          state' =
-              updateGameState state { ourRandomGen = g' } move
-          (g, g') = split (ourRandomGen state)
-
-
-
-
-genMoveRand :: GameState -> Color -> Move
-genMoveRand state color =
-    if length moves == 0
-    then Pass color
-    else StoneMove (Stone (p, color))
-
-    where
-      p = pick (ourRandomGen state) moves
-      moves = saneMoves state color
-
-
-
-
-saneMoves :: GameState -> Color -> [Vertex]
-saneMoves state color =
-    filter (not . (isEyeLike g color)) $
-           filter (not . (isSuicideVertex g color)) $
-                      (freeVertices g) \\ (koBlocked state)
-    where
-      g = goban state
-
-
-pick :: StdGen -> [a] -> a
-pick g as =
-    as !! i
-    where
-      (i, _g) = randomR (0, ((length as) - 1)) g
-
--- pick' :: StdGen -> [a] -> (a, StdGen)
--- pick' g as =
---     (as !! i, g')
---     where
---       (i, g') = randomR (0, ((length as) - 1)) g
-
-frequency :: StdGen -> [(Float, a)] -> (a, StdGen)
-frequency _g [] = error "frequency used with empty list"
-frequency g as =
-    (pickF i as', g')
+weightedChoose :: (RandomGen g) => [(Float, a)] -> Rand g a
+weightedChoose [] = error "weightedChoose called with empty list"
+weightedChoose as = do
+    i <- getRandomR (0, tot)
+    return $ pickF i as'
     where
       tot = sum (map fst as')
       as' = map fstToInt as
-      fstToInt (a, b) =
-          ((round (a * 1000) :: Int), b)
-
-      (i, g') = randomR (0, tot) g
-
-      pickF n ((k,x):xs)
-          | n <= k    = x
-          | otherwise = pickF (n-k) xs
-      pickF _ _  = error "pick used with empty list"
 
 
--- pickN :: (Eq a) => Int -> StdGen -> [a] -> [a]
--- pickN n g as =
---     pickN' n as []
---     where
---       pickN' n' as' bs
---              | n' == 0 = bs
---              | as' == [] = bs
---              | otherwise =
---                  pickN' (n' - 1) (as' \\ [a]) (a : bs)
---              where
---                a = pick g as'
+fstToInt :: (Float, a) -> (Int, a)
+fstToInt (a, b) =
+    ((truncate (a * 1000) :: Int), b)
+
+pickF :: (Ord a, Num a) => a -> [(a, t)] -> t
+pickF n ((k,x):xs)
+    | n <= k    = x
+    | otherwise = pickF (n-k) xs
+pickF _ _  = error "pick used with empty list"
 
 
-compareSnd :: (Ord t1) => (t, t1) -> (t2, t1) -> Ordering
-compareSnd (_, a) (_, b) = compare a b
+
+updateProb :: Float -> Int -> Float -> Float
+updateProb oldProb oldCount result =
+    ((oldProb * (fromIntegral oldCount)) + result) / (fromIntegral (oldCount + 1))
+
+
+
+principalVariation :: (UctNode a) => Tree (UctLabel a) -> [(UctLabel a)]
+principalVariation t =
+    -- trace ("PV: " ++ show (t, subForest t))
+    unfoldr maxChild t
+
+maxChild :: Tree (UctLabel a) -> Maybe ((UctLabel a), Tree (UctLabel a))
+maxChild t =
+    case subForest t of
+      [] -> Nothing
+      forest ->
+          Just (rootLabel mNode, mNode)
+              where
+                mNode = maximum forest
