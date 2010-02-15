@@ -47,7 +47,7 @@ import Network.GoTextProtocol2.Server.Types
 import Data.Goban.Utils
 import Data.Goban (GameState(..), defaultGameState, updateGameState, score, defaultGoban)
 -- import Kurt.Move (genMove)
-import Data.Tree.UCT (genMove)
+import Kurt.Move (genMove)
 
 
 
@@ -220,7 +220,7 @@ cmd_genmove [(ColorArgument color)] state =
     Right (show move, state')
     where
       state' = updateGameState state { ourRandomGen = g' } move
-      move = genMove state { ourRandomGen = g } color
+      move = genMove state color g
       (g, g') = split (ourRandomGen state)
 cmd_genmove _ _ = error "cmd_genmove called with illegal argument type"
 

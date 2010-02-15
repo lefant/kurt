@@ -31,6 +31,7 @@ UCT tree search using Data.Tree.Zipper
 module Data.Tree.UCT (
                       uct
                      ,UctNode(..)
+                     ,UctLabel(..)
                      ) where
 
 
@@ -70,10 +71,6 @@ data UctLabel a = UctLabel {
 
 instance Eq (UctLabel a) where
 
--- instance Ord (UctLabel a) where
---     compare x y =
---         compare (winningProb x) (winningProb y)
-
 instance Ord (Tree (UctLabel b)) where
     compare x y =
         compare (f x) (f y)
@@ -84,7 +81,7 @@ instance Ord (Tree (UctLabel b)) where
 defaultUctLabel :: UctLabel a
 defaultUctLabel = UctLabel {
                     nodeState = undefined
-                  , winningProb = 0.1
+                  , winningProb = 0.5
                   , runs = 0
                   , isDone = False
                   }

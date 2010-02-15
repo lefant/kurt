@@ -46,6 +46,7 @@ library
                  ,array
                  ,containers
                  ,MonadRandom
+                 ,rosezipper
   ghc-options: -O1
   ghc-prof-options: -auto-all -caf-all
 

@@ -30,195 +30,120 @@ Move generator logic
 
 module Kurt.Move (
                   genMove
-                 ,genMoveMc
                  ,genMoveRand
                  ) where
 
 
-import System.Random (split, randomR, StdGen)
-import Data.List (sort, sortBy, (\\))
-import Data.Map as M (Map, fromList, toList, insertWith, assocs)
-
-import Data.Goban.Utils
-import Data.Goban (GameState(..), updateGameState, score)
+-- import System.Random (split, randomR, StdGen)
+import System.Random (RandomGen)
+import Control.Monad.Random (Rand, getRandomR)
+import Data.List ((\\))
+-- import Data.Map as M (Map, fromList, toList, insertWith, assocs)
 import Debug.Trace (trace)
 
 
+import Data.Goban.Utils
+import Data.Goban (GameState(..), updateGameState, score)
+import Data.Tree.UCT
 
 
-genMove :: GameState -> Color -> Move
-genMove state color =
-    case orderdMoves of
-      ((p, (bestScore, _n)) : _) ->
-          if bestScore < 0.1
-          then Resign color
-          else StoneMove (Stone (p, color))
-      [] -> Pass color
+instance UctNode GameState where
+    isTerminalNode state =
+        case reverse $ moveHistory state of
+          [] -> False
+          [_] -> False
+          ((Pass _) : (Pass _) : _) -> True
+          _ -> False
 
-    where
-      orderdMoves =
-          trace ("genMoves: " ++ show orderdMoves')
-          orderdMoves'
+    finalResult state =
+        case toMove state of
+          Black -> 
+              if s < 0
+              then 1.0
+              else 0.0
+          White ->
+              if s > 0
+              then 1.0
+              else 0.0
+        where
+          s = score state
+
+    randomEvalOnce state = do
+        s <- runOneRandom state color
+        return $ case color of
+          Black -> 
+              if s < 0
+              then 1.0
+              else 0.0
+          White ->
+              if s > 0
+              then 1.0
+              else 0.0
           where
-            orderdMoves' = uct state color
+            color = toMove state
+
+
+    children state =
+        case saneMoves state color of
+          [] -> [updateGameState state (Pass color)]
+          vs -> map (\v ->
+                         updateGameState state (StoneMove (Stone (v, color)))) vs
+        where
+          color = toMove state
 
 
 
-uct :: GameState -> Color -> [(Vertex, (Float, Int))]
-uct state color =
-    reverse $ sortBy compareSnd $
-            uct' initialMap (ourRandomGen state) (simulCount state)
-    where
-      uct' :: M.Map Vertex (Float, Int) -> StdGen -> Int -> [(Vertex, (Float, Int))]
-      uct' m gen n
-          | n < 1 = M.toList m
-          | otherwise =
-              uct' m' gen' (n - 1)
-              where
-                m' = M.insertWith combineProb a (result, 1) m
-
-                result =
-                    if (runScore < 0 && color == White) || (runScore > 0 && color == Black)
-                    then 1
-                    else 0
-
-                runScore =
-                    trace ("uct' random run score: " ++ show runScore')
-                    runScore'
-                    where
-                      runScore' = runOneRandom state' color
-                state' =
-                    trace ("uct' runOneRandom for: " ++ show aMove)
-                          updateGameState state aMove
-                aMove = StoneMove (Stone (a, color))
-                -- (a, gen') = pick' gen moves
-                (a, gen') =
-                    frequency gen $
-                              map (\(v, (prob, _)) -> (prob, v)) $
-                                  M.assocs m
-
-      initialMap :: M.Map Vertex (Float, Int)
-      initialMap = M.fromList $ initList
-
-      initList =
-          trace ("initList: " ++ show initList')
-          initList'
-          where
-            initList' = zip moves $ take (length moves) (repeat (0.5, 1))
-
-      moves = saneMoves state color
-
-combineProb :: (Float, Int) -> (Float, Int) -> (Float, Int)
-combineProb (prob, count) (oldProb, oldCount) =
-    trace ("combineProb " ++ show (("old" ,oldProb, oldCount), ("new", prob, count), ("consolidated",prob', count')))
-    (prob', count')
-    where
-      prob' = ((oldProb * (fromIntegral oldCount)) + prob) / (fromIntegral count')
-      count' = oldCount + count
 
 
-genMoveMc :: GameState -> Color -> Move
-genMoveMc state color =
-    if l'' == 0
+genMove :: (RandomGen g) => GameState -> Color -> g -> Move
+genMove state color rGen =
+    if null (saneMoves state color)
     then Pass color
     else
-        if bestScore > 10
-        then Resign color
-        else StoneMove (Stone (p, color))
-
+        if (winningProb bestMove) < 0.1
+           then Resign color
+           else last $ moveHistory $ nodeState bestMove
     where
-      p = head moves''
-      l'' = length moves''
-
-      moves'' =
-          trace ("genMove, moveList'': " ++ show movesScored')
-          movesScored'
-          where
-            movesScored' = map snd $ movesScored
-
-      bestScore = fst $ head movesScored
-
-      movesScored = sort $ map whatifScore moves'
-
-      whatifScore v =
-          (modifier * (runRandom 4 (updateGameState state move) color), v)
-          where
-            move = StoneMove (Stone (v, color))
-            modifier = case color of
-                         Black -> -1
-                         White -> 1
-
-      moves' = pickN 20 (ourRandomGen state) moves
-
-      moves = saneMoves state color
+      bestMove =
+          trace ("genMoves: " ++ show pv)
+          head pv
+      pv = uct state (simulCount state) rGen
 
 
-
-
-runRandom :: Int -> GameState -> Color -> Score
-runRandom n initState initColor =
-    runRandom' n initState 0 initColor
-    where
-      runRandom' n' state totalScore color =
-          if n' == 0
-          then normalize totalScore
-          else runRandom' (n' - 1) state' (totalScore + s) (otherColor color)
-          where
-            s = runOneRandom (state { ourRandomGen = g' }) color
-            state' = state { ourRandomGen = g }
-            (g, g') = split (ourRandomGen state)
-      normalize tScore =
-          sign * rt
-          where
-            rt = sqrt $ abs tScore
-            sign = signum tScore
-
-
-runOneRandom :: GameState -> Color -> Score
+runOneRandom :: (RandomGen g) => GameState -> Color -> Rand g Score
 runOneRandom initState color =
     run initState
     where
-      run state =
+      run state = do
+        move <- genMoveRand state color
+        state' <- return $ updateGameState state move
         case move of
-          (Pass _) ->
-              case move' of
-                (Pass _) ->
-                    score state''
-                (StoneMove _) ->
-                    run state''
-                (Resign _) ->
-                    error "runOneRandom encountered Resign"
-              where
-                move' = genMoveRand (state' { ourRandomGen = gg }) color
-                state'' =
-                    updateGameState state' { ourRandomGen = gg' } move'
-                (gg, gg') = split g'
-
+          (Pass _) -> do
+                    move' <- genMoveRand state' color
+                    state'' <- return $ updateGameState state' move'
+                    case move' of
+                      (Pass _) ->
+                          return $ score state''
+                      (StoneMove _) ->
+                          run state''
+                      (Resign _) ->
+                          error "runOneRandom encountered Resign"
           (StoneMove _) ->
-              run state'
+              run $ updateGameState state move
           (Resign _) ->
               error "runOneRandom encountered Resign"
 
-        where
-          move = genMoveRand (state { ourRandomGen = g }) color
-          state' =
-              updateGameState state { ourRandomGen = g' } move
-          (g, g') = split (ourRandomGen state)
 
 
-
-
-genMoveRand :: GameState -> Color -> Move
+genMoveRand :: (RandomGen g) => GameState -> Color -> Rand g Move
 genMoveRand state color =
     if length moves == 0
-    then Pass color
-    else StoneMove (Stone (p, color))
-
+    then return $ Pass color
+    else (do
+           p <- pick moves
+           return $ StoneMove (Stone (p, color)))
     where
-      p = pick (ourRandomGen state) moves
       moves = saneMoves state color
-
-
 
 
 saneMoves :: GameState -> Color -> [Vertex]
@@ -230,47 +155,8 @@ saneMoves state color =
       g = goban state
 
 
-pick :: StdGen -> [a] -> a
-pick g as =
-    as !! i
-    where
-      (i, _g) = randomR (0, ((length as) - 1)) g
 
--- pick' :: StdGen -> [a] -> (a, StdGen)
--- pick' g as =
---     (as !! i, g')
---     where
---       (i, g') = randomR (0, ((length as) - 1)) g
-
-frequency :: StdGen -> [(Float, a)] -> (a, StdGen)
-frequency _g [] = error "frequency used with empty list"
-frequency g as =
-    (pickF i as', g')
-    where
-      tot = sum (map fst as')
-      as' = map fstToInt as
-      fstToInt (a, b) =
-          ((round (a * 1000) :: Int), b)
-
-      (i, g') = randomR (0, tot) g
-
-      pickF n ((k,x):xs)
-          | n <= k    = x
-          | otherwise = pickF (n-k) xs
-      pickF _ _  = error "pick used with empty list"
-
-
-pickN :: (Eq a) => Int -> StdGen -> [a] -> [a]
-pickN n g as =
-    pickN' n as []
-    where
-      pickN' n' as' bs
-             | n' == 0 = bs
-             | as' == [] = bs
-             | otherwise =
-                 pickN' (n' - 1) (as' \\ [a]) (a : bs)
-             where
-               a = pick g as'
-
-compareSnd :: (Ord t1) => (t, t1) -> (t2, t1) -> Ordering
-compareSnd (_, a) (_, b) = compare a b
+pick :: (RandomGen g) => [a] -> Rand g a
+pick as = do
+  i <- getRandomR (0, ((length as) - 1))
+  return $ as !! i
