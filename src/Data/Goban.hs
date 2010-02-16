@@ -40,7 +40,7 @@ import Data.List (partition)
 import System.Random (StdGen, RandomGen)
 import Control.Monad.Random (Rand, getRandomR)
 import Data.List ((\\))
-import Debug.Trace (trace)
+-- import Debug.Trace (trace)
 
 import Data.Goban.Utils
 import Data.Goban.DataMap (DataMapGoban)
@@ -62,17 +62,17 @@ instance Show GameState where
     show state =
         case moveHistory state of
           [] -> ""
-          moves -> m
-            where
-              m = case last moves of
-               (StoneMove (Stone ((x, y), color))) ->
-                   c ++ [(xToLetter x)] ++ (show y)
-                   where
-                     c = case color of
-                           Black -> "b "
-                           White -> "w "
-               (Pass _color) -> "pass"
-               (Resign _color) -> "resign"
+          moves ->
+              show $ last moves
+              -- case last moves of
+              --   (StoneMove (Stone ((x, y), color))) ->
+              --       c ++ [(xToLetter x)] ++ (show y)
+              --       where
+              --         c = case color of
+              --               Black -> "b "
+              --               White -> "w "
+              --   (Pass _color) -> "pass"
+              --   (Resign _color) -> "resign"
 
 
 instance UctNode GameState where
@@ -90,10 +90,7 @@ instance UctNode GameState where
     --     getRandomR (0, 1)
     randomEvalOnce state = do
         s <- runOneRandom state
-        res <- return $ scoreToResult color s
-        return $ trace ("randomEvalOnce: " ++ (show (show color, show s, show res))) res
-        where
-          color = thisMoveColor state
+        return $ scoreToResult (thisMoveColor state) s
 
     children state =
         case saneMoves state of
@@ -136,7 +133,6 @@ thisMoveColor :: GameState -> Color
 thisMoveColor state =
     case moveHistory state of
       [] ->
-          -- could return White to indicate Black moving first if needed
           error "thisMoveColor called when moveHistory still empty"
       moves ->
           case last moves of
@@ -146,8 +142,14 @@ thisMoveColor state =
 
 nextMoveColor :: GameState -> Color
 nextMoveColor state =
-    otherColor $ thisMoveColor state
-
+    case moveHistory state of
+      [] -> Black
+      moves ->
+          otherColor $
+          case last moves of
+            (StoneMove (Stone (_, color))) -> color
+            (Pass color) -> color
+            (Resign color) -> color
 
 
 defaultGoban :: (Goban a) => Int -> a

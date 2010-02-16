@@ -54,9 +54,13 @@ class (Show a) => UctNode a where
 
 instance (UctNode a) => Show (UctLabel a) where
     show label =
-        "\n" ++ show (winningProb label, runs label, isDone label)
-                 ++ " " ++
-                    show (nodeState label)
+        show (nodeState label) ++ " " ++
+        (take 4 $ show $ winningProb label) ++ " " ++
+        show (runs label) ++ dStr ++ " - "
+        where
+          dStr = case isDone label of
+                   True -> "+ "
+                   False -> ""
                  
 
 data UctLabel a = UctLabel {
@@ -121,7 +125,7 @@ uctZipperDown loc =
         if isTerminalNode state
         then uctZipperUp loc (finalResult state) True
         else (do
-               result <- randomEvalOnce $ trace ("uctZipperDown randomEvalOnce " ++ show (rootLabel node)) state
+               result <- randomEvalOnce state
                uctZipperUp loc' result False)
     where
       state = nodeState $ rootLabel node
@@ -260,7 +264,7 @@ updateProb oldProb oldCount result =
 
 principalVariation :: (UctNode a) => Tree (UctLabel a) -> [(UctLabel a)]
 principalVariation t =
-    trace ("PV: \n" ++ (show (map rootLabel $ reverse $ sort $ subForest t)))
+    trace ("PV alternate first moves: " ++ (concatMap (show.rootLabel) $ take 5 $ reverse $ sort $ subForest t) ++ "\n")
     unfoldr maxChild t
 
 maxChild :: Tree (UctLabel a) -> Maybe ((UctLabel a), Tree (UctLabel a))

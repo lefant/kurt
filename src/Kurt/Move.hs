@@ -62,6 +62,6 @@ genMove state color rGen =
                  moves -> last moves
     where
       bestMove =
-          trace ("genMoves: " ++ show pv)
+          trace ("genMoves principal variation: " ++ concatMap show pv)
           head pv
       pv = uct state (simulCount state) rGen
