@@ -65,4 +65,3 @@ genMove state color rGen =
           trace ("genMoves: " ++ show pv)
           head pv
       pv = uct state (simulCount state) rGen
-

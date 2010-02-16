@@ -187,7 +187,6 @@ cmd_clear_board :: CommandHandler
 cmd_clear_board [] state =
     Right ("", state {
                   goban = clearGoban (goban state)
-                 ,toMove = Black
                  ,moveHistory = []
                  ,koBlocked = []
                  ,blackPrisoners = 0

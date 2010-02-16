@@ -52,7 +52,6 @@ import Data.Tree.UCT
 data GameState = GameState {
       goban           :: DataMapGoban
      ,komi            :: Score
-     ,toMove          :: Color
      ,koBlocked       :: [Vertex]
      ,moveHistory     :: [Move]
      ,blackPrisoners  :: Score
@@ -78,8 +77,6 @@ instance Show GameState where
                (Resign _color) -> "resign"
 
 
-
-
 instance UctNode GameState where
     isTerminalNode state =
         case reverse $ moveHistory state of
@@ -91,11 +88,11 @@ instance UctNode GameState where
     finalResult state =
         case toMove state of
           Black ->
-              if s < 0
+              if s > 0
               then 1.0
               else 0.0
           White ->
-              if s > 0
+              if s < 0
               then 1.0
               else 0.0
         where
@@ -137,7 +134,6 @@ defaultGameState :: StdGen -> GameState
 defaultGameState g = GameState {
                      goban = (defaultGoban 1)
                     ,komi = 0
-                    ,toMove = Black
                     ,koBlocked = []
                     ,moveHistory = []
                     ,blackPrisoners = 0
@@ -146,9 +142,25 @@ defaultGameState g = GameState {
                     ,simulCount = 100
                    }
 
+thisMoveColor :: GameState -> Color
+thisMoveColor state =
+    case moveHistory state of
+      [] -> White
+          -- error "thisMoveColor called when moveHistory still empty"
+      moves ->
+          case last moves of
+            (StoneMove (Stone (_, color))) -> color
+            (Pass color) -> color
+            (Resign color) -> color
+
+toMove :: GameState -> Color
+toMove state =
+    otherColor $ thisMoveColor state
+
 
 defaultGoban :: (Goban a) => Int -> a
 defaultGoban = newGoban
+
 
 
 updateGameState :: GameState -> Move -> GameState
@@ -169,8 +181,7 @@ updateGameState state move =
                   --                 ,(" wdead': ", wDead)
                   --                ))
               state {
-                       toMove = otherColor (toMove state)
-                      ,goban = goban''
+                       goban = goban''
                       ,moveHistory = (moveHistory state) ++ [move]
                       ,blackPrisoners = blackPrisoners'
                       ,whitePrisoners = whitePrisoners'
@@ -207,15 +218,13 @@ updateGameState state move =
 
       Pass _color ->
           state {
-                toMove = otherColor (toMove state)
-               ,moveHistory = (moveHistory state) ++ [move]
+                moveHistory = (moveHistory state) ++ [move]
                ,koBlocked = []
               }
 
       Resign _color ->
           state {
-                toMove = otherColor (toMove state)
-               ,moveHistory = (moveHistory state) ++ [move]
+                moveHistory = (moveHistory state) ++ [move]
                ,koBlocked = []
               }
 
