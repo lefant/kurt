@@ -23,7 +23,7 @@ GNU General Public License for more details.
    Stability  : experimental
    Portability: probably
 
-Goban Implementation
+Goban / GameState Implementation
 
 -}
 
@@ -43,8 +43,6 @@ import Data.List ((\\))
 import Debug.Trace (trace)
 
 import Data.Goban.Utils
--- import Data.Goban.StoneList (StoneListGoban)
--- import Data.Goban.Array (ArrayGoban)
 import Data.Goban.DataMap (DataMapGoban)
 import Data.Tree.UCT
 
@@ -86,38 +84,16 @@ instance UctNode GameState where
           _ -> False
 
     finalResult state =
-        case toMove state of
-          Black ->
-              if s > 0
-              then 1.0
-              else 0.0
-          White ->
-              if s < 0
-              then 1.0
-              else 0.0
-        where
-          s = score state
+        scoreToResult (thisMoveColor state) (score state)
 
     -- randomEvalOnce _state =
     --     getRandomR (0, 1)
     randomEvalOnce state = do
         s <- runOneRandom state color
-        return $ trace ("randomEvalOnce: " ++ (show (show color, show s, show (res s)))) (res s)
-          where
-            color = toMove state
-            res :: Score -> Float
-            res s =
-                case color of
-                  Black ->
-                      if s < 0
-                      then 1.0
-                      else 0.0
-                  White ->
-                      if s > 0
-                      then 1.0
-                      else 0.0
-
-
+        res <- return $ scoreToResult color s
+        return $ trace ("randomEvalOnce: " ++ (show (show color, show s, show res))) res
+        where
+          color = thisMoveColor state
 
     children state =
         case saneMoves state color of
@@ -125,7 +101,7 @@ instance UctNode GameState where
           vs -> map (\v ->
                          updateGameState state (StoneMove (Stone (v, color)))) vs
         where
-          color = toMove state
+          color = thisMoveColor state
 
 
 
@@ -142,20 +118,31 @@ defaultGameState g = GameState {
                     ,simulCount = 100
                    }
 
+
+scoreToResult :: Color -> Score -> Float
+scoreToResult color thisScore =
+    case color of
+      Black ->
+          if thisScore > 0
+          then 1.0
+          else 0.0
+      White ->
+          if thisScore < 0
+          then 1.0
+          else 0.0
+
+
 thisMoveColor :: GameState -> Color
 thisMoveColor state =
     case moveHistory state of
-      [] -> White
-          -- error "thisMoveColor called when moveHistory still empty"
+      [] ->
+          -- could return White to indicate Black moving first if needed
+          error "thisMoveColor called when moveHistory still empty"
       moves ->
           case last moves of
             (StoneMove (Stone (_, color))) -> color
             (Pass color) -> color
             (Resign color) -> color
-
-toMove :: GameState -> Color
-toMove state =
-    otherColor $ thisMoveColor state
 
 
 defaultGoban :: (Goban a) => Int -> a
