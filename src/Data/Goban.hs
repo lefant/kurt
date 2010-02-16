@@ -101,7 +101,7 @@ instance UctNode GameState where
           vs -> map (\v ->
                          updateGameState state (StoneMove (Stone (v, color)))) vs
         where
-          color = thisMoveColor state
+          color = nextMoveColor state
 
 
 
@@ -269,7 +269,7 @@ runOneRandom initState =
                       (Resign _) ->
                           error "runOneRandom encountered Resign"
           (StoneMove _) ->
-              run $ updateGameState state move
+              run state'
           (Resign _) ->
               error "runOneRandom encountered Resign"
 
