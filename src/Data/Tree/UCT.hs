@@ -24,7 +24,7 @@ GNU General Public License for more details.
    Portability: probably
 
 
-UCT tree search using Data.Tree.Zipper
+UCT tree search using Data.Tree.Zipper for updates in the Tree
 
 -}
 
@@ -35,7 +35,6 @@ module Data.Tree.UCT (
                      ) where
 
 
--- import Control.Monad (liftM)
 import Control.Monad.Random (Rand, RandomGen, getRandomR, evalRand)
 import Data.Maybe (fromJust)
 import Data.List (unfoldr, sort)
@@ -50,7 +49,6 @@ class (Show a) => UctNode a where
     finalResult :: a -> Float
     randomEvalOnce :: (RandomGen g) => a -> Rand g Float
     children :: a -> [a]
-    -- humanReadable :: a -> String
 
 instance (UctNode a) => Show (UctLabel a) where
     show label =
@@ -116,8 +114,7 @@ uctZipper loc n = do
 uctZipperDown  :: (UctNode a, RandomGen g) => TreeLoc (UctLabel a) -> Rand g ((TreeLoc (UctLabel a)), Bool)
 uctZipperDown loc =
     if hasChildren loc
-    then 
-        -- trace ("uctZipperDown with children " ++ show (rootLabel node))
+    then
         (do
           childLoc <- chooseOne loc
           uctZipperDown childLoc)
