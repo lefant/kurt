@@ -51,7 +51,7 @@ import Data.Tree.UCT
 
 genMove :: (RandomGen g) => GameState -> Color -> g -> Move
 genMove state color rGen =
-    if null (saneMoves state color)
+    if null (saneMoves state)
     then Pass color
     else
         if (winningProb bestMove) < 0.1

@@ -89,14 +89,14 @@ instance UctNode GameState where
     -- randomEvalOnce _state =
     --     getRandomR (0, 1)
     randomEvalOnce state = do
-        s <- runOneRandom state color
+        s <- runOneRandom state
         res <- return $ scoreToResult color s
         return $ trace ("randomEvalOnce: " ++ (show (show color, show s, show res))) res
         where
           color = thisMoveColor state
 
     children state =
-        case saneMoves state color of
+        case saneMoves state of
           [] -> [updateGameState state (Pass color)]
           vs -> map (\v ->
                          updateGameState state (StoneMove (Stone (v, color)))) vs
@@ -143,6 +143,11 @@ thisMoveColor state =
             (StoneMove (Stone (_, color))) -> color
             (Pass color) -> color
             (Resign color) -> color
+
+nextMoveColor :: GameState -> Color
+nextMoveColor state =
+    otherColor $ thisMoveColor state
+
 
 
 defaultGoban :: (Goban a) => Int -> a
@@ -245,16 +250,16 @@ score state =
 
 
 
-runOneRandom :: (RandomGen g) => GameState -> Color -> Rand g Score
-runOneRandom initState color =
+runOneRandom :: (RandomGen g) => GameState -> Rand g Score
+runOneRandom initState =
     run initState
     where
       run state = do
-        move <- genMoveRand state color
+        move <- genMoveRand state
         state' <- return $ updateGameState state move
         case move of
           (Pass _) -> do
-                    move' <- genMoveRand state' color
+                    move' <- genMoveRand state'
                     state'' <- return $ updateGameState state' move'
                     case move' of
                       (Pass _) ->
@@ -270,25 +275,25 @@ runOneRandom initState color =
 
 
 
-genMoveRand :: (RandomGen g) => GameState -> Color -> Rand g Move
-genMoveRand state color =
+genMoveRand :: (RandomGen g) => GameState -> Rand g Move
+genMoveRand state =
     if length moves == 0
     then return $ Pass color
     else (do
            p <- pick moves
            return $ StoneMove (Stone (p, color)))
     where
-      moves = saneMoves state color
+      moves = saneMoves state
+      color = nextMoveColor state
 
-
-saneMoves :: GameState -> Color -> [Vertex]
-saneMoves state color =
+saneMoves :: GameState -> [Vertex]
+saneMoves state =
     filter (not . (isEyeLike g color)) $
            filter (not . (isSuicideVertex g color)) $
                       (freeVertices g) \\ (koBlocked state)
     where
       g = goban state
-
+      color = nextMoveColor state
 
 
 pick :: (RandomGen g) => [a] -> Rand g a
