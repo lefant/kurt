@@ -44,10 +44,12 @@ import Data.List ((\\))
 
 import Data.Goban.Utils
 import Data.Goban.DataMap (DataMapGoban)
+-- import Data.Goban.Array (ArrayGoban)
 import Data.Tree.UCT
 
 
 data GameState = GameState {
+      -- goban           :: ArrayGoban
       goban           :: DataMapGoban
      ,komi            :: Score
      ,koBlocked       :: [Vertex]
@@ -285,7 +287,8 @@ genMoveRand state =
            p <- pick moves
            return $ StoneMove (Stone (p, color)))
     where
-      moves = saneMoves state
+      -- moves = saneMoves state
+      moves = insaneMoves state
       color = nextMoveColor state
 
 saneMoves :: GameState -> [Vertex]
@@ -296,6 +299,12 @@ saneMoves state =
     where
       g = goban state
       color = nextMoveColor state
+
+insaneMoves :: GameState -> [Vertex]
+insaneMoves state =
+    (freeVertices g) \\ (koBlocked state)
+    where
+      g = goban state
 
 
 pick :: (RandomGen g) => [a] -> Rand g a

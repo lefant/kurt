@@ -159,12 +159,30 @@ isSuicide goban stone =
           goban' = addStone goban stone
 
 
+-- isDead :: Goban a => a -> Stone -> Bool
+-- isDead goban stone =
+--     -- trace ("isDead called with: " ++ (show stone) ++ " liberties: " ++ (show libertyCount))
+--     libertyCount == 0
+--     where
+--       libertyCount = liberties goban $ groupOfStone goban stone
+
 isDead :: Goban a => a -> Stone -> Bool
-isDead goban stone =
+isDead goban stone@(Stone (_p, color)) =
     -- trace ("isDead called with: " ++ (show stone) ++ " liberties: " ++ (show libertyCount))
-    libertyCount == 0
+    anyInMaxStringAlive [stone] []
     where
-      libertyCount = liberties goban $ groupOfStone goban stone
+      anyInMaxStringAlive [] _gs = False
+      anyInMaxStringAlive (n@(Stone (p, _color)) : ns) gs =
+          if (adjacentFree goban p) /= []
+          then False
+          else anyInMaxStringAlive (ns ++ (((fgen n) \\ gs) \\ ns)) (n : gs)
+
+      genF stone' = neighbourStones goban stone'
+      filterF (Stone (_p', color')) =
+          color == color'
+      fgen n =
+          filter filterF $ genF n
+
 
 
 -- FIXME:
