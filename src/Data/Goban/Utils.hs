@@ -55,6 +55,7 @@ module Data.Goban.Utils (
 
 import Data.Char (chr, ord, toUpper)
 import Data.List ((\\), nub)
+import Debug.Trace (trace)
 
 
 class Goban a where
@@ -168,14 +169,20 @@ isSuicide goban stone =
 
 isDead :: Goban a => a -> Stone -> Bool
 isDead goban stone@(Stone (_p, color)) =
-    -- trace ("isDead called with: " ++ (show stone) ++ " liberties: " ++ (show libertyCount))
+    trace ("isDead called with: " ++ (show stone))
     anyInMaxStringAlive [stone] []
     where
-      anyInMaxStringAlive [] _gs = False
+      anyInMaxStringAlive [] _gs = trace ("anyInMaxStringAlive: done, dead returning True") True
       anyInMaxStringAlive (n@(Stone (p, _color)) : ns) gs =
-          if (adjacentFree goban p) /= []
-          then False
-          else anyInMaxStringAlive (ns ++ (((fgen n) \\ gs) \\ ns)) (n : gs)
+          if null frees
+          then
+              trace ("anyInMaxStringAlive: adjacentFree returned null, recursing for " ++ show p)
+              anyInMaxStringAlive (ns ++ (((fgen n) \\ gs) \\ ns)) (n : gs)
+          else
+              trace ("anyInMaxStringAlive: adjacentFree returned non null, returning False for " ++ show p ++ " " ++ show frees)
+              False
+          where
+            frees = (adjacentFree goban p)
 
       genF stone' = neighbourStones goban stone'
       filterF (Stone (_p', color')) =
@@ -189,6 +196,8 @@ isDead goban stone@(Stone (_p, color)) =
 -- if several killed neighbouring stones are part of the same
 -- group it will be found twice here
 -- nub at the end works around for scoring
+
+-- TODO: avoid using liberties here, maybe use isDead or a similiar strategy
 deadStones :: (Goban a) => a -> Stone -> [Stone]
 deadStones goban stone@(Stone (_p, color)) =
     nub $ concatMap dead_stones' ns
@@ -243,7 +252,9 @@ adjacentStones goban p =
 
 adjacentFree :: (Goban a) => a -> Vertex -> [Vertex]
 adjacentFree goban p =
-    filter (((==) Nothing) . (vertexToStone goban)) $ adjacentVertices goban p
+    filter (((==) Nothing) . (vertexToStone goban)) $
+           adjacentVertices goban p
+
 
 
 
