@@ -27,6 +27,7 @@ library
   exposed-modules:
                   Data.Goban.Utils
                  ,Data.Goban
+                 ,Data.Goban.Vector
                  ,Data.Goban.Array
                  ,Data.Goban.DataMap
                  ,Data.Goban.StoneList
@@ -47,6 +48,7 @@ library
                  ,containers
                  ,MonadRandom
                  ,rosezipper
+                 ,vector
   ghc-options: -O1
   ghc-prof-options: -auto-all
 

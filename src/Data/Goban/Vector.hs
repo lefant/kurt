@@ -32,6 +32,7 @@ module Data.Goban.Vector (
                         ) where
 
 import qualified Data.Vector.Unboxed as V
+-- import Debug.Trace (trace)
 
 import Data.Goban.Utils
 
@@ -44,6 +45,7 @@ data VertexState = VertexColor Color | Empty
 instance Goban VectorGoban where
 
     addStone (VectorGoban (boardsize, goban)) (Stone (vertex, color)) =
+        -- trace ("addStone: " ++ show (intVertex, intState))
         VectorGoban (boardsize, goban')
         where
           goban' = goban V.// [(intVertex, intState)]
@@ -66,9 +68,14 @@ instance Goban VectorGoban where
             V.findIndices ((stateToInt Empty) ==) goban
 
     vertexToStone (VectorGoban (boardsize, goban)) p =
-        case intToState $ goban V.! (vertexToInt boardsize p) of
-          VertexColor color -> Just $ Stone (p, color)
-          Empty -> Nothing
+        -- trace ("vertexToStone " ++ show (p, intVertex))
+        result
+        where
+          result =
+              case intToState $ goban V.! intVertex of
+                VertexColor color -> Just $ Stone (p, color)
+                Empty -> Nothing
+          intVertex = vertexToInt boardsize p
 
     sizeOfGoban (VectorGoban (boardsize, _)) = boardsize
 
@@ -76,7 +83,7 @@ instance Goban VectorGoban where
         VectorGoban
         (boardsize,
          V.replicate
-              (vertexToInt boardsize (boardsize, boardsize))
+              (1 + (vertexToInt boardsize (boardsize, boardsize)))
               (stateToInt Empty))
 
 

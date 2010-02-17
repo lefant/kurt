@@ -43,14 +43,15 @@ import Data.List ((\\))
 -- import Debug.Trace (trace)
 
 import Data.Goban.Utils
-import Data.Goban.DataMap (DataMapGoban)
+import Data.Goban.Vector (VectorGoban)
+-- import Data.Goban.DataMap (DataMapGoban)
 -- import Data.Goban.Array (ArrayGoban)
 import Data.Tree.UCT
 
 
 data GameState = GameState {
       -- goban           :: ArrayGoban
-      goban           :: DataMapGoban
+      goban           :: VectorGoban
      ,komi            :: Score
      ,koBlocked       :: [Vertex]
      ,moveHistory     :: [Move]
@@ -114,7 +115,7 @@ defaultGameState g = GameState {
                     ,blackPrisoners = 0
                     ,whitePrisoners = 0
                     ,ourRandomGen = g
-                    ,simulCount = 100
+                    ,simulCount = 1000
                    }
 
 
