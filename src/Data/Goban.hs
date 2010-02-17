@@ -185,7 +185,7 @@ updateGameState state move =
                       ,koBlocked = koBlocked'
               }
           where
-            dead = deadStones goban' stone
+            dead = killedStones goban' stone
             goban' = addStone (goban state) stone
             goban'' = deleteStones goban' dead
             -- goban''' = deleteStones goban'' dead'
@@ -207,7 +207,7 @@ updateGameState state move =
             koBlocked' =
                 case dead of
                   [koStone@(Stone (v,_))] ->
-                      if [stone] == (deadStones goban' koStone)
+                      if [stone] == (killedStones goban' koStone)
                       then [v]
                       else []
                   _ -> []

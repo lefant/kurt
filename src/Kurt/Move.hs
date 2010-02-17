@@ -54,7 +54,7 @@ genMove state color rGen =
     if null (saneMoves state)
     then Pass color
     else
-        if (winningProb bestMove) < 0.1
+        if (winningProb bestMove) < 0.15
            then Resign color
            else
                case moveHistory $ nodeState bestMove of

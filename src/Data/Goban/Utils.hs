@@ -35,18 +35,13 @@ module Data.Goban.Utils (
                         ,Vertex
                         ,Score
                         ,territory
-                        -- ,isSuicide
                         ,isSuicideVertex
                         ,isEyeLike
                         ,isDead
-                        ,deadStones
+                        ,killedStones
                         ,allVertices
                         ,verticesFromStones
                         ,groupOfStone
-                        -- ,neighbourStones
-                        -- ,adjacentStones
-                        -- ,adjacentFree
-                        -- ,stoneColor
                         ,otherColor
                         ,xToLetter
                         ,letterToX
@@ -152,36 +147,44 @@ isEyeLike goban color v =
 
 isSuicide :: Goban a => a -> Stone -> Bool
 isSuicide goban stone =
-        isDead goban'' stone
-        where
-          goban'' = deleteStones goban' dead
-          dead = deadStones goban' stone
-          goban' = addStone goban stone
+    if isDead goban stone
+    then isDead goban'' stone
+    else False
+    where
+      goban'' = deleteStones goban' dead
+      dead = killedStones goban' stone
+      goban' = addStone goban stone
 
-
--- isDead :: Goban a => a -> Stone -> Bool
--- isDead goban stone =
---     -- trace ("isDead called with: " ++ (show stone) ++ " liberties: " ++ (show libertyCount))
---     libertyCount == 0
---     where
---       libertyCount = liberties goban $ groupOfStone goban stone
 
 isDead :: Goban a => a -> Stone -> Bool
-isDead goban stone@(Stone (_p, color)) =
-    -- trace ("isDead called with: " ++ (show stone))
+isDead goban stone =
+    not . null $ deadStones goban stone
+
+
+-- FIXME:
+-- if several killed neighbouring stones are part of the same
+-- group it will be found twice here
+-- nub at the end works around for scoring
+killedStones :: (Goban a) => a -> Stone -> [Stone]
+killedStones goban stone@(Stone (_p, color)) =
+    nub $ concatMap (deadStones goban) ns
+    where
+      ns = filter hasOtherColor $ neighbourStones goban stone
+      hasOtherColor (Stone (_p', color')) =
+          (otherColor color) == color'
+
+deadStones :: Goban a => a -> Stone -> [Stone]
+deadStones goban stone@(Stone (_p, color)) =
     anyInMaxStringAlive [stone] []
     where
-      anyInMaxStringAlive [] _gs =
-          -- trace ("anyInMaxStringAlive: done, dead returning True")
-          True
+      anyInMaxStringAlive [] gs =
+          gs
       anyInMaxStringAlive (n@(Stone (p, _color)) : ns) gs =
           if null frees
           then
-              -- trace ("anyInMaxStringAlive: adjacentFree returned null, recursing for " ++ show p)
               anyInMaxStringAlive (ns ++ (((fgen n) \\ gs) \\ ns)) (n : gs)
           else
-              -- trace ("anyInMaxStringAlive: adjacentFree returned non null, returning False for " ++ show p ++ " " ++ show frees)
-              False
+              []
           where
             frees = (adjacentFree goban p)
 
@@ -190,29 +193,6 @@ isDead goban stone@(Stone (_p, color)) =
           color == color'
       fgen n =
           filter filterF $ genF n
-
-
-
--- FIXME:
--- if several killed neighbouring stones are part of the same
--- group it will be found twice here
--- nub at the end works around for scoring
-
--- TODO: avoid using liberties here, maybe use isDead or a similiar strategy
-deadStones :: (Goban a) => a -> Stone -> [Stone]
-deadStones goban stone@(Stone (_p, color)) =
-    nub $ concatMap dead_stones' ns
-    where
-      dead_stones' n =
-          if isDead goban n
-          then groupOfStone goban n
-          else []
-
-      ns = filter hasOtherColor $ neighbourStones goban stone
-
-      hasOtherColor (Stone (_p', color')) =
-          (otherColor color) == color'
-
 
 
 -- liberties :: (Goban a) => a -> [Stone] -> Int
