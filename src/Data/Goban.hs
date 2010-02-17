@@ -287,8 +287,8 @@ genMoveRand state =
            p <- pick moves
            return $ StoneMove (Stone (p, color)))
     where
-      moves = saneMoves state
-      -- moves = insaneMoves state
+      -- moves = saneMoves state
+      moves = insaneMoves state
       color = nextMoveColor state
 
 saneMoves :: GameState -> [Vertex]
@@ -302,10 +302,11 @@ saneMoves state =
 
 insaneMoves :: GameState -> [Vertex]
 insaneMoves state =
-    (freeVertices g) \\ (koBlocked state)
+    filter (not . (isEyeLike' g color)) $
+               (freeVertices g) \\ (koBlocked state)
     where
       g = goban state
-
+      color = nextMoveColor state
 
 pick :: (RandomGen g) => [a] -> Rand g a
 pick as = do

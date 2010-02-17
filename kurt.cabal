@@ -48,7 +48,7 @@ library
                  ,MonadRandom
                  ,rosezipper
   ghc-options: -O1
-  ghc-prof-options: -auto-all -caf-all
+  ghc-prof-options: -auto-all
 
 executable kurt
   main-is:        kurt.hs
@@ -59,7 +59,7 @@ executable kurt
                  ,test-framework-quickcheck
                  ,test-framework-hunit
   ghc-options: -O1
-  ghc-prof-options: -auto-all -caf-all
+  ghc-prof-options: -auto-all
 
 source-repository head
   type:     git
