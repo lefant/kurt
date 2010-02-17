@@ -35,7 +35,7 @@ module Data.Goban.Utils (
                         ,Vertex
                         ,Score
                         ,territory
-                        ,isSuicide
+                        -- ,isSuicide
                         ,isSuicideVertex
                         ,isEyeLike
                         ,isDead
@@ -43,10 +43,10 @@ module Data.Goban.Utils (
                         ,allVertices
                         ,verticesFromStones
                         ,groupOfStone
-                        ,neighbourStones
-                        ,adjacentStones
-                        ,adjacentFree
-                        ,stoneColor
+                        -- ,neighbourStones
+                        -- ,adjacentStones
+                        -- ,adjacentFree
+                        -- ,stoneColor
                         ,otherColor
                         ,xToLetter
                         ,letterToX
