@@ -53,12 +53,15 @@ class (Show a) => UctNode a where
 instance (UctNode a) => Show (UctLabel a) where
     show label =
         show (nodeState label) ++ " " ++
-        (take 4 $ show $ winningProb label) ++ " " ++
+        show (roundedFloat (winningProb label)) ++ " " ++
         show (runs label) ++ dStr ++ " - "
         where
           dStr = case isDone label of
                    True -> "+ "
                    False -> ""
+          roundedFloat :: Float -> Float
+          roundedFloat x =
+              (fromIntegral (truncate (x * 100) :: Int)) / 100
                  
 
 data UctLabel a = UctLabel {
@@ -89,7 +92,7 @@ defaultUctLabel :: UctLabel a
 defaultUctLabel = UctLabel {
                     nodeState = undefined
                   , winningProb = 0.5
-                  , runs = 0
+                  , runs = 1
                   , isDone = False
                   }
 
@@ -231,7 +234,7 @@ weightTree (node, n) =
     where
       prob = winningProb $ rootLabel node
 
-weightedChoose :: (RandomGen g) => [(Float, a)] -> Rand g a
+weightedChoose :: (Show a,RandomGen g) => [(Float, a)] -> Rand g a
 weightedChoose [] = error "weightedChoose called with empty list"
 weightedChoose as = do
     i <- getRandomR (0, tot)
@@ -244,6 +247,7 @@ weightedChoose as = do
 fstToInt :: (Float, a) -> (Int, a)
 fstToInt (a, b) =
     ((truncate (a * 1000) :: Int), b)
+
 
 pickF :: (Ord a, Num a) => a -> [(a, t)] -> t
 pickF n ((k,x):xs)

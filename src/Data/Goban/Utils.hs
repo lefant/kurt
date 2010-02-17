@@ -40,7 +40,6 @@ module Data.Goban.Utils (
                         ,isEyeLike
                         ,isDead
                         ,deadStones
-                        ,liberties
                         ,allVertices
                         ,verticesFromStones
                         ,groupOfStone
@@ -55,7 +54,7 @@ module Data.Goban.Utils (
 
 import Data.Char (chr, ord, toUpper)
 import Data.List ((\\), nub)
-import Debug.Trace (trace)
+-- import Debug.Trace (trace)
 
 
 class Goban a where
@@ -169,17 +168,19 @@ isSuicide goban stone =
 
 isDead :: Goban a => a -> Stone -> Bool
 isDead goban stone@(Stone (_p, color)) =
-    trace ("isDead called with: " ++ (show stone))
+    -- trace ("isDead called with: " ++ (show stone))
     anyInMaxStringAlive [stone] []
     where
-      anyInMaxStringAlive [] _gs = trace ("anyInMaxStringAlive: done, dead returning True") True
+      anyInMaxStringAlive [] _gs =
+          -- trace ("anyInMaxStringAlive: done, dead returning True")
+          True
       anyInMaxStringAlive (n@(Stone (p, _color)) : ns) gs =
           if null frees
           then
-              trace ("anyInMaxStringAlive: adjacentFree returned null, recursing for " ++ show p)
+              -- trace ("anyInMaxStringAlive: adjacentFree returned null, recursing for " ++ show p)
               anyInMaxStringAlive (ns ++ (((fgen n) \\ gs) \\ ns)) (n : gs)
           else
-              trace ("anyInMaxStringAlive: adjacentFree returned non null, returning False for " ++ show p ++ " " ++ show frees)
+              -- trace ("anyInMaxStringAlive: adjacentFree returned non null, returning False for " ++ show p ++ " " ++ show frees)
               False
           where
             frees = (adjacentFree goban p)
@@ -203,11 +204,9 @@ deadStones goban stone@(Stone (_p, color)) =
     nub $ concatMap dead_stones' ns
     where
       dead_stones' n =
-          if liberties goban groupStones == 0
-          then groupStones
+          if isDead goban n
+          then groupOfStone goban n
           else []
-          where
-            groupStones = groupOfStone goban n
 
       ns = filter hasOtherColor $ neighbourStones goban stone
 
@@ -216,15 +215,15 @@ deadStones goban stone@(Stone (_p, color)) =
 
 
 
-liberties :: (Goban a) => a -> [Stone] -> Int
-liberties goban groupStones =
-    length ls
-    where
-      ls = nub ls'
-      ls' =
-          concatMap
-          (adjacentFree goban)
-          (verticesFromStones groupStones)
+-- liberties :: (Goban a) => a -> [Stone] -> Int
+-- liberties goban groupStones =
+--     length ls
+--     where
+--       ls = nub ls'
+--       ls' =
+--           concatMap
+--           (adjacentFree goban)
+--           (verticesFromStones groupStones)
 
 
 

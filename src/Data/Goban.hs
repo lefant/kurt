@@ -287,8 +287,8 @@ genMoveRand state =
            p <- pick moves
            return $ StoneMove (Stone (p, color)))
     where
-      -- moves = saneMoves state
-      moves = insaneMoves state
+      moves = saneMoves state
+      -- moves = insaneMoves state
       color = nextMoveColor state
 
 saneMoves :: GameState -> [Vertex]
