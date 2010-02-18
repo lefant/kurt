@@ -39,6 +39,7 @@ module Data.Goban.Utils (
                         ,isEyeLike
                         ,isDead
                         ,killedStones
+                        ,adjacentFree
                         ,allVertices
                         ,verticesFromStones
                         ,groupOfStone

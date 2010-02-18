@@ -282,24 +282,58 @@ runOneRandom initState =
 
 genMoveRand :: (RandomGen g) => GameState -> Rand g Move
 genMoveRand state =
-    if length moves == 0
-    then return $ Pass color
-    else (do
-           p <- pick moves
-           return $ StoneMove (Stone (p, color)))
+    pickSane $ freeVertices (goban state)
+
     where
-      moves = saneMoves state
-      -- moves = insaneMoves state
+      pickSane :: (RandomGen g) => [Vertex] -> Rand g Move
+      pickSane [] = return $ Pass (nextMoveColor state)
+      pickSane moves = do
+        p <- pick moves
+        case sane p of
+          True -> return $ StoneMove (Stone (p, color))
+          False -> pickSane (moves \\ [p])
+
+      sane p =
+          (not (p `elem` (koBlocked state))) &&
+          (not (isEyeLike g color p)) &&
+          (not (isSuicideVertex g color p))
+      g = goban state
       color = nextMoveColor state
+
 
 saneMoves :: GameState -> [Vertex]
 saneMoves state =
-    filter (not . (isEyeLike g color)) $
-           filter (not . (isSuicideVertex g color)) $
+    filter (not . (isSuicideVertex g color)) $
+           filter (not . (isEyeLike g color)) $
                       (freeVertices g) \\ (koBlocked state)
     where
       g = goban state
       color = nextMoveColor state
+
+-- saneNeighMoves :: GameState -> [Vertex]
+-- saneNeighMoves state =
+--     case moveHistory state of
+--       [] ->
+--           error "saneNeighbourMoves called with empty moveHistory"
+--       moves ->
+--           case last moves of
+--             (StoneMove (Stone (p, _color))) ->
+--                 filter (not . (isSuicideVertex g color)) $
+--                        filter (not . (isEyeLike g color)) $
+--                               moveCandidates \\ (koBlocked state)
+--                 where
+--                   moveCandidates =
+--                       if null freeNs
+--                       then frees
+--                       else freeNs
+--                   frees = freeVertices g
+--                   freeNs = adjacentFree g p
+--             (Pass _color) -> []
+--             (Resign _color) -> []
+--     where
+--       g = goban state
+--       color = nextMoveColor state
+
 
 -- insaneMoves :: GameState -> [Vertex]
 -- insaneMoves state =
