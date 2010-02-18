@@ -28,9 +28,6 @@ library
                   Data.Goban.Utils
                  ,Data.Goban
                  ,Data.Goban.Vector
-                 ,Data.Goban.Array
-                 ,Data.Goban.DataMap
-                 ,Data.Goban.StoneList
                  ,Data.Tree.UCT
                  ,Kurt.Move
                  ,Network.GoTextProtocol2.Server
@@ -44,7 +41,6 @@ library
                  ,parsec >= 3
                  ,haskell98
                  ,random
-                 ,array
                  ,containers
                  ,MonadRandom
                  ,rosezipper

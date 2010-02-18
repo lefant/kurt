@@ -206,7 +206,7 @@ cmd_boardsize _ _ = error "cmd_boardsize called with illegal argument type"
 
 cmd_showboard :: CommandHandler
 cmd_showboard [] state =
-    Right ("showboard received: " ++ (show state), state)
+    Right ("showboard received:\n" ++ (showboard (goban state)), state)
 cmd_showboard _ _ = error "cmd_showboard called with illegal argument type"
 
 cmd_play :: CommandHandler

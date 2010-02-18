@@ -305,8 +305,15 @@ saneMoves :: GameState -> [Vertex]
 saneMoves state =
     filter (not . (isSuicideVertex g color)) $
            filter (not . (isEyeLike g color)) $
-                      (freeVertices g) \\ (koBlocked state)
+                      frees \\ (koBlocked state)
     where
+      frees =
+          if length (moveHistory state) > 4
+          then
+              freeVertices g
+          else
+              freeNonEdgeVertices g
+
       g = goban state
       color = nextMoveColor state
 
@@ -347,4 +354,3 @@ pick :: (RandomGen g) => [a] -> Rand g a
 pick as = do
   i <- getRandomR (0, ((length as) - 1))
   return $ as !! i
-

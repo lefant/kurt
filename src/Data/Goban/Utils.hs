@@ -72,6 +72,25 @@ class Goban a where
               and [x' > 0, x' <= boardsize, y' > 0, y' <= boardsize]
           boardsize = sizeOfGoban goban
 
+    freeNonEdgeVertices :: a -> [Vertex]
+    freeNonEdgeVertices goban =
+        filter (((==) Nothing) . (vertexToStone goban)) $
+               nonEdgeVertices (sizeOfGoban goban)
+
+    showboard :: a -> String
+    showboard goban =
+        show' $ map (vertexToStone goban) $ allVertices (sizeOfGoban goban)
+        where
+          show' [] = ""
+          show' ls' = concatMap showStone left ++ "\n" ++ show' right
+              where
+                (left, right) = splitAt n ls'
+          n = sizeOfGoban goban
+          showStone Nothing = "."
+          showStone (Just (Stone (_, color)))
+              | color == Black = "X"
+              | color == White = "O"
+          showStone something = error ("showStone: unmatched " ++ show something)
 
 
 data Move = StoneMove Stone
@@ -236,11 +255,19 @@ adjacentFree goban p =
            adjacentVertices goban p
 
 
-
+nonEdgeVertices :: Int -> [Vertex]
+nonEdgeVertices boardsize =
+    [(x, y) | x <- [lower .. upper], y <- [lower .. upper]]
+    where
+      upper = boardsize - lower
+      lower =
+          if boardsize >= 9
+          then 3
+          else 2
 
 allVertices :: Int -> [Vertex]
 allVertices n =
-    [(x, y) | x <- [1 .. n], y <- [1 .. n]]
+    [(x, y) | y <- reverse [1 .. n], x <- [1 .. n]]
 
 verticesFromStones :: [Stone] -> [Vertex]
 verticesFromStones ss = map (\(Stone (p, _c)) -> p) ss

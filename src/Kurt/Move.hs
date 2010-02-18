@@ -55,11 +55,11 @@ genMove state color rGen =
     then Pass color
     else
         if (winningProb bestMove) < 0.15
-           then Resign color
-           else
-               case moveHistory $ nodeState bestMove of
-                 [] -> error "genMove: moveHistory of bestMove is empty"
-                 moves -> last moves
+        then Resign color
+        else
+            case moveHistory $ nodeState bestMove of
+              [] -> error "genMove: moveHistory of bestMove is empty"
+              moves -> last moves
     where
       bestMove =
           trace ("genMoves principal variation: " ++ concatMap show pv)
