@@ -88,8 +88,8 @@ class Goban a where
           n = sizeOfGoban goban
           showStone Nothing = "."
           showStone (Just (Stone (_, color)))
-              | color == Black = "X"
-              | color == White = "O"
+              | color == Black = "x"
+              | color == White = "o"
           showStone something = error ("showStone: unmatched " ++ show something)
 
 
@@ -167,9 +167,13 @@ isEyeLike goban color v =
 
 isSuicide :: Goban a => a -> Stone -> Bool
 isSuicide goban stone =
-    if isDead goban stone
-    then isDead goban'' stone
-    else False
+    if isDead goban' stone
+    then
+        -- trace ("isSuicide calling isDead on goban'' for " ++ show stone)
+        isDead goban'' stone
+    else
+        -- trace ("isSuicide returning early, stone alive for " ++ show stone)
+        False
     where
       goban'' = deleteStones goban' dead
       dead = killedStones goban' stone
@@ -202,8 +206,10 @@ deadStones goban stone@(Stone (_p, color)) =
       anyInMaxStringAlive (n@(Stone (p, _color)) : ns) gs =
           if null frees
           then
+              -- trace ("anyInMaxStringAlive recursing after " ++ show n)
               anyInMaxStringAlive (ns ++ (((fgen n) \\ gs) \\ ns)) (n : gs)
           else
+              -- trace ("anyInMaxStringAlive found liberties " ++ show n)
               []
           where
             frees = (adjacentFree goban p)
