@@ -33,6 +33,7 @@ module Data.Goban (
                   ,defaultGoban
                   ,updateGameState
                   ,score
+                  ,scoreToResult
                   ,saneMoves
                   ) where
 
@@ -308,7 +309,7 @@ saneMoves state =
                       frees \\ (koBlocked state)
     where
       frees =
-          if length (moveHistory state) > 4
+          if length (moveHistory state) > m
           then
               freeVertices g
           else
@@ -316,6 +317,7 @@ saneMoves state =
 
       g = goban state
       color = nextMoveColor state
+      m = truncate $ sqrt (fromIntegral (sizeOfGoban g) :: Float)
 
 -- saneNeighMoves :: GameState -> [Vertex]
 -- saneNeighMoves state =

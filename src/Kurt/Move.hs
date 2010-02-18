@@ -42,7 +42,7 @@ import Debug.Trace (trace)
 
 
 import Data.Goban.Utils
-import Data.Goban (GameState(..), saneMoves)
+import Data.Goban (GameState(..), saneMoves, score, scoreToResult)
 import Data.Tree.UCT
 
 
@@ -52,7 +52,10 @@ import Data.Tree.UCT
 genMove :: (RandomGen g) => GameState -> Color -> g -> Move
 genMove state color rGen =
     if null (saneMoves state)
-    then Pass color
+    then
+        if scoreToResult color (score state) == 0
+        then Resign color
+        else Pass color
     else
         if (winningProb bestMove) < 0.15
         then Resign color
