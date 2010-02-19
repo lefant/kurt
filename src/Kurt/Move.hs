@@ -58,7 +58,10 @@ genMove state color rGen =
         else Pass color
     else
         if (winningProb bestMove) < 0.15
-        then Resign color
+        then
+            if scoreToResult color (score state) == 1
+            then Pass color
+            else Resign color
         else
             case moveHistory $ nodeState bestMove of
               [] -> error "genMove: moveHistory of bestMove is empty"
