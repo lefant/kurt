@@ -36,7 +36,7 @@ module Data.Goban.Utils (
                         ,Score
                         ,territory
                         ,isSuicideVertex
-                        ,isEyeLike
+                        ,isPotentialFullEye
                         ,isDead
                         ,killedStones
                         ,adjacentFree
@@ -50,6 +50,7 @@ module Data.Goban.Utils (
 
 import Data.Char (chr, ord, toUpper)
 import Data.List ((\\), nub)
+import Data.Maybe (catMaybes)
 -- import Debug.Trace (trace)
 
 
@@ -66,11 +67,16 @@ class Goban a where
 
     adjacentVertices :: a -> Vertex -> [Vertex]
     adjacentVertices goban (x, y) =
-        filter inBounds [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
-        where
-          inBounds (x', y') =
-              and [x' > 0, x' <= boardsize, y' > 0, y' <= boardsize]
-          boardsize = sizeOfGoban goban
+        filter
+        (inBounds (sizeOfGoban goban))
+        [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
+
+    diagonalVertices :: a -> Vertex -> [Vertex]
+    diagonalVertices goban (x, y) =
+        filter
+        (inBounds (sizeOfGoban goban))
+        [(x+1,y+1),(x-1,y+1),(x+1,y-1),(x-1,y-1)]
+
 
     freeNonEdgeVertices :: a -> [Vertex]
     freeNonEdgeVertices goban =
@@ -155,14 +161,37 @@ isSuicideVertex :: (Goban a) => a -> Color -> Vertex -> Bool
 isSuicideVertex goban color v =
     isSuicide goban (Stone (v, color))
 
-isEyeLike :: (Goban a) => a -> Color -> Vertex -> Bool
-isEyeLike goban color v =
-    (length vs == length sns)
-    && isSuicide goban (Stone (v, (otherColor color)))
+isPotentialFullEye :: (Goban a) => a -> Color -> Vertex -> Bool
+isPotentialFullEye goban color v =
+    -- all adjacent vertices must be our Stones
+    (length as == length asSC) &&
+    -- if there are 4 diagonals
+    if length ds >= 4
+    then
+        -- all but one of them must be ours or empty
+        length dsOC <= 1
+    else
+        -- if there are less diagonals, all must be ours or empty
+        length dsOC == 0
     where
-      vs = adjacentVertices goban v
-      sns = filter (\(Stone (_p', c')) -> color == c') ns
-      ns = neighbourStones goban (Stone (v, color))
+      asSC = filter sameColorStone $ verticesToStones goban as
+      as = adjacentVertices goban v
+
+      dsOC = filter otherColorStone $ verticesToStones goban ds
+      ds = diagonalVertices goban v
+
+      sameColorStone (Stone (_, c)) = color == c
+      otherColorStone (Stone (_, c)) = (otherColor color) == c
+
+
+-- isEyeLike :: (Goban a) => a -> Color -> Vertex -> Bool
+-- isEyeLike goban color v =
+--     (length vs == length sns)
+--     && isSuicide goban (Stone (v, (otherColor color)))
+--     where
+--       vs = adjacentVertices goban v
+--       sns = filter (\(Stone (_p', c')) -> color == c') ns
+--       ns = neighbourStones goban (Stone (v, color))
 
 
 isSuicide :: Goban a => a -> Stone -> Bool
@@ -248,12 +277,13 @@ neighbourStones goban (Stone (p, _)) =
 
 adjacentStones :: (Goban a) => a -> Vertex -> [Stone]
 adjacentStones goban p =
-    concatMap toStoneList $ adjacentVertices goban p
-    where
-      toStoneList p' =
-          case vertexToStone goban p' of
-            Nothing -> []
-            Just stone -> [stone]
+    verticesToStones goban $ adjacentVertices goban p
+
+verticesToStones :: (Goban a) => a -> [Vertex] -> [Stone]
+verticesToStones goban ps =
+    catMaybes $ fmap (vertexToStone goban) ps
+
+
 
 adjacentFree :: (Goban a) => a -> Vertex -> [Vertex]
 adjacentFree goban p =
@@ -315,6 +345,10 @@ letterToX c =
     where
       n = (ord $ toUpper c) - 64
 
+
+inBounds :: Int -> Vertex -> Bool
+inBounds boardsize (x, y) =
+    and [x > 0, x <= boardsize, y > 0, y <= boardsize]
 
 
 

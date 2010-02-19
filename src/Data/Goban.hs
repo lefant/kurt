@@ -296,7 +296,7 @@ genMoveRand state =
 
       sane p =
           (not (p `elem` (koBlocked state))) &&
-          (not (isEyeLike g color p)) &&
+          (not (isPotentialFullEye g color p)) &&
           (not (isSuicideVertex g color p))
       g = goban state
       color = nextMoveColor state
@@ -305,7 +305,7 @@ genMoveRand state =
 saneMoves :: GameState -> [Vertex]
 saneMoves state =
     filter (not . (isSuicideVertex g color)) $
-           filter (not . (isEyeLike g color)) $
+           filter (not . (isPotentialFullEye g color)) $
                       frees \\ (koBlocked state)
     where
       frees =
