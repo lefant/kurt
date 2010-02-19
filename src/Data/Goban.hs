@@ -33,7 +33,7 @@ module Data.Goban (
                   ,defaultGoban
                   ,updateGameState
                   ,score
-                  ,scoreToResult
+                  ,winningScore
                   ,saneMoves
                   ) where
 
@@ -125,16 +125,18 @@ scoreToResult color thisScore =
     if thisScore == 0
     then 0.5
     else
-        case color of
-          Black ->
-              if thisScore > 0
-              then 1.0
-              else 0.0
-          White ->
-              if thisScore < 0
-              then 1.0
-              else 0.0
+        if winningScore color thisScore
+        then 0.9 + bonus
+        else 0.1 - bonus
+    where
+      bonus =
+          ((sqrt . (max 99) . abs) thisScore) / 100
 
+winningScore :: Color -> Score -> Bool
+winningScore color thisScore =
+    case color of
+      Black -> thisScore > 0
+      White -> thisScore < 0
 
 thisMoveColor :: GameState -> Color
 thisMoveColor state =

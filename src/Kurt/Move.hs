@@ -42,7 +42,7 @@ import Debug.Trace (trace)
 
 
 import Data.Goban.Utils
-import Data.Goban (GameState(..), saneMoves, score, scoreToResult)
+import Data.Goban (GameState(..), saneMoves, score, winningScore)
 import Data.Tree.UCT
 
 
@@ -51,21 +51,15 @@ import Data.Tree.UCT
 
 genMove :: (RandomGen g) => GameState -> Color -> g -> Move
 genMove state color rGen =
-    if null (saneMoves state)
+    if (null (saneMoves state)) || ((winningProb bestMove) < 0.15)
     then
-        if scoreToResult color (score state) == 0
-        then Resign color
-        else Pass color
+        if winningScore color (score state)
+        then Pass color
+        else Resign color
     else
-        if (winningProb bestMove) < 0.15
-        then
-            if scoreToResult color (score state) == 1
-            then Pass color
-            else Resign color
-        else
-            case moveHistory $ nodeState bestMove of
-              [] -> error "genMove: moveHistory of bestMove is empty"
-              moves -> last moves
+        case moveHistory $ nodeState bestMove of
+          [] -> error "genMove: moveHistory of bestMove is empty"
+          moves -> last moves
     where
       bestMove =
           trace ("genMoves principal variation: " ++ concatMap show pv)
