@@ -122,15 +122,18 @@ defaultGameState g = GameState {
 
 scoreToResult :: Color -> Score -> Float
 scoreToResult color thisScore =
-    case color of
-      Black ->
-          if thisScore > 0
-          then 1.0
-          else 0.0
-      White ->
-          if thisScore < 0
-          then 1.0
-          else 0.0
+    if thisScore == 0
+    then 0.5
+    else
+        case color of
+          Black ->
+              if thisScore > 0
+              then 1.0
+              else 0.0
+          White ->
+              if thisScore < 0
+              then 1.0
+              else 0.0
 
 
 thisMoveColor :: GameState -> Color
@@ -258,9 +261,11 @@ score state =
 
 runOneRandom :: (RandomGen g) => GameState -> Rand g Score
 runOneRandom initState =
-    run initState
+    run initState 0
     where
-      run state = do
+      run :: (RandomGen g) => GameState -> Int -> Rand g Score
+      run _ 1000 = return 0
+      run state runCount = do
         move <- genMoveRand state
         state' <- return $ updateGameState state move
         case move of
@@ -271,11 +276,11 @@ runOneRandom initState =
                       (Pass _) ->
                           return $ score state''
                       (StoneMove _) ->
-                          run state''
+                          run state'' (runCount + 1)
                       (Resign _) ->
                           error "runOneRandom encountered Resign"
           (StoneMove _) ->
-              run state'
+              run state' (runCount + 1)
           (Resign _) ->
               error "runOneRandom encountered Resign"
 
