@@ -295,7 +295,7 @@ nonEdgeVertices :: Int -> [Vertex]
 nonEdgeVertices boardsize =
     [(x, y) | x <- [lower .. upper], y <- [lower .. upper]]
     where
-      upper = boardsize - lower
+      upper = boardsize - lower + 1
       lower =
           if boardsize >= 9
           then 3
