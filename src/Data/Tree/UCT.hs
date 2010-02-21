@@ -35,9 +35,10 @@ module Data.Tree.UCT (
                      ) where
 
 
-import Control.Monad.Random (Rand, RandomGen, getRandomR, evalRand)
+import Control.Monad.Random (Rand, RandomGen, evalRand)
 import Data.Maybe (fromJust)
-import Data.List (unfoldr, sort)
+import Data.List (unfoldr, sort, maximumBy)
+import Data.Ord (comparing)
 import Data.Tree (Tree(..))
 import Data.Tree.Zipper (TreeLoc, tree, fromTree, hasChildren, setTree, parent, getChild)
 import Debug.Trace (trace)
@@ -54,7 +55,7 @@ instance (UctNode a) => Show (UctLabel a) where
     show label =
         show (nodeState label) ++ " " ++
         show (roundedFloat (winningProb label)) ++ " " ++
-        show (runs label) ++ dStr ++ " - "
+        show (visits label) ++ dStr ++ " - "
         where
           dStr = case isDone label of
                    True -> "+ "
@@ -67,7 +68,7 @@ instance (UctNode a) => Show (UctLabel a) where
 data UctLabel a = UctLabel {
      nodeState       :: a
     ,winningProb     :: Float
-    ,runs            :: Int
+    ,visits          :: Int
     ,isDone          :: Bool
     }
 
@@ -76,7 +77,7 @@ data UctLabel a = UctLabel {
 instance Eq (UctLabel a) where
     (==) a b =
         (winningProb a == winningProb b)
-        && (runs a == runs b)
+        && (visits a == visits b)
         && (isDone a == isDone b)
 
 instance Ord (Tree (UctLabel b)) where
@@ -86,16 +87,19 @@ instance Ord (Tree (UctLabel b)) where
           order -> order
         where
           f = winningProb . rootLabel
-          g = runs . rootLabel
+          g = visits . rootLabel
 
 defaultUctLabel :: UctLabel a
 defaultUctLabel = UctLabel {
                     nodeState = undefined
                   , winningProb = 0.5
-                  , runs = 1
+                  -- , uctValue = 0.5
+                  , visits = 1
                   , isDone = False
                   }
 
+exploratoryC :: Float
+exploratoryC = 1
 
 uct :: (UctNode a, RandomGen g) => a -> Int -> g -> [(UctLabel a)]
 uct initState n rGen =
@@ -118,9 +122,7 @@ uctZipperDown  :: (UctNode a, RandomGen g) => TreeLoc (UctLabel a) -> Rand g ((T
 uctZipperDown loc =
     if hasChildren loc
     then
-        (do
-          childLoc <- chooseOne loc
-          uctZipperDown childLoc)
+        uctZipperDown $ chooseUctMax loc
     else
         if isTerminalNode state
         then uctZipperUp loc (finalResult state) True
@@ -179,14 +181,14 @@ uctZipperUp loc result done =
     where
       loc' = setTree node' loc
       node' = node { rootLabel = label' }
-      label' = label { winningProb = newProb, runs = (oldCount + 1), isDone = done }
+      label' = label { winningProb = newProb, visits = (oldCount + 1), isDone = done }
 
       newProb =
           if done
           then result
           else updateProb oldProb oldCount result
       oldProb = winningProb label
-      oldCount = runs label
+      oldCount = visits label
       label = rootLabel node
       node = tree loc
 
@@ -211,49 +213,43 @@ makeLeafNode state =
 
 
 
+chooseUctMax :: (UctNode a) => TreeLoc (UctLabel a) -> TreeLoc (UctLabel a)
+chooseUctMax loc =
+  -- trace ("chooseUctMax: "
+  --        ++ show ((rootLabel $ tree loc),
+  --                 fst uctMaxChildPair,
+  --                 (uctValue parentVisits $ fst uctMaxChildPair)))
+  uctMaxChild
+  where
+    uctMaxChild =
+        fromJust $ getChild (snd uctMaxChildPair) loc
 
-chooseOne :: (UctNode a, RandomGen g) => TreeLoc (UctLabel a) -> Rand g (TreeLoc (UctLabel a))
-chooseOne loc = do
-  index <- weightedChoose weightedList
-  return $ fromJust $ getChild index loc
-      where
-        weightedList =
-            -- trace ("activeSubtrees "
-            --        ++ (show $ map (rootLabel . fst) numberedForest)
-            --        ++ " after filtering "
-            --        ++ (show $ map (rootLabel.fst) activeSubtrees))
-            map weightTree activeSubtrees
-        activeSubtrees =
-            filter (not . isDone . rootLabel . fst) numberedForest
-        numberedForest = zip (subForest (tree loc)) [1..]
+    uctMaxChildPair =
+        maximumBy
+        (comparing ((uctValue parentVisits) . fst))
+        activeSubtrees
 
+    parentVisits = visits $ rootLabel $ tree loc
 
-weightTree :: (Tree (UctLabel a), Int) -> (Float, Int)
-weightTree (node, n) =
-    (prob, n)
+    activeSubtrees =
+        filter (not . isDone . fst) numberedForest
+    numberedForest = zip (map rootLabel $ subForest (tree loc)) [1..]
+
+uctValue :: (UctNode a) => Int -> (UctLabel a) -> Float
+uctValue parentVisits node =
+    -- trace ("uctValue: "
+    --        ++ show node
+    --        ++ show (parentVisits, winningProb node, value))
+    value
     where
-      prob = winningProb $ rootLabel node
-
-weightedChoose :: (Show a,RandomGen g) => [(Float, a)] -> Rand g a
-weightedChoose [] = error "weightedChoose called with empty list"
-weightedChoose as = do
-    i <- getRandomR (0, tot)
-    return $ pickF i as'
-    where
-      tot = sum (map fst as')
-      as' = map fstToInt as
+      value =
+          (winningProb node)
+          + (exploratoryC
+             * (sqrt
+                ((log (fromIntegral parentVisits))
+                 / (fromIntegral (visits node)))))
 
 
-fstToInt :: (Float, a) -> (Int, a)
-fstToInt (a, b) =
-    ((truncate (a * 1000) :: Int), b)
-
-
-pickF :: (Ord a, Num a) => a -> [(a, t)] -> t
-pickF n ((k,x):xs)
-    | n <= k    = x
-    | otherwise = pickF (n-k) xs
-pickF _ _  = error "pick used with empty list"
 
 
 
