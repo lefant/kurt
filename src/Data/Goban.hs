@@ -47,7 +47,7 @@ import Data.Goban.Utils
 import Data.Goban.Vector (VectorGoban)
 -- import Data.Goban.DataMap (DataMapGoban)
 -- import Data.Goban.Array (ArrayGoban)
-import Data.Tree.UCT
+import Data.Tree.UCT (UctNode(..))
 
 
 data GameState = GameState {
