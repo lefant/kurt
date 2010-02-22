@@ -116,7 +116,11 @@ newtype Stone = Stone (Vertex, Color)
 
 data Color = Black
            | White
-             deriving (Show, Eq, Ord, Enum)
+             deriving (Eq, Ord, Enum)
+
+instance Show Color where
+    show Black = "b"
+    show White = "w"
 
 type Vertex = (Int, Int)
 

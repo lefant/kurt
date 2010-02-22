@@ -30,19 +30,18 @@ Move generator logic
 
 module Kurt.Move (
                   genMove
+                 ,uctDebug
                  ) where
 
 
--- import System.Random (split, randomR, StdGen)
 import System.Random (RandomGen)
--- import Control.Monad.Random (Rand, getRandomR)
--- import Data.List ((\\))
--- import Data.Map as M (Map, fromList, toList, insertWith, assocs)
+import Data.List (sort)
+import Data.Tree (Tree(..))
 import Debug.Trace (trace)
-
+import Text.Printf (printf)
 
 import Data.Goban.Utils
-import Data.Goban (GameState(..), saneMoves, score, winningScore)
+import Data.Goban (GameState(..), saneMoves, score, winningScore, thisMoveColor)
 import Data.Tree.UCT
 
 
@@ -62,6 +61,56 @@ genMove state color rGen =
           moves -> last moves
     where
       bestMove =
-          trace ("genMoves principal variation: " ++ concatMap show pv)
           head pv
-      pv = uct state (simulCount state) rGen
+      pv =
+          trace ("genMove: " ++ (gfxString t))
+          principalVariation t
+      t = runUct state rGen
+
+
+runUct :: (RandomGen g) => GameState -> g -> Tree (UctLabel GameState)
+runUct state rGen =
+    uct state (simulCount state) rGen
+
+
+uctDebug :: (RandomGen g) => GameState -> g -> String
+uctDebug state rGen =
+      gfxString $ runUct state rGen
+
+gfxString :: Tree (UctLabel GameState) -> String
+gfxString t =
+    (
+     "INFLUENCE " ++
+     (concatMap influenceFromLabel alternateFirstMoves) ++
+     "\n" ++
+     "LABEL " ++
+     (concatMap visitsFromLabel alternateFirstMoves) ++
+     "\n" ++ 
+     "VAR " ++
+     (concatMap moveFromLabel $ principalVariation t) ++
+     "\n"
+    )
+    where
+      alternateFirstMoves =
+          map rootLabel $ take 15 $ reverse $ sort $ subForest t
+    
+
+influenceFromLabel :: (UctNode a) => UctLabel a -> String
+influenceFromLabel label =
+    show (nodeState label) ++ " " ++
+    (printf "%.2f " (((winningProb label) - 0.5) * 2))
+
+visitsFromLabel :: (UctNode a) => UctLabel a -> String
+visitsFromLabel label =
+    show (nodeState label) ++ " " ++
+    show (visits label) ++ " "
+
+moveFromLabel :: UctLabel GameState -> String
+moveFromLabel label =
+    case moveHistory state of
+      [] -> ""
+      moves ->
+          (show $ thisMoveColor state) ++ " " ++
+          (show $ last moves) ++ " "
+    where
+      state = nodeState label

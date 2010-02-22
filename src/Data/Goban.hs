@@ -35,6 +35,7 @@ module Data.Goban (
                   ,score
                   ,winningScore
                   ,saneMoves
+                  ,thisMoveColor
                   ) where
 
 import Data.List (partition)

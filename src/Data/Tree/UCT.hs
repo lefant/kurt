@@ -32,16 +32,18 @@ module Data.Tree.UCT (
                       uct
                      ,UctNode(..)
                      ,UctLabel(..)
+                     ,principalVariation
                      ) where
 
 
 import Control.Monad.Random (Rand, RandomGen, evalRand)
 import Data.Maybe (fromJust)
-import Data.List (unfoldr, sort, maximumBy)
+import Data.List (unfoldr, maximumBy)
 import Data.Ord (comparing)
 import Data.Tree (Tree(..))
 import Data.Tree.Zipper (TreeLoc, tree, fromTree, hasChildren, setTree, parent, getChild)
-import Debug.Trace (trace)
+import Text.Printf (printf)
+-- import Debug.Trace (trace)
 
 
 
@@ -54,16 +56,12 @@ class (Show a) => UctNode a where
 instance (UctNode a) => Show (UctLabel a) where
     show label =
         show (nodeState label) ++ " " ++
-        show (roundedFloat (winningProb label)) ++ " " ++
+        printf "%.2f " (winningProb label) ++
         show (visits label) ++ dStr ++ " - "
         where
           dStr = case isDone label of
                    True -> "+ "
                    False -> ""
-          roundedFloat :: Float -> Float
-          roundedFloat x =
-              (fromIntegral (truncate (x * 100) :: Int)) / 100
-                 
 
 data UctLabel a = UctLabel {
      nodeState       :: a
@@ -101,9 +99,9 @@ defaultUctLabel = UctLabel {
 exploratoryC :: Float
 exploratoryC = 1
 
-uct :: (UctNode a, RandomGen g) => a -> Int -> g -> [(UctLabel a)]
+uct :: (UctNode a, RandomGen g) => a -> Int -> g -> Tree (UctLabel a)
 uct initState n rGen =
-    principalVariation $ tree $ evalRand (uctZipper (fromTree $ makeNodeWithChildren initState) n) rGen
+    tree $ evalRand (uctZipper (fromTree $ makeNodeWithChildren initState) n) rGen
 
 
 uctZipper :: (UctNode a, RandomGen g) =>
@@ -261,7 +259,6 @@ updateProb oldProb oldCount result =
 
 principalVariation :: (UctNode a) => Tree (UctLabel a) -> [(UctLabel a)]
 principalVariation t =
-    trace ("PV alternate first moves: " ++ (concatMap (show.rootLabel) $ take 5 $ reverse $ sort $ subForest t) ++ "\n")
     unfoldr maxChild t
 
 maxChild :: Tree (UctLabel a) -> Maybe ((UctLabel a), Tree (UctLabel a))

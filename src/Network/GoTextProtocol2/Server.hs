@@ -47,7 +47,7 @@ import Network.GoTextProtocol2.Server.Types
 import Data.Goban.Utils
 import Data.Goban (GameState(..), defaultGameState, updateGameState, score, defaultGoban)
 -- import Kurt.Move (genMove)
-import Kurt.Move (genMove)
+import Kurt.Move (genMove, uctDebug)
 
 
 
@@ -75,6 +75,8 @@ commandargparserlist =
     ,("time_left", intArgParser)
     ,("version", noArgumentParser)
     ,("kurt_simuls", intArgParser)
+    ,("gogui-analyze_commands", noArgumentParser)
+    ,("kurt_uct_debug", noArgumentParser)
     ]
 
 
@@ -97,6 +99,8 @@ commandHandlers =
     ,("time_left", cmd_time_left)
     ,("version", cmd_version)
     ,("kurt_simuls", cmd_kurt_simuls)
+    ,("gogui-analyze_commands", cmd_gogui_analyze_commands)
+    ,("kurt_uct_debug", cmd_kurt_uct_debug)
     ]
 
 
@@ -218,9 +222,8 @@ cmd_genmove :: CommandHandler
 cmd_genmove [(ColorArgument color)] state =
     Right (show move, state')
     where
-      state' = updateGameState state { ourRandomGen = g' } move
-      move = genMove state color g
-      (g, g') = split (ourRandomGen state)
+      state' = updateGameState state move
+      move = genMove state color (ourRandomGen state)
 cmd_genmove _ _ = error "cmd_genmove called with illegal argument type"
 
 cmd_final_score :: CommandHandler
@@ -238,9 +241,22 @@ cmd_final_score _ _ = error "cmd_final_score called with illegal argument type"
 cmd_kurt_simuls :: CommandHandler
 cmd_kurt_simuls [(IntArgument n)] state =
     Right ("", state { simulCount = n })
-cmd_kurt_simuls _ _ = error "cmd_boardsize called with illegal argument type"
+cmd_kurt_simuls _ _ = error "cmd_kurt_simuls called with illegal argument type"
 
 
+cmd_gogui_analyze_commands :: CommandHandler
+cmd_gogui_analyze_commands [] state =
+    Right (
+           "gfx/kurt_uct_debug/kurt_uct_debug"
+          , state)
+cmd_gogui_analyze_commands _ _ = error "cmd_gogui_analyze_commands called with illegal argument type"
+
+cmd_kurt_uct_debug :: CommandHandler
+cmd_kurt_uct_debug [] state =
+    Right (gfxString, state)
+    where
+      gfxString = uctDebug state (ourRandomGen state)
+cmd_kurt_uct_debug _ _ = error "cmd_kurt_uct_debug called with illegal argument type"
 
 
 -- TODO
