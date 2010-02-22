@@ -195,7 +195,10 @@ cmd_clear_board [] state =
                  ,koBlocked = []
                  ,blackPrisoners = 0
                  ,whitePrisoners = 0
+                 ,ourRandomGen = g
                  })
+    where
+      (g, _g) = split (ourRandomGen state)
 cmd_clear_board _ _ = error "cmd_clear_board called with illegal argument type"
 
 cmd_komi :: CommandHandler

@@ -89,8 +89,13 @@ instance UctNode GameState where
           _ -> False
 
     finalResult state =
-        scoreToResult (thisMoveColor state) (score state)
-
+        -- trace ("finalResult: " ++
+        --        (show ((take 5 $ reverse (moveHistory state)), thisScore, res, color)))
+        res
+        where
+          res = scoreToResult color thisScore
+          color = thisMoveColor state
+          thisScore = score state
     -- randomEvalOnce _state =
     --     getRandomR (0, 1)
     randomEvalOnce state = do
@@ -249,16 +254,15 @@ score state =
     s
     where
       s = b - w
-      b = bt + bp
-      w = wt + wp + k
+      b = bt
+      w = wt + k
       bt = colorTerritory Black
-      bp = whitePrisoners state
       wt = colorTerritory White
-      wp = blackPrisoners state
       k = (komi state)
 
-      colorTerritory =
-          territory (goban state)
+      colorTerritory color =
+          territory (goban state) color
+                        + stonesColor (goban state) color
 
 
 

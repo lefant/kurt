@@ -147,7 +147,7 @@ uctZipperUp loc result done =
           then
               -- one perfect move is enough to make parent
               -- a losing move
-              if result == 1
+              if result > 0.8
               then
                   -- trace ("uctZipperUp: result 1, done "
                   --            ++ show ("parent", rootLabel parentNode)

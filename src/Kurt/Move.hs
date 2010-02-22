@@ -41,7 +41,7 @@ import Debug.Trace (trace)
 import Text.Printf (printf)
 
 import Data.Goban.Utils
-import Data.Goban (GameState(..), saneMoves, score, winningScore, thisMoveColor)
+import Data.Goban (GameState(..), saneMoves, score, winningScore)
 import Data.Tree.UCT
 
 
@@ -86,8 +86,11 @@ gfxString t =
      "LABEL " ++
      (concatMap visitsFromLabel alternateFirstMoves) ++
      "\n" ++ 
-     "VAR " ++
-     (concatMap moveFromLabel $ principalVariation t) ++
+     "TRIANGLE" ++
+     (concatMap ((((++) " ") . (show . nodeState))) $ filter isDone alternateFirstMoves) ++
+     -- "\n" ++
+     -- "VAR " ++
+     -- (concatMap moveFromLabel $ principalVariation t) ++
      "\n"
     )
     where
@@ -103,14 +106,16 @@ influenceFromLabel label =
 visitsFromLabel :: (UctNode a) => UctLabel a -> String
 visitsFromLabel label =
     show (nodeState label) ++ " " ++
-    show (visits label) ++ " "
+    if isDone label
+    then ""
+    else show (visits label) ++ " "
 
-moveFromLabel :: UctLabel GameState -> String
-moveFromLabel label =
-    case moveHistory state of
-      [] -> ""
-      moves ->
-          (show $ thisMoveColor state) ++ " " ++
-          (show $ last moves) ++ " "
-    where
-      state = nodeState label
+-- moveFromLabel :: UctLabel GameState -> String
+-- moveFromLabel label =
+--     case moveHistory state of
+--       [] -> ""
+--       moves ->
+--           (show $ thisMoveColor state) ++ " " ++
+--           (show $ last moves) ++ " "
+--     where
+--       state = nodeState label

@@ -35,6 +35,7 @@ module Data.Goban.Utils (
                         ,Vertex
                         ,Score
                         ,territory
+                        ,stonesColor
                         ,isSuicideVertex
                         ,isPotentialFullEye
                         ,isDead
@@ -142,6 +143,10 @@ territory goban color =
       f gs =
           all (((==) color) . stoneColor)
                   $ concatMap (adjacentStones goban) gs
+
+stonesColor :: (Goban a) => a -> Color -> Score
+stonesColor goban color =
+    fromIntegral $ length $ filter (((==) color) . stoneColor) $ verticesToStones goban $ allVertices (sizeOfGoban goban)
 
 
 emptyStrings :: (Goban a) => a -> [[Vertex]]
