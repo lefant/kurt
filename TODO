@@ -1,8 +1,11 @@
 Roadmap march:
 
 * implement timer using MVar technique from the belge tronbot
-** http://jaspervdj.be/posts/2010-03-01-my-tron-bot.html
-** strict-concurrency
+** strict-concurrency?
+** repair resigning support
+** cleanup
+
+* mango chooses the most robust move
 
 * implement zobrist hash of moves / board
 ** target 64bit word

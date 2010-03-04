@@ -61,6 +61,7 @@ data GameState = GameState {
      ,whitePrisoners  :: Score
      ,ourRandomGen    :: StdGen
      ,simulCount      :: Int
+     ,timePerMove     :: Int
     }
 
 instance Show GameState where
@@ -123,6 +124,7 @@ defaultGameState g = GameState {
                     ,whitePrisoners = 0
                     ,ourRandomGen = g
                     ,simulCount = 1000
+                    ,timePerMove = 3000
                    }
 
 

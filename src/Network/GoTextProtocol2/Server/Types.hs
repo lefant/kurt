@@ -45,4 +45,5 @@ data Argument = IntArgument Int
               | MoveArgument Move
               | ColorArgument Color
               | FloatArgument Float
+              | TimeLeftArgument (Int, Int)
                 deriving (Show, Eq)

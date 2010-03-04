@@ -30,6 +30,8 @@ UCT tree search using Data.Tree.Zipper for updates in the Tree
 
 module Data.Tree.UCT (
                       uct
+                     ,uctZipperDown
+                     ,makeNodeWithChildren
                      ,UctNode(..)
                      ,UctLabel(..)
                      ,principalVariation
@@ -99,21 +101,19 @@ defaultUctLabel = UctLabel {
 exploratoryC :: Float
 exploratoryC = 1
 
-uct :: (UctNode a, RandomGen g) => a -> Int -> g -> Tree (UctLabel a)
-uct initState n rGen =
-    tree $ evalRand (uctZipper (fromTree $ makeNodeWithChildren initState) n) rGen
+uct :: (UctNode a, RandomGen g) => a -> g -> Tree (UctLabel a)
+uct initState rGen =
+    tree $ evalRand (uctZipper (fromTree $ makeNodeWithChildren initState)) rGen
 
 
 uctZipper :: (UctNode a, RandomGen g) =>
              TreeLoc (UctLabel a) ->
-             Int ->
              Rand g (TreeLoc (UctLabel a))
-uctZipper loc 0 = return loc
-uctZipper loc n = do
+uctZipper loc = do
   (loc', done) <- uctZipperDown loc
   case done of
     True -> return loc'
-    False -> uctZipper loc' (n-1)
+    False -> uctZipper loc'
 
 
 uctZipperDown  :: (UctNode a, RandomGen g) => TreeLoc (UctLabel a) -> Rand g ((TreeLoc (UctLabel a)), Bool)

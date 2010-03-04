@@ -34,6 +34,7 @@ module Network.GoTextProtocol2.Server.Parser (
                                              ,floatArgParser
                                              ,colorArgParser
                                              ,moveArgParser
+                                             ,timeleftArgParser
                                              ,stringArgParser
                                              ) where
 
@@ -182,6 +183,19 @@ moveArgParser =
                n <- parseInt
                return [MoveArgument $ StoneMove $ Stone ((letterToX l, n), c)])
          <?> "vertex (ie. something like A1, H8, Z25 or pass)")
+
+
+timeleftArgParser :: Parser [Argument]
+timeleftArgParser =
+    do
+      (ColorArgument _c) <- colorParser
+      space
+      spaces
+      time <- parseInt
+      space
+      spaces
+      stones <- parseInt
+      return [TimeLeftArgument (time, stones)]
 
 
 

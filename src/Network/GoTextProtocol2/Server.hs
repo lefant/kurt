@@ -51,7 +51,7 @@ import Kurt.Move (genMove, uctDebug)
 
 
 
-type CommandHandler = [Argument] -> GameState -> Either String (String, GameState)
+type CommandHandler = [Argument] -> GameState -> IO (Either String (String, GameState))
 
 lookupC :: String -> [(String, CommandHandler)] -> Maybe (String, CommandHandler)
 lookupC cmd cl = find (\(x, _) -> x == cmd) cl
@@ -72,7 +72,7 @@ commandargparserlist =
     ,("protocol_version", noArgumentParser)
     ,("quit", noArgumentParser)
     ,("showboard", noArgumentParser)
-    ,("time_left", intArgParser)
+    ,("time_left", timeleftArgParser)
     ,("version", noArgumentParser)
     ,("kurt_simuls", intArgParser)
     ,("gogui-analyze_commands", noArgumentParser)
@@ -133,7 +133,7 @@ loop oldState =
                       loop oldState
                 Just (_, handler) ->
                     do
-                      result <- return $ handler args oldState
+                      result <- handler args oldState
                       case result of
                         Left err ->
                             do
@@ -161,22 +161,22 @@ outputIdOrBlank (Just lineId) = "[" ++ (show lineId) ++ "] "
 
 cmd_known_command :: CommandHandler
 cmd_known_command [(StringArgument cmd)] state =
-    case lookupC cmd commandHandlers of
+    return $ case lookupC cmd commandHandlers of
       Nothing -> Right ("false", state)
       Just (_, _) -> Right ("true", state)
 cmd_known_command _ _ = error "cmd_known_command called with illegal argument type"
 
 cmd_list_commands :: CommandHandler
 cmd_list_commands _ state =
-    Right ((reverse $ drop 1 $ reverse $ unlines $ map fst commandHandlers), state)
+    return $ Right ((reverse $ drop 1 $ reverse $ unlines $ map fst commandHandlers), state)
 
 cmd_name :: CommandHandler
 cmd_name _ state =
-    Right ("kurt", state)
+    return $ Right ("kurt", state)
 
 cmd_protocol_version :: CommandHandler
 cmd_protocol_version _ state =
-    Right ("2", state)
+    return $ Right ("2", state)
 
 cmd_quit :: CommandHandler
 cmd_quit _ _ =
@@ -184,12 +184,12 @@ cmd_quit _ _ =
 
 cmd_version :: CommandHandler
 cmd_version _ state =
-    Right ("0.0.1", state)
+    return $ Right ("0.0.1", state)
 
 
 cmd_clear_board :: CommandHandler
 cmd_clear_board [] state =
-    Right ("", state {
+    return $ Right ("", state {
                   goban = clearGoban (goban state)
                  ,moveHistory = []
                  ,koBlocked = []
@@ -203,35 +203,34 @@ cmd_clear_board _ _ = error "cmd_clear_board called with illegal argument type"
 
 cmd_komi :: CommandHandler
 cmd_komi [(FloatArgument f)] state =
-    Right ("", state { komi = f })
+    return $ Right ("", state { komi = f })
 cmd_komi _ _ = error "cmd_komi called with illegal argument type"
 
 cmd_boardsize :: CommandHandler
 cmd_boardsize [(IntArgument n)] state =
-    Right ("", state { goban = (defaultGoban n) })
+    return $ Right ("", state { goban = (defaultGoban n) })
 cmd_boardsize _ _ = error "cmd_boardsize called with illegal argument type"
 
 cmd_showboard :: CommandHandler
 cmd_showboard [] state =
-    Right ("showboard received:\n" ++ (showboard (goban state)), state)
+    return $ Right ("showboard received:\n" ++ (showboard (goban state)), state)
 cmd_showboard _ _ = error "cmd_showboard called with illegal argument type"
 
 cmd_play :: CommandHandler
 cmd_play [(MoveArgument move)] state =
-    Right ("", updateGameState state move)
+    return $ Right ("", updateGameState state move)
 cmd_play _ _ = error "cmd_play called with illegal argument type"
 
 cmd_genmove :: CommandHandler
-cmd_genmove [(ColorArgument color)] state =
-    Right (show move, state')
-    where
-      state' = updateGameState state move
-      move = genMove state color (ourRandomGen state)
+cmd_genmove [(ColorArgument color)] state = do
+  move <- genMove state color
+  return $ Right (show move, updateGameState state move)
+
 cmd_genmove _ _ = error "cmd_genmove called with illegal argument type"
 
 cmd_final_score :: CommandHandler
 cmd_final_score [] state =
-    Right (scoreString scoreFloat, state)
+    return $ Right (scoreString scoreFloat, state)
     where
       scoreString s
           | s < 0 = "W+" ++ (show (-1 * s))
@@ -243,29 +242,31 @@ cmd_final_score _ _ = error "cmd_final_score called with illegal argument type"
 
 cmd_kurt_simuls :: CommandHandler
 cmd_kurt_simuls [(IntArgument n)] state =
-    Right ("", state { simulCount = n })
+    return $ Right ("", state { simulCount = n })
 cmd_kurt_simuls _ _ = error "cmd_kurt_simuls called with illegal argument type"
 
 
 cmd_gogui_analyze_commands :: CommandHandler
 cmd_gogui_analyze_commands [] state =
-    Right (
+    return $ Right (
            "gfx/kurt_uct_debug/kurt_uct_debug"
           , state)
 cmd_gogui_analyze_commands _ _ = error "cmd_gogui_analyze_commands called with illegal argument type"
 
 cmd_kurt_uct_debug :: CommandHandler
 cmd_kurt_uct_debug [] state =
-    Right (gfxString, state)
+    return $ Right (gfxString, state)
     where
       gfxString = uctDebug state (ourRandomGen state)
 cmd_kurt_uct_debug _ _ = error "cmd_kurt_uct_debug called with illegal argument type"
 
 
--- TODO
-
 cmd_time_left :: CommandHandler
-cmd_time_left [(IntArgument n)] state =
-    Right ("time left: " ++ (show n), state)
+cmd_time_left [(TimeLeftArgument (seconds, stones))] state =
+    return $ Right ("time left: " ++ (show (seconds, stones, milliseconds)),
+           state { timePerMove = milliseconds } )
+    where
+      milliseconds = (seconds * 900) `div` stones
+
 cmd_time_left _ _ = error "cmd_time_left called with illegal argument type"
 
