@@ -1,4 +1,5 @@
 {-# OPTIONS -O2 -Wall -Werror -Wwarn #-}
+{-# OPTIONS_GHC -funbox-strict-fields #-}
 
 {-
 Copyright (C) 2010 Fabian Linzberger <e@lefant.net>
@@ -102,6 +103,8 @@ vertexToInt boardsize (x, y) =
       x' = x - 1
       y' = y - 1
 
+{-# INLINE vertexToInt #-}
+
 intToVertex :: Int -> Int -> Vertex
 intToVertex boardsize n
     | n < 0 = error "intToVertex: n < 0"
@@ -111,6 +114,9 @@ intToVertex boardsize n =
     where
       y = (n `div` boardsize) + 1
       x = (n `mod` boardsize) + 1
+
+
+{-# INLINE intToVertex #-}
 
 
 stateToInt :: VertexState -> Int

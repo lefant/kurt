@@ -1,3 +1,36 @@
+Roadmap march:
+
+* implement timer using MVar technique from the belge tronbot
+** http://jaspervdj.be/posts/2010-03-01-my-tron-bot.html
+** strict-concurrency
+
+* implement zobrist hash of moves / board
+** target 64bit word
+** suitable as key to DataMap or the like
+** quickcheck testing
+
+* refactor Data.Tree.UCT
+** factor out node evalution propagation
+** factor out "negamax if done"
+** "stateless" light uctnodes
+
+* new state / board implementation
+** ephemeral?
+** updateGameState -> updateBoard becomes destructive
+*** really test benchmark
+*** must be completely isolated and self-contained
+** can use runSTUArray or the like
+
+* new glue between uctNew and gobanNew
+** propagation of UCT values / rave values
+
+* towards heuristic
+** capture count / atari / atari evade
+** patterns
+
+* prior: even game more likely
+
+
 General:
 * ko / superko
 ** naive implementation done
