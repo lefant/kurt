@@ -10,6 +10,13 @@
 
 
 * refactoring
+** there should be a "go uct runner" module replacing data.goban
+*** imports Data.Tree.UCT
+*** imports Data.Goban.GameState
+*** run node selection from UCT
+*** run actual playouts
+*** update uct tree
+
 ** Data.Goban
 half of this should be in kurt, half factored out into something more general
 
