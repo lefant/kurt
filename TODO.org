@@ -2,10 +2,6 @@
 
 * Roadmap march:
 
-* timer in Kurt.GoEngine genMove
-** repair resigning support
-** should really have a channel receiving messages, checking time so we can also receive and finish early
-
 * mango chooses the most robust move
 
 * implement zobrist hash of moves / board
@@ -46,6 +42,7 @@ General:
 ** naive implementation done
 * scoring
 ** territory done
+* timer could be more sophisticated
 * testing
 ** quickcheck
 ** hunit

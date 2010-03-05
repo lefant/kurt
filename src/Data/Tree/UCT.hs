@@ -65,14 +65,6 @@ instance Eq (UctLabel a) where
         && (visits a == visits b)
         && (isDone a == isDone b)
 
-instance Ord (Tree (UctLabel b)) where
-    compare x y =
-        case compare (f x) (f y) of
-          EQ -> compare (g x) (g y)
-          order -> order
-        where
-          f = winningProb . rootLabel
-          g = visits . rootLabel
 
 defaultUctLabel :: UctLabel a
 defaultUctLabel = UctLabel {
@@ -159,7 +151,11 @@ uctZipperUp loc result done =
               uctZipperUp parentLoc result' False
           where
             parentNode = tree parentLoc
-            maxResult = winningProb $ rootLabel $ maximum $ subForest parentNode
+            maxResult =
+                winningProb $ rootLabel $
+                            maximumBy
+                            (comparing (winningProb . rootLabel))
+                            $ subForest parentNode
             result'' = 1 - maxResult
     where
       loc' = setTree node' loc
@@ -253,4 +249,7 @@ maxChild t =
       forest ->
           Just (rootLabel mNode, mNode)
               where
-                mNode = maximum forest
+                mNode = maximumBy
+                        (comparing (visits . rootLabel))
+                        forest
+
