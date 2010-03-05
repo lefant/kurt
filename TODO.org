@@ -2,8 +2,6 @@
 
 * Roadmap march:
 
-* mango chooses the most robust move
-
 * implement zobrist hash of moves / board
 ** target 64bit word
 ** suitable as key to DataMap or the like

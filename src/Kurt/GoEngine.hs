@@ -31,7 +31,8 @@ import Data.Tree.Zipper (TreeLoc, fromTree, tree)
 
 import Data.Goban.Goban
 import Data.Goban (GameState(..), saneMoves, score, winningScore, thisMoveColor)
-import Data.Tree.UCT
+import Data.Tree.UCT (makeNodeWithChildren, uctZipperDown, principalVariation)
+import Data.Tree.UCT.GameTree (UctLabel(..))
 
 import Debug.Trace (trace)
 
