@@ -21,7 +21,9 @@ module Data.Goban.Vector (
 import qualified Data.Vector.Unboxed as V
 -- import Debug.Trace (trace)
 
-import Data.Goban.Utils
+
+import Data.Goban.Goban
+
 
 newtype VectorGoban = VectorGoban (Int, (V.Vector Int))
     deriving (Show)

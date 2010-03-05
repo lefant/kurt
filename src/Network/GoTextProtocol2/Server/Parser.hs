@@ -30,7 +30,7 @@ import Data.Char (toLower)
 import Monad (liftM)
 
 import Network.GoTextProtocol2.Server.Types
-import Data.Goban.Utils (
+import Data.Goban.Goban (
                          Move(..)
                         ,Stone(..)
                         ,Color(..)

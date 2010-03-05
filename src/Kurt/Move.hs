@@ -28,7 +28,7 @@ import Data.Tree (Tree(..))
 import Data.Tree.Zipper (TreeLoc, fromTree, tree)
 import Text.Printf (printf)
 
-import Data.Goban.Utils
+import Data.Goban.Goban
 import Data.Goban (GameState(..), saneMoves, score, winningScore)
 import Data.Tree.UCT
 

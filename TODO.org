@@ -1,4 +1,6 @@
-Roadmap march:
+#+STARTUP: showall hidestars
+
+* Roadmap march:
 
 * implement timer using MVar technique from the belge tronbot
 ** strict-concurrency?
@@ -14,10 +16,14 @@ Roadmap march:
 ** http://www.gnu.org/software/gnugo/gnugo_11.html#SEC139
 
 
-* refactor Data.Tree.UCT
-** factor out node evalution propagation
-** factor out "negamax if done"
-** "stateless" light uctnodes
+* refactoring
+** Data.Goban
+half of this should be in kurt, half factored out into something more general
+
+** Data.Tree.UCT
+*** factor out node evalution propagation
+*** factor out "negamax if done"
+*** "stateless" light uctnodes
 
 * new state / board implementation
 ** ephemeral?

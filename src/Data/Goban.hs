@@ -31,6 +31,7 @@ import Data.List ((\\))
 -- import Debug.Trace (trace)
 
 import Data.Goban.Utils
+import Data.Goban.Goban
 import Data.Goban.Vector (VectorGoban)
 -- import Data.Goban.DataMap (DataMapGoban)
 -- import Data.Goban.Array (ArrayGoban)
