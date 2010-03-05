@@ -11,6 +11,8 @@ Roadmap march:
 ** target 64bit word
 ** suitable as key to DataMap or the like
 ** quickcheck testing
+** http://www.gnu.org/software/gnugo/gnugo_11.html#SEC139
+
 
 * refactor Data.Tree.UCT
 ** factor out node evalution propagation
