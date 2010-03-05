@@ -24,11 +24,11 @@ import Data.Goban.Vector (VectorGoban)
 
 data GameState = GameState {
       goban           :: VectorGoban
-     ,komi            :: Score
-     ,koBlocked       :: [Vertex]
-     ,moveHistory     :: [Move]
-     ,blackPrisoners  :: Score
-     ,whitePrisoners  :: Score
+    , koBlocked       :: [Vertex]
+    , moveHistory     :: [Move]
+    , komi            :: Score
+    , blackPrisoners  :: Score
+    , whitePrisoners  :: Score
     }
 
 
@@ -49,12 +49,12 @@ instance Show GameState where
               --   (Resign _color) -> "resign"
 
 
-newGameState :: GameState
-newGameState = GameState {
-                     goban = (newGoban 1)
-                    ,komi = 0
-                    ,koBlocked = []
-                    ,moveHistory = []
-                    ,blackPrisoners = 0
-                    ,whitePrisoners = 0
-                   }
+newGameState :: Int -> Score -> GameState
+newGameState boardsize newKomi =
+    GameState { goban = (newGoban boardsize)
+              , koBlocked = []
+              , moveHistory = []
+              , komi = newKomi
+              , blackPrisoners = 0
+              , whitePrisoners = 0
+              }

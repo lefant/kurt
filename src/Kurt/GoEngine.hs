@@ -42,14 +42,24 @@ import Data.Tree.UCT.GameTree (UctLabel(..))
 
 data EngineState = EngineState {
       getGameState    :: GameState
-     ,simulCount      :: Int
-     ,timePerMove     :: Int
+    , boardSize       :: Int
+    , getKomi         :: Score
+    , simulCount      :: Int
+    , timePerMove     :: Int
      -- maybe this could have colorToMove?
     }
 
+defaultKomi :: Score
+defaultKomi = 7.5
+
+defaultBoardSize :: Int
+defaultBoardSize = 9
+
 newEngineState :: EngineState
 newEngineState = EngineState {
-                   getGameState = newGameState
+                   getGameState = newGameState defaultBoardSize defaultKomi
+                 , boardSize = defaultBoardSize
+                 , getKomi = defaultKomi
                  , simulCount = 1000
                  , timePerMove = 3000 }
 

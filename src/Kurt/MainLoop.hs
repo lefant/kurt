@@ -172,21 +172,15 @@ cmd_clear_board [] state =
     return $ Right ("",
                     state {
                       getGameState =
-                      gState {
-                        goban = clearGoban (goban gState)
-                      , moveHistory = []
-                      , koBlocked = []
-                      , blackPrisoners = 0
-                      , whitePrisoners = 0 } } )
-    where
-      gState = getGameState state
+                      newGameState (boardSize state) (getKomi state)})
 cmd_clear_board _ _ = error "cmd_clear_board called with illegal argument type"
 
 cmd_komi :: CommandHandler
 cmd_komi [(FloatArgument f)] state =
     return $ Right ("",
                     state {
-                      getGameState = gState { komi = f } } )
+                      getKomi = f
+                    , getGameState = gState { komi = f } } )
     where
       gState = getGameState state
 cmd_komi _ _ = error "cmd_komi called with illegal argument type"
@@ -196,10 +190,8 @@ cmd_boardsize [(IntArgument n)] state =
     return $ Right ("",
                     state {
                       getGameState =
-                      gState {
-                        goban = (newGoban n) } } )
-    where
-      gState = getGameState state
+                      error "gamestate undefined after boardsize until clear board received"
+                    , boardSize = n } )
 cmd_boardsize _ _ = error "cmd_boardsize called with illegal argument type"
 
 cmd_showboard :: CommandHandler
