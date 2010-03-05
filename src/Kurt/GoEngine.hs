@@ -15,42 +15,60 @@ Move generator logic
 
 module Kurt.GoEngine ( genMove
                      , uctDebug
+                     , EngineState(..)
+                     , newEngineState
                      ) where
 
+import System.Random (RandomGen, newStdGen)
+import Control.Monad.Random (RandomGen, evalRand)
+import Data.Tree.Zipper (TreeLoc, fromTree, tree)
 import Data.Time.Clock ( UTCTime(..)
                        , picosecondsToDiffTime
                        , getCurrentTime
                        )
-
-import System.Random (RandomGen, newStdGen)
-import Control.Monad.Random (RandomGen, evalRand)
 -- import Data.List (sort)
 -- import Data.Tree (Tree(..))
-import Data.Tree.Zipper (TreeLoc, fromTree, tree)
 -- import Text.Printf (printf)
 
+
 import Data.Goban.Goban
-import Data.Goban (GameState(..), saneMoves, score, winningScore, thisMoveColor)
+import Data.Goban.GameState (GameState(..), newGameState)
+import Data.Goban (saneMoves, score, winningScore, thisMoveColor)
 import Data.Tree.UCT (makeNodeWithChildren, uctZipperDown, principalVariation)
 import Data.Tree.UCT.GameTree (UctLabel(..))
 
 -- import Debug.Trace (trace)
 
 
+data EngineState = EngineState {
+      getGameState    :: GameState
+     ,simulCount      :: Int
+     ,timePerMove     :: Int
+     -- maybe this could have colorToMove?
+    }
 
-genMove :: GameState -> Color -> IO Move
-genMove state color =
+newEngineState :: EngineState
+newEngineState = EngineState {
+                   getGameState = newGameState
+                 , simulCount = 1000
+                 , timePerMove = 3000 }
+
+
+genMove :: EngineState -> Color -> IO Move
+genMove eState color =
     -- if (null (saneMoves state)) || ((winningProb bestMove) < 0.15)
-    if null (saneMoves state)
+    if null $ saneMoves gState
     then
-        if winningScore color (score state)
+        if winningScore color (score gState)
         then return $ Pass color
         else return $ Resign color
     else
-        initUct state
+        initUct eState
+    where
+      gState = getGameState eState
 
-initUct :: GameState -> IO Move
-initUct initState = do
+initUct :: EngineState -> IO Move
+initUct eState = do
   now <- getCurrentTime
   uctLoop initLoc $ UTCTime { utctDay = (utctDay now)
                             , utctDayTime =
@@ -60,10 +78,11 @@ initUct initState = do
       -- then pass the result to uct instead of making uct initialize
       -- itself via the game specific code
       initLoc =
-          fromTree $ makeNodeWithChildren initState
+          fromTree $ makeNodeWithChildren gState
+      gState = getGameState eState
       thinkPicosecs =
           picosecondsToDiffTime
-          $ fromIntegral (timePerMove initState) * 1000000000
+          $ fromIntegral (timePerMove eState) * 1000000000
 
 uctLoop :: TreeLoc (UctLabel GameState) -> UTCTime -> IO Move
 uctLoop loc deadline = do

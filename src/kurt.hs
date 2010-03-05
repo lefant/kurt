@@ -13,7 +13,7 @@
 
 
 
-import Network.GoTextProtocol2.Server (startLoop)
+import Kurt.MainLoop (startLoop)
 
 main :: IO ()
 main = do

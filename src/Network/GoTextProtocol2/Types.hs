@@ -1,7 +1,7 @@
 {-# OPTIONS -O2 -Wall -Werror -Wwarn -XRankNTypes #-}
 
 {- |
-   Module     : Network.GoTextProtocol2.Server.Types
+   Module     : Network.GoTextProtocol2.Types
    Copyright  : Copyright (C) 2010 Fabian Linzberger
    License    : GNU GPL, version 3 or above
 
@@ -9,15 +9,14 @@
    Stability  : experimental
    Portability: probably
 
-Shared types.
+Shared types for Go Text Protocol implementations.
 
 -}
 
-module Network.GoTextProtocol2.Server.Types (
-                                             Id
-                                            ,Command(..)
-                                            ,Argument(..)
-                                            ) where
+module Network.GoTextProtocol2.Types ( Id
+                                     , Command(..)
+                                     , Argument(..)
+                                     ) where
 
 import Data.Goban.Goban (Move, Color)
 

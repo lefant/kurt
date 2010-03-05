@@ -13,15 +13,14 @@ Parsing GTP protocol messages
 
 -}
 
-module Network.GoTextProtocol2.Server.Parser (
-                                              pureParseCommand
-                                             ,noArgumentParser
-                                             ,intArgParser
-                                             ,floatArgParser
-                                             ,colorArgParser
-                                             ,moveArgParser
-                                             ,timeleftArgParser
-                                             ,stringArgParser
+module Network.GoTextProtocol2.Server.Parser ( pureParseCommand
+                                             , noArgumentParser
+                                             , intArgParser
+                                             , floatArgParser
+                                             , colorArgParser
+                                             , moveArgParser
+                                             , timeleftArgParser
+                                             , stringArgParser
                                              ) where
 
 import Text.ParserCombinators.Parsec
@@ -29,12 +28,11 @@ import Text.Parsec.Char
 import Data.Char (toLower)
 import Monad (liftM)
 
-import Network.GoTextProtocol2.Server.Types
-import Data.Goban.Goban (
-                         Move(..)
-                        ,Stone(..)
-                        ,Color(..)
-                        ,letterToX
+import Network.GoTextProtocol2.Types
+import Data.Goban.Goban ( Move(..)
+                        , Stone(..)
+                        , Color(..)
+                        , letterToX
                         )
 
 

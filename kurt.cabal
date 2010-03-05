@@ -26,12 +26,13 @@ library
   hs-source-dirs: src
   exposed-modules:
                   Kurt.GoEngine
+                 ,Kurt.MainLoop
                  ,Data.Goban.Goban
+                 ,Data.Goban.GameState
                  ,Data.Goban.Utils
                  ,Data.Goban.Vector
                  ,Data.Tree.UCT
-                 ,Network.GoTextProtocol2.Server
-                 ,Network.GoTextProtocol2.Server.Types
+                 ,Network.GoTextProtocol2.Types
                  ,Network.GoTextProtocol2.Server.Parser
   build-depends:
                   base >= 3 && < 5

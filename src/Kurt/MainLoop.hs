@@ -14,29 +14,27 @@ this module runs the main gtp handling loop via startLoop.
 -}
 
 
-module Network.GoTextProtocol2.Server (
-                                       startLoop
-                                      ) where
+module Kurt.MainLoop ( startLoop
+                     ) where
     
 
 import Data.Char
 import Data.List
 import System.IO
-import System.Random
 import Text.Parsec.String (Parser)
 
 
 import Network.GoTextProtocol2.Server.Parser
-import Network.GoTextProtocol2.Server.Types
+import Network.GoTextProtocol2.Types
 import Data.Goban.Goban
-import Data.Goban (GameState(..), defaultGameState, updateGameState, score, defaultGoban)
+import Data.Goban.GameState (GameState(..), newGameState)
+import Data.Goban (updateGameState, score)
 -- import Kurt.Move (genMove)
 
-import Kurt.GoEngine (genMove, uctDebug)
+import Kurt.GoEngine (EngineState(..), newEngineState, genMove)
 
 
-
-type CommandHandler = [Argument] -> GameState -> IO (Either String (String, GameState))
+type CommandHandler = [Argument] -> EngineState -> IO (Either String (String, EngineState))
 
 lookupC :: String -> [(String, CommandHandler)] -> Maybe (String, CommandHandler)
 lookupC cmd cl = find (\(x, _) -> x == cmd) cl
@@ -94,10 +92,9 @@ startLoop =
     do
       hSetBuffering stdin LineBuffering
       hSetBuffering stdout LineBuffering
-      g <- newStdGen
-      loop $ defaultGameState g
+      loop newEngineState
 
-loop :: GameState -> IO ()
+loop :: EngineState -> IO ()
 loop oldState =
     do
       input <- getLine
@@ -172,43 +169,60 @@ cmd_version _ state =
 
 cmd_clear_board :: CommandHandler
 cmd_clear_board [] state =
-    return $ Right ("", state {
-                  goban = clearGoban (goban state)
-                 ,moveHistory = []
-                 ,koBlocked = []
-                 ,blackPrisoners = 0
-                 ,whitePrisoners = 0
-                 ,ourRandomGen = g
-                 })
+    return $ Right ("",
+                    state {
+                      getGameState =
+                      gState {
+                        goban = clearGoban (goban gState)
+                      , moveHistory = []
+                      , koBlocked = []
+                      , blackPrisoners = 0
+                      , whitePrisoners = 0 } } )
     where
-      (g, _g) = split (ourRandomGen state)
+      gState = getGameState state
 cmd_clear_board _ _ = error "cmd_clear_board called with illegal argument type"
 
 cmd_komi :: CommandHandler
 cmd_komi [(FloatArgument f)] state =
-    return $ Right ("", state { komi = f })
+    return $ Right ("",
+                    state {
+                      getGameState = gState { komi = f } } )
+    where
+      gState = getGameState state
 cmd_komi _ _ = error "cmd_komi called with illegal argument type"
 
 cmd_boardsize :: CommandHandler
 cmd_boardsize [(IntArgument n)] state =
-    return $ Right ("", state { goban = (defaultGoban n) })
+    return $ Right ("",
+                    state {
+                      getGameState =
+                      gState {
+                        goban = (newGoban n) } } )
+    where
+      gState = getGameState state
 cmd_boardsize _ _ = error "cmd_boardsize called with illegal argument type"
 
 cmd_showboard :: CommandHandler
 cmd_showboard [] state =
-    return $ Right ("showboard received:\n" ++ (showboard (goban state)), state)
+    return $ Right ("showboard received:\n"
+                    ++ (showboard (goban $ getGameState state)), state)
 cmd_showboard _ _ = error "cmd_showboard called with illegal argument type"
 
 cmd_play :: CommandHandler
 cmd_play [(MoveArgument move)] state =
-    return $ Right ("", updateGameState state move)
+    return $ Right ("",
+                    state {
+                      getGameState =
+                      updateGameState (getGameState state) move })
 cmd_play _ _ = error "cmd_play called with illegal argument type"
 
 cmd_genmove :: CommandHandler
 cmd_genmove [(ColorArgument color)] state = do
   move <- genMove state color
-  return $ Right (show move, updateGameState state move)
-
+  return $ Right (show move,
+                  state {
+                    getGameState =
+                    updateGameState (getGameState state) move })
 cmd_genmove _ _ = error "cmd_genmove called with illegal argument type"
 
 cmd_final_score :: CommandHandler
@@ -219,7 +233,7 @@ cmd_final_score [] state =
           | s < 0 = "W+" ++ (show (-1 * s))
           | s > 0 = "B+" ++ (show s)
           | otherwise = "0"
-      scoreFloat = (score state)
+      scoreFloat = (score $ getGameState state)
 cmd_final_score _ _ = error "cmd_final_score called with illegal argument type"
 
 
@@ -238,9 +252,9 @@ cmd_gogui_analyze_commands _ _ = error "cmd_gogui_analyze_commands called with i
 
 cmd_kurt_uct_debug :: CommandHandler
 cmd_kurt_uct_debug [] state =
-    return $ Right (gfxString, state)
-    where
-      gfxString = uctDebug state (ourRandomGen state)
+    return $ Right ("uctDebug disabled", state)
+    -- where
+    --   gfxString = uctDebug state
 cmd_kurt_uct_debug _ _ = error "cmd_kurt_uct_debug called with illegal argument type"
 
 

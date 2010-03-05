@@ -13,59 +13,27 @@ Goban / GameState Implementation
 
 -}
 
-module Data.Goban (
-                   GameState(..)
-                  ,defaultGameState
-                  ,defaultGoban
-                  ,updateGameState
-                  ,score
-                  ,winningScore
-                  ,saneMoves
-                  ,thisMoveColor
+module Data.Goban ( updateGameState
+                  , score
+                  , winningScore
+                  , saneMoves
+                  , thisMoveColor
                   ) where
 
 import Data.List (partition)
-import System.Random (StdGen, RandomGen)
+import System.Random (RandomGen)
 import Control.Monad.Random (Rand, getRandomR)
 import Data.List ((\\))
 -- import Debug.Trace (trace)
 
+import Data.Goban.GameState
 import Data.Goban.Utils
 import Data.Goban.Goban
-import Data.Goban.Vector (VectorGoban)
 -- import Data.Goban.DataMap (DataMapGoban)
 -- import Data.Goban.Array (ArrayGoban)
 import Data.Tree.UCT.GameTree (UctNode(..))
 
 
-data GameState = GameState {
-      -- goban           :: ArrayGoban
-      goban           :: VectorGoban
-     ,komi            :: Score
-     ,koBlocked       :: [Vertex]
-     ,moveHistory     :: [Move]
-     ,blackPrisoners  :: Score
-     ,whitePrisoners  :: Score
-     ,ourRandomGen    :: StdGen
-     ,simulCount      :: Int
-     ,timePerMove     :: Int
-    }
-
-instance Show GameState where
-    show state =
-        case moveHistory state of
-          [] -> ""
-          moves ->
-              show $ last moves
-              -- case last moves of
-              --   (StoneMove (Stone ((x, y), color))) ->
-              --       c ++ [(xToLetter x)] ++ (show y)
-              --       where
-              --         c = case color of
-              --               Black -> "b "
-              --               White -> "w "
-              --   (Pass _color) -> "pass"
-              --   (Resign _color) -> "resign"
 
 
 instance UctNode GameState where
@@ -101,18 +69,6 @@ instance UctNode GameState where
 
 
 
-defaultGameState :: StdGen -> GameState
-defaultGameState g = GameState {
-                     goban = (defaultGoban 1)
-                    ,komi = 0
-                    ,koBlocked = []
-                    ,moveHistory = []
-                    ,blackPrisoners = 0
-                    ,whitePrisoners = 0
-                    ,ourRandomGen = g
-                    ,simulCount = 1000
-                    ,timePerMove = 3000
-                   }
 
 
 scoreToResult :: Color -> Score -> Float
@@ -155,9 +111,6 @@ nextMoveColor state =
             (Pass color) -> color
             (Resign color) -> color
 
-
-defaultGoban :: (Goban a) => Int -> a
-defaultGoban = newGoban
 
 
 
