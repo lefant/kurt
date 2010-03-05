@@ -2,10 +2,9 @@
 
 * Roadmap march:
 
-* implement timer using MVar technique from the belge tronbot
-** strict-concurrency?
+* timer in Kurt.GoEngine genMove
 ** repair resigning support
-** cleanup
+** should really have a channel receiving messages, checking time so we can also receive and finish early
 
 * mango chooses the most robust move
 

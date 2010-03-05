@@ -25,11 +25,11 @@ extra-source-files:
 library
   hs-source-dirs: src
   exposed-modules:
-                  Data.Goban.Utils
-                 ,Data.Goban
+                  Kurt.GoEngine
+                 ,Data.Goban.Goban
+                 ,Data.Goban.Utils
                  ,Data.Goban.Vector
                  ,Data.Tree.UCT
-                 ,Kurt.Move
                  ,Network.GoTextProtocol2.Server
                  ,Network.GoTextProtocol2.Server.Types
                  ,Network.GoTextProtocol2.Server.Parser
@@ -45,6 +45,7 @@ library
                  ,MonadRandom
                  ,rosezipper
                  ,vector
+                 ,time
   ghc-options: -O1
   ghc-prof-options: -auto-all
 

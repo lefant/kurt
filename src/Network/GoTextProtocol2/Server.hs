@@ -31,7 +31,8 @@ import Network.GoTextProtocol2.Server.Types
 import Data.Goban.Goban
 import Data.Goban (GameState(..), defaultGameState, updateGameState, score, defaultGoban)
 -- import Kurt.Move (genMove)
-import Kurt.Move (genMove, uctDebug)
+
+import Kurt.GoEngine (genMove, uctDebug)
 
 
 
@@ -245,10 +246,12 @@ cmd_kurt_uct_debug _ _ = error "cmd_kurt_uct_debug called with illegal argument 
 
 cmd_time_left :: CommandHandler
 cmd_time_left [(TimeLeftArgument (seconds, stones))] state =
-    return $ Right ("time left: " ++ (show (seconds, stones, milliseconds)),
-           state { timePerMove = milliseconds } )
+    return
+    $ Right ("time left: " ++ (show (seconds, stones', milliseconds)),
+             state { timePerMove = milliseconds } )
     where
-      milliseconds = (seconds * 900) `div` stones
+      milliseconds = (seconds * 900) `div` stones'
+      stones' = if stones == 0 then 1 else stones
 
 cmd_time_left _ _ = error "cmd_time_left called with illegal argument type"
 
