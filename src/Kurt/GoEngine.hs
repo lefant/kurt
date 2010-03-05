@@ -34,7 +34,7 @@ import Data.Goban (GameState(..), saneMoves, score, winningScore, thisMoveColor)
 import Data.Tree.UCT (makeNodeWithChildren, uctZipperDown, principalVariation)
 import Data.Tree.UCT.GameTree (UctLabel(..))
 
-import Debug.Trace (trace)
+-- import Debug.Trace (trace)
 
 
 
@@ -54,11 +54,6 @@ initUct initState = do
   now <- getCurrentTime
   uctLoop initLoc $ UTCTime { utctDay = (utctDay now)
                             , utctDayTime =
-                                trace ("deadline: "
-                                       ++ (show ( thinkPicosecs
-                                                , (utctDayTime now)
-                                                , thinkPicosecs+(utctDayTime now)
-                                                )))
                                 thinkPicosecs + (utctDayTime now) }
     where
       -- here we should probably first call our game specific code and
