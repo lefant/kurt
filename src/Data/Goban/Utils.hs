@@ -14,6 +14,7 @@ Utilities and Types for Goban Implementation
 -}
 
 module Data.Goban.Utils ( territory
+                        , saneMoves
                         , stonesColor
                         , isSuicideVertex
                         , isPotentialFullEye
@@ -33,6 +34,23 @@ import Data.Maybe (catMaybes)
 
 import Data.Goban.Goban
 
+
+saneMoves :: (Goban a) => a -> Color -> [Vertex] -> [Move]
+saneMoves goban color koBlockedVertices =
+    map (\v -> StoneMove (Stone (v, color))) $
+        filter (not . (isSuicideVertex goban color)) $
+           filter (not . (isPotentialFullEye goban color)) $
+                      frees \\ koBlockedVertices
+    where
+      frees = freeVertices goban
+      -- frees =
+      --     if length (moveHistory state) > m
+      --     then
+      --         freeVertices goban
+      --     else
+      --         freeNonEdgeVertices goban
+
+      -- m = truncate $ sqrt (fromIntegral (sizeOfGoban goban) :: Float)
 
 
 

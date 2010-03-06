@@ -14,7 +14,8 @@ UCT tree search using Data.Tree.Zipper for updates in the Tree
 -}
 
 module Data.Tree.UCT ( rootNode
-                     , selectNode
+                     , selectLeafPath
+                     , principalVariation
                      , policyUCB1
                      , expandNode
                      , backpropagate
@@ -48,13 +49,20 @@ rootNode moves =
 type UCTPolicy a = (UCTTree a -> UCTTree a)
 -- selects a leaf according to in-tree selection policy
 -- default UCB1, should be pluggable
-selectNode :: (UCTNode a) => UCTPolicy a -> UCTTreeLoc a
-           -> (UCTTreeLoc a, [a])
-selectNode policy loc =
-    (leaf, leafPath leaf)
+
+selectLeafPath :: (UCTNode a) => UCTPolicy a -> UCTTreeLoc a
+               -> (UCTTreeLoc a, [a])
+selectLeafPath policy loc =
+    (leaf, map nodeMove $ pathToLeaf loc)
     where
-      leaf = head $ snd $ span hasChildren $ iterate selectNode' loc
-      selectNode' loc' =
+      leaf = selectLeaf policy loc
+
+selectLeaf :: (UCTNode a) => UCTPolicy a -> UCTTreeLoc a
+           -> UCTTreeLoc a
+selectLeaf policy loc =
+    head $ snd $ span hasChildren $ iterate selectNode loc
+    where
+      selectNode loc' =
           -- fromMaybe (error ("selectNode' findChild returned Nothing "
           --                   ++ show (selectedTree, loc)))
           fromJust $ findChild ((==) selectedTree) loc'
@@ -79,6 +87,16 @@ ucb1 parentVisits node =
            / (fromIntegral (nodeVisits node)))))
 
 
+policyMaxRobust :: UCTNode a => UCTPolicy a
+policyMaxRobust node =
+    maximumBy
+    (comparing (nodeVisits . rootLabel))
+    $ subForest node
+
+principalVariation :: (UCTNode a) => UCTTreeLoc a -> [(a, Double)]
+principalVariation loc =
+    map (\n -> (nodeMove n, nodeValue n)) $
+        pathToLeaf $ selectLeaf policyMaxRobust loc
 
 -- expansion
 ----------------------------------
@@ -107,14 +125,14 @@ subForestFromMoves moves =
 -----------------------------------
 
 -- computes list of moves needed to reach the passed leaf loc from the root
-leafPath :: UCTNode a => UCTTreeLoc a -> [a]
-leafPath initLoc =
+pathToLeaf :: UCTNode a => UCTTreeLoc a -> [(MoveNode a)]
+pathToLeaf initLoc =
     reverse $ unfoldr f initLoc
     where
       f loc =
           case parent loc of
             Just loc' ->
-                Just (nodeMove $ rootLabel $ tree loc, loc')
+                Just (rootLabel $ tree loc, loc')
             Nothing ->
                 Nothing
 

@@ -28,10 +28,7 @@ import Network.GoTextProtocol2.Server.Parser
 import Network.GoTextProtocol2.Types
 import Data.Goban.Goban
 import Data.Goban.GameState (GameState(..), newGameState)
-import Data.Goban (updateGameState, score)
--- import Kurt.Move (genMove)
-
-import Kurt.GoEngine (EngineState(..), newEngineState, genMove)
+import Kurt.GoEngine (EngineState(..), newEngineState, genMove, updateGameState, scoreGameState)
 
 
 type CommandHandler = [Argument] -> EngineState -> IO (Either String (String, EngineState))
@@ -225,7 +222,7 @@ cmd_final_score [] state =
           | s < 0 = "W+" ++ (show (-1 * s))
           | s > 0 = "B+" ++ (show s)
           | otherwise = "0"
-      scoreFloat = (score $ getGameState state)
+      scoreFloat = (scoreGameState $ getGameState state)
 cmd_final_score _ _ = error "cmd_final_score called with illegal argument type"
 
 
