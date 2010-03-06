@@ -69,6 +69,11 @@ Kurt.Move:
 Data.Goban:
 * track ko state
 
+* Data.Goban.UArray
+** http://stackoverflow.com/questions/976936/how-to-create-unboxed-mutable-array-instance/978143#978143
+** http://www.mail-archive.com/haskell-cafe@haskell.org/msg38528.html
+** http://www.mail-archive.com/haskell-cafe@haskell.org/msg38530.html
+** http://www.mail-archive.com/haskell-cafe@haskell.org/msg38540.html
 
 Network.GoTextProtocol2.Server:
 * merge commandargparserlist and commandHandlers lists
