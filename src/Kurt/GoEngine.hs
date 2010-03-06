@@ -27,14 +27,12 @@ module Kurt.GoEngine ( genMove
 
 import System.Random (RandomGen, newStdGen)
 import Control.Monad.Random (RandomGen, evalRand, Rand, getRandomR)
-import Data.Tree.Zipper (TreeLoc, fromTree, tree)
 import Data.Time.Clock ( UTCTime(..)
                        , picosecondsToDiffTime
                        , getCurrentTime
                        )
 import Data.List (partition, foldl', (\\))
 -- import Data.List (sort)
--- import Data.Tree (Tree(..))
 -- import Text.Printf (printf)
 
 
@@ -42,7 +40,7 @@ import Data.Goban.Goban
 import Data.Goban.Utils
 import Data.Goban.GameState
 
-import Data.Tree.UCT.GameTree
+import Data.Tree.UCT.GameTree (UCTNode(..), UCTTreeLoc)
 import Data.Tree.UCT
 
 -- import Debug.Trace (trace)
@@ -85,7 +83,7 @@ instance UCTNode Move where
 genMove :: EngineState -> Color -> IO Move
 genMove eState color =
     -- if (null (saneMoves state)) || ((winningProb bestMove) < 0.15)
-    if null $ saneMoves (goban gState) color (koBlocked gState)
+    if null $ nextMoves gState color
     then
         if winningScore color (scoreGameState gState)
         then return $ Pass color
@@ -102,7 +100,7 @@ initUct eState color = do
                             , utctDayTime =
                                 thinkPicosecs + (utctDayTime now) }
     where
-      initLoc = rootNode $ saneMoves (goban gState) color (koBlocked gState)
+      initLoc = rootNode $ nextMoves gState color
       gState = getGameState eState
       thinkPicosecs =
           picosecondsToDiffTime
@@ -110,23 +108,21 @@ initUct eState color = do
 
 
 uctLoop :: UCTTreeLoc Move -> GameState -> UTCTime -> IO Move
-uctLoop loc gState deadline = do
+uctLoop loc rootGameState deadline = do
   undefined
-  -- rGen <- newStdGen
-  -- (loc', done) <- return $ evalRand (uctZipperDown loc) rGen
-  -- now <- getCurrentTime
-  -- timeIsUp <- return $ (now > deadline)
-  -- (if (done || timeIsUp)
-  --  then return $ bestMoveFromLoc loc'
-  --  else uctLoop loc' deadline)
-
--- runUCT loc = do
---   (loc', moves) <- selectLeafPath loc
---   state' <- leafState state moves
---   value' <- simulation state'
---   loc'' <- expand loc'
---   loc''' <- backpropagate loc''
---   return top level node loc'''
+  done <- return False
+  (loc', path) <- return $ selectLeafPath policyUCB1 loc
+  leafGameState <- return $ getLeafGameState rootGameState path
+  rGen <- newStdGen
+  -- FIXME: rave will also need a sequence of moves here
+  value <- return $ scoreToResult (thisMoveColor leafGameState) $ evalRand (runOneRandom leafGameState) rGen
+  loc'' <- return $ expandNode loc' $ nextMoves leafGameState (nextMoveColor leafGameState)
+  loc''' <- return $ backpropagate value loc''
+  now <- getCurrentTime
+  timeIsUp <- return $ (now > deadline)
+  (if (done || timeIsUp)
+   then return $ bestMoveFromLoc loc''' rootGameState
+   else uctLoop loc''' rootGameState deadline)
 
 
 
@@ -151,19 +147,20 @@ bestMoveFromLoc loc state =
 
 
 -- compute game state at the end of a move sequence by replaying it
-leafState :: GameState -> [Move] -> GameState
-leafState = foldl' updateGameState
+getLeafGameState :: GameState -> [Move] -> GameState
+getLeafGameState = foldl' updateGameState
 
 
 
 
+nextMoves :: GameState -> Color -> [Move]
+nextMoves gState color =
+    saneMoves (goban gState) color (koBlocked gState)
 
 
 
 
-
-
-scoreToResult :: Color -> Score -> Float
+scoreToResult :: Color -> Score -> Double
 scoreToResult color thisScore =
     if thisScore == 0
     then 0.5
@@ -173,7 +170,7 @@ scoreToResult color thisScore =
         else 0.1 - bonus
     where
       bonus =
-          ((sqrt . (max 99) . abs) thisScore) / 100
+          ((sqrt . (max 99) . abs) (realToFrac thisScore)) / 100
 
 winningScore :: Color -> Score -> Bool
 winningScore color thisScore =
