@@ -30,9 +30,7 @@ module Data.Tree.UCT.GameTree ( UCTTreeLoc
 import Data.Tree (Tree, Forest)
 import Data.Tree.Zipper (TreeLoc)
 import Data.Word (Word)
-
--- import Control.Monad.Random (Rand, RandomGen)
--- import Text.Printf (printf)
+import Text.Printf (printf)
 
 -- import Debug.Trace (trace)
 
@@ -54,7 +52,18 @@ data MoveNode a = MoveNode { nodeMove   :: a
                            , nodeVisits :: !Word
                            , nodeValue  :: !Double
                            }
-                  deriving (Show)
+
+instance (UCTNode a) => Show (MoveNode a) where
+    show node =
+        "(" ++ show (nodeVisits node) ++ dStr
+        ++ printf "/%.2f) " (nodeValue node)
+        ++ show (nodeMove node)
+        where
+          dStr = ""
+          -- dStr = case isDone label of
+          --          True -> "+ "
+          --          False -> ""
+
 
 instance (UCTNode a) => Eq (MoveNode a) where
     (==) a b = nodeMove a == nodeMove b

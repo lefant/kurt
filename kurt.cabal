@@ -42,8 +42,8 @@ library
                  ,parsec >= 3
                  ,haskell98
                  ,random
+                 ,mwc-random
                  ,containers
-                 ,MonadRandom
                  ,rosezipper
                  ,vector
                  ,time

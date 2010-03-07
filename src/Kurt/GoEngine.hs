@@ -28,8 +28,10 @@ module Kurt.GoEngine ( genMove
                      ) where
 
 
-import System.Random (RandomGen, newStdGen)
-import Control.Monad.Random (RandomGen, evalRand, Rand, getRandomR)
+import Control.Monad (liftM)
+import Control.Monad.ST (ST, stToIO)
+import System.Random (RandomGen)
+import System.Random.MWC (Gen, create, uniform)
 import Data.Time.Clock ( UTCTime(..)
                        , picosecondsToDiffTime
                        , getCurrentTime
@@ -114,10 +116,11 @@ uctLoop !loc rootGameState deadline = do
   done <- return False
   (loc', path) <- return $ selectLeafPath policyUCB1 loc
   leafGameState <- return $ getLeafGameState rootGameState path
-  rGen <- newStdGen
   -- rGen <- trace ("uctLoop leafGameState \n" ++ (showboard (goban $ leafGameState))) $ newStdGen
   -- FIXME: rave will also need a sequence of moves here
-  value <- return $ scoreToResult (thisMoveColor leafGameState) $ evalRand (runOneRandom leafGameState) rGen
+  rGen <- stToIO create
+  score <- stToIO $ runOneRandom leafGameState rGen
+  value <- return $ scoreToResult (thisMoveColor leafGameState) score
   loc'' <- return $ expandNode loc' $ nextMoves leafGameState (nextMoveColor leafGameState)
   loc''' <- return $ backpropagate value loc''
   now <- getCurrentTime
@@ -134,27 +137,25 @@ bestMoveFromLoc loc state =
     case principalVariation loc of
       [] ->
           error "bestMoveFromLoc: principalVariation is empty"
-      ((move, value) : _) ->
+      (node : _) ->
           if value < 0.15
           then
               if winningScore color (scoreGameState state)
               then
-                  trace ("bestMoveFromLoc pass "
-                         ++ show (color, move, value)
-                        )
+                  trace ("bestMoveFromLoc pass " ++ show node)
                   Pass color
               else
-                  trace ("bestMoveFromLoc resign "
-                         ++ show (color, move, value))
+                  trace ("bestMoveFromLoc resign " ++ show node)
                   Resign color
           else
-              trace ("bestMoveFromLoc \n\n\n"
-                     ++ show (color, move, value) ++ "\n"
-                     ++ show (nodeVisits $ rootLabel $ tree $ loc) ++ "\n"
+              trace ("total sims: " ++ show (nodeVisits$rootLabel$tree$loc)
+                     ++ " best: " ++ show node
+                     ++ "\n")
                      -- ++ (drawTree $ fmap show $ tree loc)
-                    )
               move
           where
+            move = nodeMove node
+            value = nodeValue node
             color = nextMoveColor state
 
 
@@ -318,45 +319,49 @@ scoreGameState state =
 
 
 
-runOneRandom :: (RandomGen g) => GameState -> Rand g Score
-runOneRandom initState =
-    run initState 0
+
+runOneRandom :: GameState -> Gen s -> ST s Score
+runOneRandom initState rGenInit =
+    run initState 0 rGenInit
     where
-      run :: (RandomGen g) => GameState -> Int -> Rand g Score
-      run _ 1000 = return 0
-      run state runCount = do
-        move <- genMoveRand state
+      run :: GameState -> Int -> Gen s -> ST s Score
+      run _ 1000 _ = return 0
+      run state runCount rGen = do
+        move <- genMoveRand state rGen
         state' <- return $ updateGameState state move
         case move of
           (Pass _) -> do
-                    move' <- genMoveRand state'
+                    move' <- genMoveRand state' rGen
                     state'' <- return $ updateGameState state' move'
                     case move' of
                       (Pass _) ->
                           return $ scoreGameState state''
                       (StoneMove _) ->
-                          run state'' (runCount + 1)
+                          run state'' (runCount + 1) rGen
                       (Resign _) ->
                           error "runOneRandom encountered Resign"
           (StoneMove _) ->
-              run state' (runCount + 1)
+              run state' (runCount + 1) rGen
           (Resign _) ->
               error "runOneRandom encountered Resign"
 
 
 
-genMoveRand :: (RandomGen g) => GameState -> Rand g Move
-genMoveRand state =
+-- genMoveRand :: 
+genMoveRand :: GameState -> Gen s -> ST s Move
+genMoveRand state rGen =
     pickSane $ freeVertices (goban state)
-
     where
-      pickSane :: (RandomGen g) => [Vertex] -> Rand g Move
       pickSane [] = return $ Pass (nextMoveColor state)
-      pickSane moves = do
-        p <- pick moves
+      pickSane [p] =
         case sane p of
           True -> return $ StoneMove (Stone (p, color))
-          False -> pickSane (moves \\ [p])
+          False -> return $ Pass (nextMoveColor state)
+      pickSane ps = do
+        p <- pick ps rGen
+        case sane p of
+          True -> return $ StoneMove (Stone (p, color))
+          False -> pickSane (ps \\ [p])
 
       sane p =
           (not (p `elem` (koBlocked state))) &&
@@ -364,6 +369,13 @@ genMoveRand state =
           (not (isSuicideVertex g color p))
       g = goban state
       color = nextMoveColor state
+
+pick :: [Vertex] -> Gen s -> ST s Vertex
+pick as rGen = do
+  i <- liftM (`mod` ((length as) - 1)) $ uniform rGen
+  -- i <- getRandomR (0, ((length as) - 1))
+  return $ as !! i
+
 
 
 
@@ -399,12 +411,6 @@ genMoveRand state =
 --     where
 --       g = goban state
 --       color = nextMoveColor state
-
-pick :: (RandomGen g) => [a] -> Rand g a
-pick as = do
-  i <- getRandomR (0, ((length as) - 1))
-  return $ as !! i
-
 
 
 

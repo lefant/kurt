@@ -115,10 +115,9 @@ policyMaxRobust node =
     (comparing (nodeVisits . rootLabel))
     $ subForest node
 
-principalVariation :: (UCTNode a) => UCTTreeLoc a -> [(a, Double)]
+principalVariation :: (UCTNode a) => UCTTreeLoc a -> [MoveNode a]
 principalVariation loc =
-    map (\n -> (nodeMove n, nodeValue n)) $
-        pathToLeaf $ selectLeaf policyMaxRobust loc
+    pathToLeaf $ selectLeaf policyMaxRobust loc
 
 -- computes list of moves needed to reach the passed leaf loc from the root
 pathToLeaf :: UCTNode a => UCTTreeLoc a -> [(MoveNode a)]
