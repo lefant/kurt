@@ -28,19 +28,25 @@ import Data.Ord (comparing)
 import Data.Word (Word)
 import Data.Tree (Tree(..))
 import Data.Tree.Zipper (TreeLoc, tree, fromTree, isRoot, hasChildren, parent, findChild, modifyTree, modifyLabel)
+
 -- import Debug.Trace (trace)
 
 import Data.Tree.UCT.GameTree
 
 
 exploratoryC :: Double
-exploratoryC = 0.4
+exploratoryC = 1
 
 
 
 rootNode :: (UCTNode a) => [a] -> UCTTreeLoc a
 rootNode moves =
-    fromTree $ Node (nodeFromMove undefined) $ subForestFromMoves moves
+    expandNode
+    (fromTree $ Node (nodeFromMove
+                      -- (last moves)
+                      (error "move at rootNode is undefined")
+                     ) [])
+    moves
 
 
 -- selection section
@@ -53,21 +59,32 @@ type UCTPolicy a = (UCTTree a -> UCTTree a)
 selectLeafPath :: (UCTNode a) => UCTPolicy a -> UCTTreeLoc a
                -> (UCTTreeLoc a, [a])
 selectLeafPath policy loc =
-    (leaf, map nodeMove $ pathToLeaf loc)
+    -- trace ("selectLeafPath " ++ show (map nodeMove $ pathToLeaf leaf))
+    (leaf, map nodeMove $ pathToLeaf leaf)
     where
       leaf = selectLeaf policy loc
 
 selectLeaf :: (UCTNode a) => UCTPolicy a -> UCTTreeLoc a
            -> UCTTreeLoc a
-selectLeaf policy loc =
-    head $ snd $ span hasChildren $ iterate selectNode loc
+selectLeaf policy initLoc =
+    selectNode initLoc
     where
-      selectNode loc' =
-          -- fromMaybe (error ("selectNode' findChild returned Nothing "
-          --                   ++ show (selectedTree, loc)))
-          fromJust $ findChild ((==) selectedTree) loc'
+      selectNode loc =
+          if hasChildren loc
+          then
+              selectNode $ fromJust $ findChild ((==) selectedTree) loc
+          else
+              loc
           where
-            selectedTree = policy $ tree loc'
+            selectedTree = policy $ tree loc
+--     head $ snd $ span hasChildren $ iterate selectNode initLoc
+--     where
+--       selectNode loc' =
+--           -- fromMaybe (error ("selectNode' findChild returned Nothing "
+--           --                   ++ show (selectedTree, loc)))
+--           fromJust $ findChild ((==) selectedTree) loc'
+--           where
+--             selectedTree = policy $ tree loc'
 
 
 policyUCB1 :: UCTNode a => UCTPolicy a
@@ -98,22 +115,42 @@ principalVariation loc =
     map (\n -> (nodeMove n, nodeValue n)) $
         pathToLeaf $ selectLeaf policyMaxRobust loc
 
+
+-- computes list of moves needed to reach the passed leaf loc from the root
+pathToLeaf :: UCTNode a => UCTTreeLoc a -> [(MoveNode a)]
+pathToLeaf initLoc =
+    -- trace ("pathToLeaf " ++ show path)
+    path
+    where
+      path = reverse $ unfoldr f initLoc
+      f loc =
+          case parent loc of
+            Just loc' ->
+                Just (rootLabel $ tree loc, loc')
+            Nothing ->
+                Nothing
+
+
 -- expansion
 ----------------------------------
 
 expandNode :: UCTNode a => UCTTreeLoc a -> [a] -> UCTTreeLoc a
 expandNode loc children =
+    -- trace ("expandNode " ++ show children)
     modifyTree expandChildren loc
     where
     expandChildren node =
-        node { subForest = subForestFromMoves children }
+        -- trace ("expandChildren " ++ show (subForest n))
+        n
+        where
+          n = node { subForest = subForestFromMoves children }
 
 subForestFromMoves :: UCTNode a => [a] -> UCTForest a
 subForestFromMoves moves =
     map (((flip Node) []) . nodeFromMove) moves
 
 
--- simulation needs to be handled by game code
+-- simulation needs to be handled exclusively by game code
 -----------------------------------
 
 
@@ -124,22 +161,14 @@ subForestFromMoves moves =
 -- backpropagation section
 -----------------------------------
 
--- computes list of moves needed to reach the passed leaf loc from the root
-pathToLeaf :: UCTNode a => UCTTreeLoc a -> [(MoveNode a)]
-pathToLeaf initLoc =
-    reverse $ unfoldr f initLoc
-    where
-      f loc =
-          case parent loc of
-            Just loc' ->
-                Just (rootLabel $ tree loc, loc')
-            Nothing ->
-                Nothing
 
 
 -- updates node with a new value
 updateNodeValue :: UCTNode a => Double -> MoveNode a -> MoveNode a
 updateNodeValue value node =
+    -- trace ("updateNodeValue "
+    --        ++ show (nodeMove node, value)
+    --       )
     node { nodeVisits = newVisits
          , nodeValue = ((oldValue * (fromIntegral oldVisits)) + value)
                        / fromIntegral newVisits
@@ -152,10 +181,21 @@ updateNodeValue value node =
 
 backpropagate :: UCTNode a => Double -> UCTTreeLoc a -> UCTTreeLoc a
 backpropagate value loc =
-    if isRoot loc
-    then loc'
-    else backpropagate value' loc'
+    case parent loc' of
+      Nothing ->
+          error "backpropagate reached root node when it should have been done one level below"
+      Just parentLoc ->
+          if isRoot parentLoc
+          then
+              -- trace ("backpropagate isRoot parent "
+              --        ++ show ((nodeMove $ rootLabel $ tree loc), value))
+              parentLoc
+          else
+              -- trace ("backpropagate "
+              --        ++ show ((nodeMove $ rootLabel $ tree loc), value))
+              backpropagate value' parentLoc
     where
-      loc' = modifyLabel (updateNodeValue value') loc
-      value' = updateBackpropagationValue (nodeMove $ rootLabel $ tree $ loc) value
+      loc' = modifyLabel (updateNodeValue value) loc
+      value' =
+          updateBackpropagationValue (nodeMove $ rootLabel $ tree $ loc) value
 

@@ -19,6 +19,7 @@ module Data.Goban.Goban ( Goban(..)
                         , Stone(..)
                         , Vertex
                         , Score
+                        , gtpShowMove
                         , allVertices
                         , letterToX
                         ) where
@@ -26,18 +27,30 @@ module Data.Goban.Goban ( Goban(..)
 import Data.Char (chr, ord, toUpper)
 -- import Debug.Trace (trace)
 
+import Data.Tree.UCT.GameTree (UCTNode(..))
+
 
 data Move = StoneMove Stone
           | Pass Color
           | Resign Color
             deriving (Eq)
 
-
 instance Show Move where
-    show (StoneMove (Stone ((x, y), _color))) =
-        [(xToLetter x)] ++ (show y)
+    show (StoneMove (Stone ((x, y), color))) =
+        (show color) ++ " " ++ [(xToLetter x)] ++ (show y)
     show (Pass _color) = "pass"
     show (Resign _color) = "resign"
+
+instance UCTNode Move where
+    -- we use estimated win rate of move as value for uct nodes
+    initialMoveValue _ = 0.5
+    updateBackpropagationValue _ v = 1 - v
+
+gtpShowMove :: Move -> String
+gtpShowMove (StoneMove (Stone ((x, y), _color))) =
+    [(xToLetter x)] ++ (show y)
+gtpShowMove (Pass _color) = "pass"
+gtpShowMove (Resign _color) = "resign"
 
 
 

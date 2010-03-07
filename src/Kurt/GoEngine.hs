@@ -1,4 +1,7 @@
 {-# OPTIONS -O2 -Wall -Werror -Wwarn #-}
+{-# OPTIONS_GHC -funbox-strict-fields #-}
+{-# LANGUAGE BangPatterns #-}
+
 
 {- |
    Module     : Kurt.GoEngine
@@ -40,18 +43,19 @@ import Data.Goban.Goban
 import Data.Goban.Utils
 import Data.Goban.GameState
 
-import Data.Tree.UCT.GameTree (UCTNode(..), UCTTreeLoc)
+import Data.Tree.UCT.GameTree (UCTTreeLoc)
 import Data.Tree.UCT
 
--- import Debug.Trace (trace)
-
+import Debug.Trace (trace)
+-- import Data.Tree (drawTree)
+-- import Data.Tree.Zipper (tree)
 
 data EngineState = EngineState {
       getGameState    :: GameState
-    , boardSize       :: Int
-    , getKomi         :: Score
-    , simulCount      :: Int
-    , timePerMove     :: Int
+    , boardSize       :: !Int
+    , getKomi         :: !Score
+    , simulCount      :: !Int
+    , timePerMove     :: !Int
      -- maybe this could have colorToMove?
     }
 
@@ -67,14 +71,7 @@ newEngineState = EngineState {
                  , boardSize = defaultBoardSize
                  , getKomi = defaultKomi
                  , simulCount = 1000
-                 , timePerMove = 3000 }
-
-
-
-instance UCTNode Move where
-    -- we use estimated win rate of move as value for uct nodes
-    initialMoveValue _ = 0.5
-    updateBackpropagationValue _ = negate
+                 , timePerMove = 100 }
 
 
 
@@ -108,12 +105,14 @@ initUct eState color = do
 
 
 uctLoop :: UCTTreeLoc Move -> GameState -> UTCTime -> IO Move
-uctLoop loc rootGameState deadline = do
-  undefined
+uctLoop !loc rootGameState deadline = do
+  -- done <- return $ trace ("uctLoop debug tree\n\n\n" ++
+  --       (drawTree $ fmap show $ tree loc)) False
   done <- return False
   (loc', path) <- return $ selectLeafPath policyUCB1 loc
   leafGameState <- return $ getLeafGameState rootGameState path
   rGen <- newStdGen
+  -- rGen <- trace ("uctLoop leafGameState \n" ++ (showboard (goban $ leafGameState))) $ newStdGen
   -- FIXME: rave will also need a sequence of moves here
   value <- return $ scoreToResult (thisMoveColor leafGameState) $ evalRand (runOneRandom leafGameState) rGen
   loc'' <- return $ expandNode loc' $ nextMoves leafGameState (nextMoveColor leafGameState)
@@ -126,7 +125,7 @@ uctLoop loc rootGameState deadline = do
 
 
 
-  
+
 bestMoveFromLoc :: UCTTreeLoc Move -> GameState -> Move
 bestMoveFromLoc loc state =
     case principalVariation loc of
@@ -135,14 +134,24 @@ bestMoveFromLoc loc state =
       ((move, value) : _) ->
           if value < 0.15
           then
-              if winningScore color (scoreGameState bestState)
-              then Pass color
-              else Resign color
+              if winningScore color (scoreGameState state)
+              then
+                  trace ("bestMoveFromLoc pass "
+                         ++ show (color, move, value)
+                        )
+                  Pass color
+              else
+                  trace ("bestMoveFromLoc resign "
+                         ++ show (color, move, value))
+                  Resign color
           else
+              trace ("bestMoveFromLoc \n\n\n"
+                     ++ show (color, move, value) ++ "\n"
+                     -- ++ (drawTree $ fmap show $ tree loc)
+                    )
               move
           where
-            bestState = updateGameState state move
-            color = thisMoveColor state
+            color = nextMoveColor state
 
 
 
@@ -166,8 +175,12 @@ scoreToResult color thisScore =
     then 0.5
     else
         if winningScore color thisScore
-        then 0.9 + bonus
-        else 0.1 - bonus
+        then
+            -- trace ("scoreToResult winning" ++ show (color, thisScore))
+            0.9 + bonus
+        else
+            -- trace ("scoreToResult losing" ++ show (color, thisScore))
+            0.1 - bonus
     where
       bonus =
           ((sqrt . (max 99) . abs) (realToFrac thisScore)) / 100
@@ -175,8 +188,12 @@ scoreToResult color thisScore =
 winningScore :: Color -> Score -> Bool
 winningScore color thisScore =
     case color of
-      Black -> thisScore > 0
-      White -> thisScore < 0
+      Black ->
+          -- trace ("winningScore Black " ++ show (thisScore > 0))
+          thisScore > 0
+      White ->
+          -- trace ("winningScore White " ++ show (thisScore < 0))
+          thisScore < 0
 
 thisMoveColor :: GameState -> Color
 thisMoveColor state =

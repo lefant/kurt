@@ -10,20 +10,14 @@
 
 
 * refactoring
-** there should be a "go uct runner" module replacing data.goban
-*** imports Data.Tree.UCT
-*** imports Data.Goban.GameState
-*** run node selection from UCT
-*** run actual playouts
-*** update uct tree
-
-** Data.Goban
-half of this should be in kurt, half factored out into something more general
+** Kurt.GoEngine:
+*** some general go logic could be moved to Data.Goban.Utils or the like?
 
 ** Data.Tree.UCT
-*** factor out node evalution propagation
-*** factor out "negamax if done"
-*** "stateless" light uctnodes
+*** come back for "negamax if done"?
+
+** GameState versus Goban and representation still could be improved
+
 
 * new state / board implementation
 ** ephemeral?
@@ -31,6 +25,8 @@ half of this should be in kurt, half factored out into something more general
 *** really test benchmark
 *** must be completely isolated and self-contained
 ** can use runSTUArray or the like
+
+* more speed by replacing Control.Monad.Random with System.Random.MWC
 
 * new glue between uctNew and gobanNew
 ** propagation of UCT values / rave values

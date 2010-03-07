@@ -23,12 +23,12 @@ import Data.Goban.Vector (VectorGoban)
 
 
 data GameState = GameState {
-      goban           :: VectorGoban
-    , koBlocked       :: [Vertex]
-    , moveHistory     :: [Move]
-    , komi            :: Score
-    , blackPrisoners  :: Score
-    , whitePrisoners  :: Score
+      goban           :: !VectorGoban
+    , koBlocked       :: ![Vertex]
+    , moveHistory     :: ![Move]
+    , komi            :: !Score
+    , blackPrisoners  :: !Score
+    , whitePrisoners  :: !Score
     }
 
 

@@ -28,7 +28,6 @@ module Data.Tree.UCT.GameTree ( UCTTreeLoc
 
 import Data.Tree (Tree, Forest)
 import Data.Tree.Zipper (TreeLoc)
-
 import Data.Word (Word)
 
 -- import Control.Monad.Random (Rand, RandomGen)
@@ -52,7 +51,7 @@ class (Eq a, Show a) => UCTNode a where
 
 data MoveNode a = MoveNode { nodeMove   :: a
                            , nodeVisits :: !Word
-                           , nodeValue  :: Double
+                           , nodeValue  :: !Double
                            }
                   deriving (Show)
 

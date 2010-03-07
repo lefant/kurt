@@ -208,7 +208,7 @@ cmd_play _ _ = error "cmd_play called with illegal argument type"
 cmd_genmove :: CommandHandler
 cmd_genmove [(ColorArgument color)] state = do
   move <- genMove state color
-  return $ Right (show move,
+  return $ Right (gtpShowMove move,
                   state {
                     getGameState =
                     updateGameState (getGameState state) move })
