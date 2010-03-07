@@ -34,7 +34,7 @@ import Data.List ((\\))
 -- import Text.Printf (printf)
 
 
-import Data.Goban.Goban
+import Data.Goban.Goban (Move(..), Stone(..), Color, Vertex, Score, freeVertices)
 import Data.Goban.Utils
 import Data.Goban.GameState
 
@@ -188,21 +188,18 @@ genMoveRand state rGen =
     where
       pickSane [] = return $ Pass (nextMoveColor state)
       pickSane [p] =
-        case sane p of
-          True -> return $ StoneMove (Stone (p, color))
-          False -> return $ Pass (nextMoveColor state)
+          return $ if isSaneMove' p
+                   then StoneMove (Stone (p, color))
+                   else Pass (nextMoveColor state)
       pickSane ps = do
         p <- pick ps rGen
-        case sane p of
-          True -> return $ StoneMove (Stone (p, color))
-          False -> pickSane (ps \\ [p])
+        (if isSaneMove' p
+         then return $ StoneMove (Stone (p, color))
+         else pickSane (ps \\ [p]))
 
-      sane p =
-          (not (p `elem` (koBlocked state))) &&
-          (not (isPotentialFullEye g color p)) &&
-          (not (isSuicideVertex g color p))
-      g = goban state
+      isSaneMove' = isSaneMove (goban state) (koBlocked state) color
       color = nextMoveColor state
+
 
 pick :: [Vertex] -> Gen s -> ST s Vertex
 pick as rGen = do

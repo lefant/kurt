@@ -214,7 +214,7 @@ winningScore color thisScore =
 
 nextMoves :: GameState -> Color -> [Move]
 nextMoves gState color =
-    saneMoves (goban gState) color (koBlocked gState)
+    saneMoves (goban gState) (koBlocked gState) color
 
 
 

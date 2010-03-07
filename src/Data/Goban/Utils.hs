@@ -15,6 +15,7 @@ Utilities and Types for Goban Implementation
 
 module Data.Goban.Utils ( territory
                         , saneMoves
+                        , isSaneMove
                         , stonesColor
                         , isSuicideVertex
                         , isPotentialFullEye
@@ -35,12 +36,10 @@ import Data.Maybe (catMaybes)
 import Data.Goban.Goban
 
 
-saneMoves :: (Goban a) => a -> Color -> [Vertex] -> [Move]
-saneMoves goban color koBlockedVertices =
+saneMoves :: (Goban a) => a -> [Vertex] -> Color -> [Move]
+saneMoves goban koBlockeds color =
     map (\v -> StoneMove (Stone (v, color))) $
-        filter (not . (isSuicideVertex goban color)) $
-           filter (not . (isPotentialFullEye goban color)) $
-                      frees \\ koBlockedVertices
+        filter (isSaneMove goban koBlockeds color) frees
     where
       frees = freeVertices goban
       -- frees =
@@ -52,6 +51,12 @@ saneMoves goban color koBlockedVertices =
 
       -- m = truncate $ sqrt (fromIntegral (sizeOfGoban goban) :: Float)
 
+
+isSaneMove :: (Goban a) => a -> [Vertex] -> Color -> Vertex -> Bool
+isSaneMove goban koBlockeds color p =
+          (not (p `elem` koBlockeds )) &&
+          (not (isPotentialFullEye goban color p)) &&
+          (not (isSuicideVertex goban color p))
 
 
 territory :: (Goban a) => a -> Color -> Score

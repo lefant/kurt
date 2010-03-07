@@ -26,7 +26,7 @@ import Text.Parsec.String (Parser)
 
 import Network.GoTextProtocol2.Server.Parser
 import Network.GoTextProtocol2.Types
-import Data.Goban.Goban
+import Data.Goban.Goban (showboard, gtpShowMove)
 import Data.Goban.GameState (GameState(..), newGameState, updateGameState, scoreGameState)
 import Kurt.GoEngine (EngineState(..), newEngineState, genMove)
 
