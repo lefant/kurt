@@ -10,23 +10,15 @@
 
 
 * refactoring
-** Kurt.GoEngine:
-*** some general go logic could be moved to Data.Goban.Utils or the like?
-
-** Data.Tree.UCT
-*** come back for "negamax if done"?
-
 ** GameState versus Goban and representation still could be improved
 
+** new state / board implementation
+*** ephemeral?
+*** updateGameState -> updateBoard becomes destructive
+**** really test benchmark
+**** must be completely isolated and self-contained
+*** can use runSTUArray or the like
 
-* new state / board implementation
-** ephemeral?
-** updateGameState -> updateBoard becomes destructive
-*** really test benchmark
-*** must be completely isolated and self-contained
-** can use runSTUArray or the like
-
-* more speed by replacing Control.Monad.Random with System.Random.MWC
 
 * new glue between uctNew and gobanNew
 ** propagation of UCT values / rave values
@@ -34,6 +26,11 @@
 * towards heuristic
 ** capture count / atari / atari evade
 ** patterns
+
+* Data.Tree.UCT
+** come back for "negamax if done"?
+
+
 
 * prior: even game more likely
 

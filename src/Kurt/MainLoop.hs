@@ -27,8 +27,8 @@ import Text.Parsec.String (Parser)
 import Network.GoTextProtocol2.Server.Parser
 import Network.GoTextProtocol2.Types
 import Data.Goban.Goban
-import Data.Goban.GameState (GameState(..), newGameState)
-import Kurt.GoEngine (EngineState(..), newEngineState, genMove, updateGameState, scoreGameState)
+import Data.Goban.GameState (GameState(..), newGameState, updateGameState, scoreGameState)
+import Kurt.GoEngine (EngineState(..), newEngineState, genMove)
 
 
 type CommandHandler = [Argument] -> EngineState -> IO (Either String (String, EngineState))
