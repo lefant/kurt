@@ -27,7 +27,7 @@ import Data.List (unfoldr, maximumBy)
 import Data.Ord (comparing)
 import Data.Word (Word)
 import Data.Tree (Tree(..))
-import Data.Tree.Zipper (TreeLoc, tree, fromTree, isRoot, hasChildren, parent, findChild, modifyTree, modifyLabel)
+import Data.Tree.Zipper (TreeLoc, tree, fromTree, hasChildren, parent, findChild, modifyTree, modifyLabel)
 
 -- import Debug.Trace (trace)
 
@@ -42,10 +42,14 @@ exploratoryC = 1
 rootNode :: (UCTNode a) => [a] -> UCTTreeLoc a
 rootNode moves =
     expandNode
-    (fromTree $ Node (nodeFromMove
-                      -- (last moves)
-                      (error "move at rootNode is undefined")
-                     ) [])
+    (fromTree $
+     Node
+     (nodeFromMove
+       -- (last moves)
+       (error "move at rootNode is undefined")
+     )
+     []
+    )
     moves
 
 
@@ -77,14 +81,6 @@ selectLeaf policy initLoc =
               loc
           where
             selectedTree = policy $ tree loc
---     head $ snd $ span hasChildren $ iterate selectNode initLoc
---     where
---       selectNode loc' =
---           -- fromMaybe (error ("selectNode' findChild returned Nothing "
---           --                   ++ show (selectedTree, loc)))
---           fromJust $ findChild ((==) selectedTree) loc'
---           where
---             selectedTree = policy $ tree loc'
 
 
 policyUCB1 :: UCTNode a => UCTPolicy a
@@ -97,11 +93,20 @@ policyUCB1 node =
 
 ucb1 :: UCTNode a => Word -> MoveNode a -> Double
 ucb1 parentVisits node =
-    (nodeValue node)
-    + (exploratoryC
-       * (sqrt
-          ((log (fromIntegral parentVisits))
-           / (fromIntegral (nodeVisits node)))))
+    -- trace ("ucb1: "
+    --        ++ show (nodeMove node, oldValue, ucb1part, value))
+    value
+    where
+      value = oldValue
+              + ucb1part
+
+      oldValue = nodeValue node
+
+      ucb1part =
+          exploratoryC
+             * (sqrt
+                ((log (fromIntegral parentVisits))
+                 / ((fromIntegral (nodeVisits node) + 1))))
 
 
 policyMaxRobust :: UCTNode a => UCTPolicy a
@@ -114,7 +119,6 @@ principalVariation :: (UCTNode a) => UCTTreeLoc a -> [(a, Double)]
 principalVariation loc =
     map (\n -> (nodeMove n, nodeValue n)) $
         pathToLeaf $ selectLeaf policyMaxRobust loc
-
 
 -- computes list of moves needed to reach the passed leaf loc from the root
 pathToLeaf :: UCTNode a => UCTTreeLoc a -> [(MoveNode a)]
@@ -183,17 +187,12 @@ backpropagate :: UCTNode a => Double -> UCTTreeLoc a -> UCTTreeLoc a
 backpropagate value loc =
     case parent loc' of
       Nothing ->
-          error "backpropagate reached root node when it should have been done one level below"
+          -- trace "backpropagate reached root node"
+          loc'
       Just parentLoc ->
-          if isRoot parentLoc
-          then
-              -- trace ("backpropagate isRoot parent "
-              --        ++ show ((nodeMove $ rootLabel $ tree loc), value))
-              parentLoc
-          else
-              -- trace ("backpropagate "
-              --        ++ show ((nodeMove $ rootLabel $ tree loc), value))
-              backpropagate value' parentLoc
+          -- trace ("backpropagate "
+          --        ++ show ((nodeMove $ rootLabel $ tree loc), value))
+          backpropagate value' parentLoc
     where
       loc' = modifyLabel (updateNodeValue value) loc
       value' =

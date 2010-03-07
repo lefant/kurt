@@ -47,6 +47,9 @@ import Data.Tree.UCT.GameTree (UCTTreeLoc)
 import Data.Tree.UCT
 
 import Debug.Trace (trace)
+import Data.Tree (rootLabel)
+import Data.Tree.Zipper (tree)
+import Data.Tree.UCT.GameTree (MoveNode(..))
 -- import Data.Tree (drawTree)
 -- import Data.Tree.Zipper (tree)
 
@@ -71,7 +74,7 @@ newEngineState = EngineState {
                  , boardSize = defaultBoardSize
                  , getKomi = defaultKomi
                  , simulCount = 1000
-                 , timePerMove = 100 }
+                 , timePerMove = 1000 }
 
 
 
@@ -147,6 +150,7 @@ bestMoveFromLoc loc state =
           else
               trace ("bestMoveFromLoc \n\n\n"
                      ++ show (color, move, value) ++ "\n"
+                     ++ show (nodeVisits $ rootLabel $ tree $ loc) ++ "\n"
                      -- ++ (drawTree $ fmap show $ tree loc)
                     )
               move

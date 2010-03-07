@@ -1,5 +1,6 @@
 {-# OPTIONS -O2 -Wall -Werror -Wwarn -XFlexibleInstances #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
+{-# LANGUAGE BangPatterns #-}
 
 {- |
    Module     : Data.Tree.UCT
@@ -63,7 +64,7 @@ instance (UCTNode a) => Eq (MoveNode a) where
 
 nodeFromMove :: (UCTNode a) => a -> MoveNode a
 nodeFromMove move = MoveNode { nodeMove = move
-                             , nodeVisits = 0
+                             , nodeVisits = 1
                              , nodeValue = initialMoveValue move }
 
 
