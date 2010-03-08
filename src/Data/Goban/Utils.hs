@@ -97,13 +97,12 @@ otherColor White = Black
 
 
 
-inBounds :: Int -> Vertex -> Bool
+inBounds :: Boardsize -> Vertex -> Bool
 inBounds boardsize (x, y) =
     and [x > 0, x <= boardsize, y > 0, y <= boardsize]
 
 
-
-nonEdgeVertices :: Int -> [Vertex]
+nonEdgeVertices :: Boardsize -> [Vertex]
 nonEdgeVertices boardsize =
     [(x, y) | x <- [lower .. upper], y <- [lower .. upper]]
     where
@@ -113,7 +112,6 @@ nonEdgeVertices boardsize =
           then 3
           else 2
 
-
-allVertices :: Int -> [Vertex]
+allVertices :: Boardsize -> [Vertex]
 allVertices n =
     [(x, y) | y <- reverse [1 .. n], x <- [1 .. n]]

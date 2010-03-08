@@ -1,4 +1,5 @@
 {-# OPTIONS -O2 -Wall -Werror -Wwarn #-}
+{-# OPTIONS_GHC -funbox-strict-fields #-}
 
 {- |
    Module     : Data.Goban.Goban
@@ -18,6 +19,7 @@ module Data.Goban.Goban ( -- STGoban(..)
                         , Color(..)
                         , Stone(..)
                         , Vertex
+                        , Boardsize
                         , Score
                         , gtpShowMove
                         , letterToX
@@ -60,10 +62,15 @@ instance Show Color where
     show Black = "b"
     show White = "w"
 
-type Vertex = (Int, Int)
+type Vertex = (Coord, Coord)
+
+type Coord = Int
+
+type Boardsize = Int
+
+
 
 type Score = Float
-
 
 
 
@@ -75,16 +82,16 @@ gtpShowMove (StoneMove (Stone ((x, y), _color))) =
 gtpShowMove (Pass _color) = "pass"
 gtpShowMove (Resign _color) = "resign"
 
-xToLetter :: Int -> Char
+xToLetter :: Coord -> Char
 xToLetter n =
     if (n < 1) || (n > 25)
     then error "letterToX: n out of bounds"
     else
         if n <= 8
-        then chr (n + 64)
-        else chr (n + 65)
+        then chr (fromIntegral $ n + 64)
+        else chr (fromIntegral $ n + 65)
 
-letterToX :: Char -> Int
+letterToX :: Char -> Coord
 letterToX 'i' =
     error "letterToX: the letter i is skipped for coordinates to avoid confusion with j"
 letterToX c =
@@ -95,5 +102,5 @@ letterToX c =
         then n
         else n - 1
     where
-      n = (ord $ toUpper c) - 64
+      n = (fromIntegral $ ord $ toUpper c) - 64
 

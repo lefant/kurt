@@ -30,11 +30,11 @@ import Control.Monad.ST (ST)
 
 import Data.Goban.Goban
 import Data.Goban.Utils
-import Data.Goban.STVector (STVectorGoban)
+import Data.Goban.STVector (STGoban)
 
 
 data GameState = GameState {
-      goban           :: !STVectorGoban
+      goban           :: !STGoban
     , koBlocked       :: ![Vertex]
     , moveHistory     :: ![Move]
     , komi            :: !Score
