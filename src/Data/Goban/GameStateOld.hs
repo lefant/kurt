@@ -26,15 +26,14 @@ module Data.Goban.GameState ( GameState(..)
 
 
 import Data.List (partition, foldl')
-import Control.Monad.ST (ST)
 
 import Data.Goban.Goban
 import Data.Goban.Utils
-import Data.Goban.STVector (STVectorGoban)
+import Data.Goban.Vector (VectorGoban)
 
 
 data GameState = GameState {
-      goban           :: !STVectorGoban
+      goban           :: !VectorGoban
     , koBlocked       :: ![Vertex]
     , moveHistory     :: ![Move]
     , komi            :: !Score
@@ -82,71 +81,7 @@ getLeafGameState = foldl' updateGameState
 
 
 
--- STUArray s Coord Char) -> Coord -> Move -> ST s Bool
-updateGameStateST :: GameState -> Move -> GameState
-updateGameStateST state move =
-    case move of
-      StoneMove stone@(Stone (p, _)) ->
-          if p `elem` (koBlocked state)
-          then error "updateGameState: move in ko violation"
-          else
-                  -- trace ("updateGameState: "
-                  --        ++ show (
-                  --                 (" move ", move)
-                  --                 ,(" bp: ", blackPrisoners')
-                  --                 ,(" wp: ", whitePrisoners')
-                  --                 ,(" dead: ", dead)
-                  --                 ,(" dead': ", dead')
-                  --                 ,(" bdead': ", bDead)
-                  --                 ,(" wdead': ", wDead)
-                  --                ))
-              state {
-                       goban = goban''
-                      ,moveHistory = (moveHistory state) ++ [move]
-                      ,blackPrisoners = blackPrisoners'
-                      ,whitePrisoners = whitePrisoners'
-                      ,koBlocked = koBlocked'
-              }
-          where
-            dead = killedStones goban' stone
-            goban' = addStone (goban state) stone
-            goban'' = deleteStones goban' dead
-            -- goban''' = deleteStones goban'' dead'
-            -- dead' =
-            --     if isDead goban'' stone
-            --     then (groupOfStone goban'' stone)
-            --     else []
-            blackPrisoners' =
-                (blackPrisoners state)
-                + (fromIntegral $ length bDead)
-            whitePrisoners' =
-                (whitePrisoners state)
-                + (fromIntegral $ length wDead)
-            (bDead, wDead) = partition
-                             (\(Stone (_, c)) -> c == Black)
-                             -- (dead ++ dead')
-                             dead
 
-            koBlocked' =
-                case dead of
-                  [koStone@(Stone (v,_))] ->
-                      if [stone] == (killedStones goban' koStone)
-                      then [v]
-                      else []
-                  _ -> []
-
-
-      Pass _color ->
-          state {
-                moveHistory = (moveHistory state) ++ [move]
-               ,koBlocked = []
-              }
-
-      Resign _color ->
-          state {
-                moveHistory = (moveHistory state) ++ [move]
-               ,koBlocked = []
-              }
 
 
 updateGameState :: GameState -> Move -> GameState

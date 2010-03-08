@@ -34,9 +34,11 @@ import Data.List ((\\))
 -- import Text.Printf (printf)
 
 
-import Data.Goban.Goban (Move(..), Stone(..), Color, Vertex, Score, freeVertices)
-import Data.Goban.Utils
-import Data.Goban.GameState
+import Data.Goban.GameState (GameState(..), newGameState, scoreGameState, updateGameState, nextMoveColor, nextMoves)
+import Data.Goban.Goban (Move(..), Stone(..), Color, Vertex, Score)
+import Data.Goban.STVector ()
+import Data.Goban.Utils (winningScore, scoreToResult)
+
 
 import Data.Tree.UCT.GameTree (UCTTreeLoc)
 import Data.Tree.UCT
