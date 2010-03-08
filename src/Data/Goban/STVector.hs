@@ -20,25 +20,18 @@ module Data.Goban.STVector ( STGoban(..)
                            , deleteStones
                            , gobanSize
                            , intToVertex
+                           , vertexToInt
                            , borderVertices
                            , size
                            , isSuicideVertex
                            , isPotentialFullEye
+                           , killedStones
                            , neighbourStones
                            , adjacentStones
                            , intAdjacentStones
                            , verticesToStones
                            , adjacentVertices
                            , intAscAdjacentVertices
-                           -- , isSaneMove
-                           -- , stonesColor
-                           -- , isSuicideVertex
-                           -- , isDead
-                           -- , killedStones
-                           -- , adjacentFree
-                           -- , allVertices
-                           -- , verticesFromStones
-                           -- , groupOfStone
                            ) where
 
 import Control.Monad (liftM, filterM)
@@ -258,15 +251,6 @@ deadStones g stone@(Stone (_p, color)) =
           color == color'
 
 
--- -- liberties :: STGoban -> [Stone] -> Int
--- -- liberties goban groupStones =
--- --     length ls
--- --     where
--- --       ls = nub ls'
--- --       ls' =
--- --           concatMap
--- --           (adjacentFree goban)
--- --           (verticesFromStones groupStones)
 
 
 -- FIXME:
@@ -284,15 +268,6 @@ killedStones g stone@(Stone (_p, color)) =
 
 
 
-
-
--- groupOfStone :: STGoban s -> Stone -> ST s [Stone]
--- groupOfStone g stone@(Stone (_p, color)) =
---     maxStringM genF' filterF' stone
---     where
---       genF' = neighbourStones g
---       filterF' (Stone (_p', color')) =
---           color == color'
 
 
 
@@ -343,14 +318,34 @@ diagonalVertices (x, y) =
     [(x+1,y+1),(x-1,y+1),(x+1,y-1),(x-1,y-1)]
 
 
-maxStringM :: (Monad m, Eq a) => (a -> m [a]) -> (a -> Bool) -> a -> m [a]
-maxStringM genF filterF p =
-    maxString' [p] []
-    where
-      maxString' [] gs = return $ gs
-      maxString' (n : ns) gs = do
-        hs <- liftM (filter filterF) $ genF n
-        maxString' (ns ++ ((hs \\ gs) \\ ns)) (n : gs)
+-- groupOfStone :: STGoban s -> Stone -> ST s [Stone]
+-- groupOfStone g stone@(Stone (_p, color)) =
+--     maxStringM genF' filterF' stone
+--     where
+--       genF' = neighbourStones g
+--       filterF' (Stone (_p', color')) =
+--           color == color'
+
+
+-- maxStringM :: (Monad m, Eq a) => (a -> m [a]) -> (a -> Bool) -> a -> m [a]
+-- maxStringM genF filterF p =
+--     maxString' [p] []
+--     where
+--       maxString' [] gs = return $ gs
+--       maxString' (n : ns) gs = do
+--         hs <- liftM (filter filterF) $ genF n
+--         maxString' (ns ++ ((hs \\ gs) \\ ns)) (n : gs)
+
+
+-- liberties :: STGoban -> [Stone] -> Int
+-- liberties goban groupStones =
+--     length ls
+--     where
+--       ls = nub ls'
+--       ls' =
+--           concatMap
+--           (adjacentFree goban)
+--           (verticesFromStones groupStones)
 
 
 
@@ -373,25 +368,5 @@ maxStringM genF filterF p =
 --           | color == Black = "x"
 --           | color == White = "o"
 --       showStone something = error ("showStone: unmatched " ++ show something)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
