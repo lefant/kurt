@@ -19,22 +19,22 @@ module Data.Goban.GameState ( GameState(..)
                             , scoreGameState
                             -- , getLeafGameState
                             -- , updateGameState
-                            -- , nextMoves
-                            -- , thisMoveColor
-                            -- , nextMoveColor
+                            , nextMoves
+                            , thisMoveColor
+                            , nextMoveColor
                             ) where
 
 
-import Data.List (partition, foldl', (\\))
+import Control.Monad (filterM)
 import Control.Monad.ST (ST)
+import Data.List (partition, foldl', (\\))
 import qualified Data.IntSet as S
 
 
 import Data.Goban.Goban
 import Data.Goban.Utils
 import Data.Goban.STVector (STGoban)
--- import Data.Goban.STVector (saneMoves, territory)
-import Data.Goban.STVector (newGoban, size, gobanSize, borderVertices, intAscAdjacentVertices, adjacentStones, intAdjacentStones)
+import Data.Goban.STVector (newGoban, size, intToVertex, gobanSize, borderVertices, intAscAdjacentVertices, adjacentStones, intAdjacentStones, isSuicideVertex)
 import Data.Goban.STVector (addStone, deleteStones)
 
 
@@ -306,36 +306,53 @@ maxIntSet genF filterF p =
             (i, is') = S.deleteFindMin is
 
 
-          
+
+nextMoves :: GameState s -> Color -> ST s [Move]
+nextMoves state color =
+    filterM (isSaneMove state color) frees >>=
+            (return . (map (\v -> StoneMove (Stone (v, color)))))
+    where
+      frees =
+          map (intToVertex (boardsize state))
+                  $ S.toList
+                  $ S.difference (freeVertices state) (koBlocked state)
+
+--       -- frees =
+--       --     if length (moveHistory state) > m
+--       --     then
+--       --         freeVertices goban
+--       --     else
+--       --         freeNonEdgeVertices goban
+
+--       -- m = truncate $ sqrt (fromIntegral (sizeOfGoban goban) :: Float)
 
 
+isSaneMove :: GameState s -> Color -> Vertex -> ST s Bool
+isSaneMove state color p =
+    -- (not (isPotentialFullEye g color p)) &&
+    isSuicideVertex g color p >>= (return . not)
+    where
+      g = goban state
 
+thisMoveColor :: GameState s -> ST s Color
+thisMoveColor state =
+    return $ case moveHistory state of
+               [] ->
+                   error "thisMoveColor called when moveHistory still empty"
+               moves ->
+                   case last moves of
+                     (StoneMove (Stone (_, color))) -> color
+                     (Pass color) -> color
+                     (Resign color) -> color
 
--- nextMoves :: GameState -> Color -> [Move]
--- nextMoves gState color =
---     saneMoves (goban gState) (koBlocked gState) color
-
-
-
--- thisMoveColor :: GameState -> Color
--- thisMoveColor state =
---     case moveHistory state of
---       [] ->
---           error "thisMoveColor called when moveHistory still empty"
---       moves ->
---           case last moves of
---             (StoneMove (Stone (_, color))) -> color
---             (Pass color) -> color
---             (Resign color) -> color
-
--- nextMoveColor :: GameState -> Color
--- nextMoveColor state =
---     case moveHistory state of
---       [] -> Black
---       moves ->
---           otherColor $
---           case last moves of
---             (StoneMove (Stone (_, color))) -> color
---             (Pass color) -> color
---             (Resign color) -> color
+nextMoveColor :: GameState s -> ST s Color
+nextMoveColor state =
+    return $ case moveHistory state of
+               [] -> Black
+               moves ->
+                   otherColor $
+                   case last moves of
+                     (StoneMove (Stone (_, color))) -> color
+                     (Pass color) -> color
+                     (Resign color) -> color
 

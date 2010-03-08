@@ -30,7 +30,7 @@ library
                  ,Data.Goban.Goban
                  ,Data.Goban.GameState
                  ,Data.Goban.Utils
-                 ,Data.Goban.Vector
+                 ,Data.Goban.STVector
                  ,Data.Tree.UCT
                  ,Network.GoTextProtocol2.Types
                  ,Network.GoTextProtocol2.Server.Parser

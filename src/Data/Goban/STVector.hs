@@ -19,19 +19,20 @@ module Data.Goban.STVector ( STGoban(..)
                            , addStone
                            , deleteStones
                            , gobanSize
+                           , intToVertex
                            , borderVertices
                            , size
+                           , isSuicideVertex
+                           , isPotentialFullEye
+                           , neighbourStones
                            , adjacentStones
                            , intAdjacentStones
                            , verticesToStones
                            , adjacentVertices
                            , intAscAdjacentVertices
-
-                           -- , saneMoves
                            -- , isSaneMove
                            -- , stonesColor
                            -- , isSuicideVertex
-                           -- , isPotentialFullEye
                            -- , isDead
                            -- , killedStones
                            -- , adjacentFree
@@ -40,7 +41,7 @@ module Data.Goban.STVector ( STGoban(..)
                            -- , groupOfStone
                            ) where
 
-import Control.Monad (liftM)
+import Control.Monad (liftM, filterM)
 import Control.Monad.ST (ST)
 import Data.Maybe (catMaybes)
 import Data.Word (Word)
@@ -51,7 +52,7 @@ import qualified Data.Vector.Unboxed.Mutable as VM
 
 
 import Data.Goban.Goban
-import Data.Goban.Utils (verticesFromStones)
+import Data.Goban.Utils (verticesFromStones, otherColor)
 -- import Data.Goban.Utils (stoneColor, otherColor, allVertices, inBounds, nonEdgeVertices, maxString)
 
 
@@ -62,6 +63,7 @@ data STGoban s = STGoban !Boardsize (VM.STVector s Word)
 -- this should be some kind of enum instance
 -- so we can do toEnum / fromEnum instead of stateToWord
 data VertexState = VertexColor Color | Empty | Border
+                 deriving (Eq)
 
 
 newGoban :: Boardsize -> ST s (STGoban s)
@@ -189,6 +191,116 @@ wordToState n =
 
 
 
+
+isPotentialFullEye :: STGoban s -> Color -> Vertex -> ST s Bool
+isPotentialFullEye g color v = do
+  as <- mapM (readGoban g) $ adjacentVertices v
+  (if all isSameColorOrBorder as
+   then do
+     ds <- mapM (readGoban g) $ diagonalVertices v
+     opponentDiagonalCount <- return $ length $ filter isOtherColor ds
+     return $ ((opponentDiagonalCount == 0)
+               || ((length ds == 4) && opponentDiagonalCount == 1))
+   else return False)
+
+   where
+     isSameColorOrBorder c = c == Border || c == VertexColor color
+     isOtherColor c = c == VertexColor (otherColor color)
+
+
+
+-- isEyeLike :: STGoban -> Color -> Vertex -> Bool
+-- isEyeLike goban color v =
+--     (length vs == length sns)
+--     && isSuicide goban (Stone (v, (otherColor color)))
+--     where
+--       vs = adjacentVertices goban v
+--       sns = filter (\(Stone (_p', c')) -> color == c') ns
+--       ns = neighbourStones goban (Stone (v, color))
+
+
+isSuicideVertex :: STGoban s -> Color -> Vertex -> ST s Bool
+isSuicideVertex g color v =
+    isSuicide g (Stone (v, color))
+
+
+isSuicide :: STGoban s -> Stone -> ST s Bool
+isSuicide g stone = do
+  addStone g stone
+  a <- isDead g stone
+  (if a
+   then do
+     dead <- killedStones g stone
+     deleteStones g dead
+     isDead g stone
+   else return False)
+
+
+isDead :: STGoban s -> Stone -> ST s Bool
+isDead g stone =
+    deadStones g stone >>= (return . not . null)
+
+deadStones :: STGoban s -> Stone -> ST s [Stone]
+deadStones g stone@(Stone (_p, color)) =
+    anyInMaxStringAlive [stone] []
+    where
+      anyInMaxStringAlive [] gs = return gs
+      anyInMaxStringAlive (n@(Stone (p, _color)) : ns) gs = do
+          frees <- adjacentFree g p
+          (if null frees
+           then do
+               hs <- liftM (filter filterF) $ genF n
+               anyInMaxStringAlive (ns ++ (((hs) \\ gs) \\ ns)) (n : gs)
+           else return [])
+
+      genF = neighbourStones g
+      filterF (Stone (_p', color')) =
+          color == color'
+
+
+-- -- liberties :: STGoban -> [Stone] -> Int
+-- -- liberties goban groupStones =
+-- --     length ls
+-- --     where
+-- --       ls = nub ls'
+-- --       ls' =
+-- --           concatMap
+-- --           (adjacentFree goban)
+-- --           (verticesFromStones groupStones)
+
+
+-- FIXME:
+-- if several killed neighbouring stones are part of the same
+-- group it will be found twice here
+-- nub at the end works around for scoring
+killedStones :: STGoban s -> Stone -> ST s [Stone]
+killedStones g stone@(Stone (_p, color)) =
+    neighbourStones g stone >>=
+    filterM (return . hasOtherColor) >>=
+    mapM (deadStones g) >>= (return . nub . concat)
+    where
+      hasOtherColor (Stone (_p', color')) =
+          (otherColor color) == color'
+
+
+
+
+
+-- groupOfStone :: STGoban s -> Stone -> ST s [Stone]
+-- groupOfStone g stone@(Stone (_p, color)) =
+--     maxStringM genF' filterF' stone
+--     where
+--       genF' = neighbourStones g
+--       filterF' (Stone (_p', color')) =
+--           color == color'
+
+
+
+neighbourStones :: STGoban s -> Stone -> ST s [Stone]
+neighbourStones g (Stone (p, _)) =
+    adjacentStones g p
+
+
 adjacentStones :: STGoban s -> Vertex -> ST s [Stone]
 adjacentStones g p =
     verticesToStones g $ adjacentVertices p
@@ -207,6 +319,12 @@ intVerticesToStones g ps =
     mapM (intVertexToStone g) ps >>= (return . catMaybes)
   
 
+adjacentFree :: STGoban s -> Vertex -> ST s [Vertex]
+adjacentFree g initP = do
+  filterM isFree $ adjacentVertices initP
+  where
+    isFree p = readGoban g p >>= (return . ((==) Empty))
+
 
 
 adjacentVertices :: Vertex -> [Vertex]
@@ -220,28 +338,21 @@ intAscAdjacentVertices n vertex =
     where
       (x, y) = (intToVertex n) vertex
 
+diagonalVertices :: Vertex -> [Vertex]
+diagonalVertices (x, y) =
+    [(x+1,y+1),(x-1,y+1),(x+1,y-1),(x-1,y-1)]
 
 
+maxStringM :: (Monad m, Eq a) => (a -> m [a]) -> (a -> Bool) -> a -> m [a]
+maxStringM genF filterF p =
+    maxString' [p] []
+    where
+      maxString' [] gs = return $ gs
+      maxString' (n : ns) gs = do
+        hs <- liftM (filter filterF) $ genF n
+        maxString' (ns ++ ((hs \\ gs) \\ ns)) (n : gs)
 
 
-
-
-
-
-
-
-
--- adjacentVertices :: STGoban -> Vertex -> [Vertex]
--- adjacentVertices goban (x, y) =
---     filter
---     (inBounds (sizeOfGoban goban))
---     [(x+1,y),(x-1,y),(x,y+1),(x,y-1)]
-
--- diagonalVertices :: STGoban -> Vertex -> [Vertex]
--- diagonalVertices goban (x, y) =
---     filter
---     (inBounds (sizeOfGoban goban))
---     [(x+1,y+1),(x-1,y+1),(x+1,y-1),(x-1,y-1)]
 
 -- freeNonEdgeVertices :: STGoban -> [Vertex]
 -- freeNonEdgeVertices goban =
@@ -274,159 +385,11 @@ intAscAdjacentVertices n vertex =
 
 
 
--- saneMoves :: STGoban -> [Vertex] -> Color -> [Move]
--- saneMoves goban koBlockeds color =
---     map (\v -> StoneMove (Stone (v, color))) $
---         filter (isSaneMove goban koBlockeds color) frees
---     where
---       frees = freeVertices goban
---       -- frees =
---       --     if length (moveHistory state) > m
---       --     then
---       --         freeVertices goban
---       --     else
---       --         freeNonEdgeVertices goban
-
---       -- m = truncate $ sqrt (fromIntegral (sizeOfGoban goban) :: Float)
-
-
--- isSaneMove :: STGoban -> [Vertex] -> Color -> Vertex -> Bool
--- isSaneMove goban koBlockeds color p =
---           (not (p `elem` koBlockeds )) &&
---           (not (isPotentialFullEye goban color p)) &&
---           (not (isSuicideVertex goban color p))
 
 
 
 
 
-
--- isSuicideVertex :: STGoban -> Color -> Vertex -> Bool
--- isSuicideVertex goban color v =
---     isSuicide goban (Stone (v, color))
-
--- isPotentialFullEye :: STGoban -> Color -> Vertex -> Bool
--- isPotentialFullEye goban color v =
---     -- all adjacent vertices must be our Stones
---     (length as == length asSC) &&
---     -- if there are 4 diagonals
---     if length ds >= 4
---     then
---         -- all but one of them must be ours or empty
---         length dsOC <= 1
---     else
---         -- if there are less diagonals, all must be ours or empty
---         length dsOC == 0
---     where
---       asSC = filter sameColorStone $ verticesToStones goban as
---       as = adjacentVertices goban v
-
---       dsOC = filter otherColorStone $ verticesToStones goban ds
---       ds = diagonalVertices goban v
-
---       sameColorStone (Stone (_, c)) = color == c
---       otherColorStone (Stone (_, c)) = (otherColor color) == c
-
-
--- -- isEyeLike :: STGoban -> Color -> Vertex -> Bool
--- -- isEyeLike goban color v =
--- --     (length vs == length sns)
--- --     && isSuicide goban (Stone (v, (otherColor color)))
--- --     where
--- --       vs = adjacentVertices goban v
--- --       sns = filter (\(Stone (_p', c')) -> color == c') ns
--- --       ns = neighbourStones goban (Stone (v, color))
-
-
--- isSuicide :: STGoban -> Stone -> Bool
--- isSuicide goban stone =
---     if isDead goban' stone
---     then
---         -- trace ("isSuicide calling isDead on goban'' for " ++ show stone)
---         isDead goban'' stone
---     else
---         -- trace ("isSuicide returning early, stone alive for " ++ show stone)
---         False
---     where
---       goban'' = deleteStones goban' dead
---       dead = killedStones goban' stone
---       goban' = addStone goban stone
-
-
--- isDead :: STGoban -> Stone -> Bool
--- isDead goban stone =
---     not . null $ deadStones goban stone
-
-
--- -- FIXME:
--- -- if several killed neighbouring stones are part of the same
--- -- group it will be found twice here
--- -- nub at the end works around for scoring
--- killedStones :: STGoban -> Stone -> [Stone]
--- killedStones goban stone@(Stone (_p, color)) =
---     nub $ concatMap (deadStones goban) ns
---     where
---       ns = filter hasOtherColor $ neighbourStones goban stone
---       hasOtherColor (Stone (_p', color')) =
---           (otherColor color) == color'
-
--- deadStones :: STGoban -> Stone -> [Stone]
--- deadStones goban stone@(Stone (_p, color)) =
---     anyInMaxStringAlive [stone] []
---     where
---       anyInMaxStringAlive [] gs =
---           gs
---       anyInMaxStringAlive (n@(Stone (p, _color)) : ns) gs =
---           if null frees
---           then
---               -- trace ("anyInMaxStringAlive recursing after " ++ show n)
---               anyInMaxStringAlive (ns ++ (((fgen n) \\ gs) \\ ns)) (n : gs)
---           else
---               -- trace ("anyInMaxStringAlive found liberties " ++ show n)
---               []
---           where
---             frees = (adjacentFree goban p)
-
---       genF stone' = neighbourStones goban stone'
---       filterF (Stone (_p', color')) =
---           color == color'
---       fgen n =
---           filter filterF $ genF n
-
-
--- -- liberties :: STGoban -> [Stone] -> Int
--- -- liberties goban groupStones =
--- --     length ls
--- --     where
--- --       ls = nub ls'
--- --       ls' =
--- --           concatMap
--- --           (adjacentFree goban)
--- --           (verticesFromStones groupStones)
-
-
-
--- groupOfStone :: STGoban -> Stone -> [Stone]
--- groupOfStone goban stone@(Stone (_p, color)) =
---     maxString genF' filterF' stone
---     where
---       genF' stone' = neighbourStones goban stone'
---       filterF' (Stone (_p', color')) =
---           color == color'
-
-
--- neighbourStones :: STGoban -> Stone -> [Stone]
--- neighbourStones goban (Stone (p, _)) =
---     adjacentStones goban p
-
-
-
-
-
--- adjacentFree :: STGoban -> Vertex -> [Vertex]
--- adjacentFree goban p =
---     filter (((==) Nothing) . (vertexToStone goban)) $
---            adjacentVertices goban p
 
 
 
