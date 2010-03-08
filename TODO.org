@@ -19,6 +19,8 @@
 **** must be completely isolated and self-contained
 *** can use runSTUArray or the like
 
+*** isSaneMove still needs love
+
 
 * new glue between uctNew and gobanNew
 ** propagation of UCT values / rave values

@@ -30,11 +30,12 @@ import Data.Time.Clock ( UTCTime(..)
                        , getCurrentTime
                        )
 import Data.List ((\\))
+import qualified Data.IntSet as S
 -- import Data.List (sort)
 -- import Text.Printf (printf)
 
 
-import Data.Goban.GameState (GameState(..), newGameState, scoreGameState, updateGameState, nextMoveColor, nextMoves)
+import Data.Goban.GameState (GameState(..), newGameState, scoreGameState, updateGameState, getLeafGameState, thisMoveColor, nextMoveColor, nextMoves, isSaneMove, freeVertices)
 import Data.Goban.Goban (Move(..), Stone(..), Color, Vertex, Score)
 import Data.Goban.STVector ()
 import Data.Goban.Utils (winningScore, scoreToResult)
@@ -50,8 +51,8 @@ import Data.Tree.UCT.GameTree (MoveNode(..))
 -- import Data.Tree (drawTree)
 -- import Data.Tree.Zipper (tree)
 
-data EngineState = EngineState {
-      getGameState    :: GameState
+data EngineState s = EngineState {
+      getGameState    :: GameState s
     , boardSize       :: !Int
     , getKomi         :: !Score
     , simulCount      :: !Int
@@ -65,9 +66,11 @@ defaultKomi = 7.5
 defaultBoardSize :: Int
 defaultBoardSize = 9
 
-newEngineState :: EngineState
-newEngineState = EngineState {
-                   getGameState = newGameState defaultBoardSize defaultKomi
+newEngineState :: ST s (EngineState s)
+newEngineState = do
+  gs <- newGameState defaultBoardSize defaultKomi
+  return $ EngineState {
+                   getGameState = gs
                  , boardSize = defaultBoardSize
                  , getKomi = defaultKomi
                  , simulCount = 1000
@@ -77,34 +80,36 @@ newEngineState = EngineState {
 
 
 
-genMove :: EngineState -> Color -> IO Move
-genMove eState color =
-    -- if (null (saneMoves state)) || ((winningProb bestMove) < 0.15)
-    if null $ nextMoves gState color
-    then
-        if winningScore color (scoreGameState gState)
-        then return $ Pass color
-        else return $ Resign color
-    else
-        initUct eState color
+genMove :: EngineState s -> Color -> IO Move
+genMove eState color = do
+  moves <- stToIO $ nextMoves gState color
+  score <- stToIO $ scoreGameState gState
+  (if null moves
+   then
+       if winningScore color score
+       then return $ Pass color
+       else return $ Resign color
+   else
+       initUct eState color)
     where
       gState = getGameState eState
 
-initUct :: EngineState -> Color -> IO Move
+initUct :: EngineState s -> Color -> IO Move
 initUct eState color = do
   now <- getCurrentTime
-  uctLoop initLoc gState $ UTCTime { utctDay = (utctDay now)
-                            , utctDayTime =
-                                thinkPicosecs + (utctDayTime now) }
+  moves <- stToIO $ nextMoves gState color
+  uctLoop (rootNode moves) gState $ UTCTime { utctDay = (utctDay now)
+                                            , utctDayTime =
+                                                thinkPicosecs
+                                                + (utctDayTime now) }
     where
-      initLoc = rootNode $ nextMoves gState color
       gState = getGameState eState
       thinkPicosecs =
           picosecondsToDiffTime
           $ fromIntegral (timePerMove eState) * 1000000000
 
 
-uctLoop :: UCTTreeLoc Move -> GameState -> UTCTime -> IO Move
+uctLoop :: UCTTreeLoc Move -> GameState s -> UTCTime -> IO Move
 uctLoop !loc rootGameState deadline = do
   -- done <- return $ trace ("uctLoop debug tree\n\n\n" ++
   --       (drawTree $ fmap show $ tree loc)) False
@@ -121,21 +126,23 @@ uctLoop !loc rootGameState deadline = do
   now <- getCurrentTime
   timeIsUp <- return $ (now > deadline)
   (if (done || timeIsUp)
-   then return $ bestMoveFromLoc loc''' rootGameState
+   then do
+     rootScore <- stToIO $ scoreGameState rootGameState
+     bestMoveFromLoc loc''' rootGameState rootScore
    else uctLoop loc''' rootGameState deadline)
 
 
 
 
-bestMoveFromLoc :: UCTTreeLoc Move -> GameState -> Move
-bestMoveFromLoc loc state =
+bestMoveFromLoc :: UCTTreeLoc Move -> GameState s -> Score -> Move
+bestMoveFromLoc loc state score =
     case principalVariation loc of
       [] ->
           error "bestMoveFromLoc: principalVariation is empty"
       (node : _) ->
           if value < 0.15
           then
-              if winningScore color (scoreGameState state)
+              if winningScore color score
               then
                   trace ("bestMoveFromLoc pass " ++ show node)
                   Pass color
@@ -156,22 +163,22 @@ bestMoveFromLoc loc state =
 
 
 
-runOneRandom :: GameState -> Gen s -> ST s Score
+runOneRandom :: GameState s -> Gen s -> ST s Score
 runOneRandom initState rGenInit =
     run initState 0 rGenInit
     where
-      run :: GameState -> Int -> Gen s -> ST s Score
+      run :: GameState s -> Int -> Gen s -> ST s Score
       run _ 1000 _ = return 0
       run state runCount rGen = do
         move <- genMoveRand state rGen
-        state' <- return $ updateGameState state move
+        state' <- updateGameState state move
         case move of
           (Pass _) -> do
                     move' <- genMoveRand state' rGen
-                    state'' <- return $ updateGameState state' move'
+                    state'' <- updateGameState state' move'
                     case move' of
                       (Pass _) ->
-                          return $ scoreGameState state''
+                          scoreGameState state''
                       (StoneMove _) ->
                           run state'' (runCount + 1) rGen
                       (Resign _) ->
@@ -184,24 +191,25 @@ runOneRandom initState rGenInit =
 
 
 -- genMoveRand :: 
-genMoveRand :: GameState -> Gen s -> ST s Move
+genMoveRand :: GameState s -> Gen s -> ST s Move
 genMoveRand state rGen =
-    pickSane $ freeVertices (goban state)
+    pickSane $ freeVertices state
     where
-      pickSane [] = return $ Pass (nextMoveColor state)
-      pickSane [p] =
-          return $ if isSaneMove' p
-                   then StoneMove (Stone (p, color))
-                   else Pass (nextMoveColor state)
+      pickSane [] =
+           return $ Pass color
+      pickSane [p] = do
+        sane <- isSaneMove state color p
+        return $ (if sane
+                  then StoneMove (Stone (p, color))
+                  else Pass color)
       pickSane ps = do
         p <- pick ps rGen
-        (if isSaneMove' p
+        sane <- isSaneMove state color p
+        (if sane
          then return $ StoneMove (Stone (p, color))
          else pickSane (ps \\ [p]))
 
-      isSaneMove' = isSaneMove (goban state) (koBlocked state) color
       color = nextMoveColor state
-
 
 pick :: [Vertex] -> Gen s -> ST s Vertex
 pick as rGen = do

@@ -20,6 +20,8 @@ module Data.Goban.GameState ( GameState(..)
                             , getLeafGameState
                             , updateGameState
                             , nextMoves
+                            , freeVertices
+                            , isSaneMove
                             , thisMoveColor
                             , nextMoveColor
                             ) where
@@ -42,7 +44,7 @@ type IntVertexSet = S.IntSet
 
 data GameState s = GameState { goban           :: !(STGoban s)
                              , boardsize       :: !Boardsize
-                             , freeVertices    :: !IntVertexSet
+                             , freeVerticesSet :: !IntVertexSet
                              , koBlocked       :: !(Maybe Vertex)
                              , moveHistory     :: ![Move]
                              , komi            :: !Score
@@ -75,7 +77,7 @@ newGameState n initKomi = do
   g <- newGoban n
   return GameState { goban = g
                    , boardsize = n
-                   , freeVertices = initFreeVertices
+                   , freeVerticesSet = initFreeVertices
                    , koBlocked = Nothing
                    , moveHistory = []
                    , komi = initKomi
@@ -88,6 +90,12 @@ newGameState n initKomi = do
     initFreeVertices = S.fromList $ [0 .. (size n)] \\ (borderVertices n)
 
 
+
+
+nextMoves :: GameState s -> Color -> ST s [Move]
+nextMoves state color =
+    filterM (isSaneMove state color) (freeVertices state) >>=
+                (return . (map (\v -> StoneMove (Stone (v, color)))))
 
 
 
@@ -111,7 +119,7 @@ updateGameState state move =
                        , koBlocked = Nothing
                        }
                StoneMove stone@(Stone (p, c)) ->
-                   if Just p == koBlocked state
+                   if isKoBlocked state p
                    then error "updateGameState: move in ko violation"
                    else (do
                           addStone (goban state) stone
@@ -128,73 +136,6 @@ updateGameState state move =
                                          [Stone (k, _)] -> Just k
                                          _ -> Nothing
                                      })
-
-
-
--- updateGameState :: GameState -> Move -> GameState
--- updateGameState state move =
---     case move of
---       StoneMove stone@(Stone (p, _)) ->
---           if p `elem` (koBlocked state)
---           then error "updateGameState: move in ko violation"
---           else
---                   -- trace ("updateGameState: "
---                   --        ++ show (
---                   --                 (" move ", move)
---                   --                 ,(" bp: ", blackPrisoners')
---                   --                 ,(" wp: ", whitePrisoners')
---                   --                 ,(" dead: ", dead)
---                   --                 ,(" dead': ", dead')
---                   --                 ,(" bdead': ", bDead)
---                   --                 ,(" wdead': ", wDead)
---                   --                ))
---               state {
---                        goban = goban''
---                       ,moveHistory = (moveHistory state) ++ [move]
---                       ,blackPrisoners = blackPrisoners'
---                       ,whitePrisoners = whitePrisoners'
---                       ,koBlocked = koBlocked'
---               }
---           where
---             dead = killedStones goban' stone
---             goban' = addStone (goban state) stone
---             goban'' = deleteStones goban' dead
---             -- goban''' = deleteStones goban'' dead'
---             -- dead' =
---             --     if isDead goban'' stone
---             --     then (groupOfStone goban'' stone)
---             --     else []
---             blackPrisoners' =
---                 (blackPrisoners state)
---                 + (fromIntegral $ length bDead)
---             whitePrisoners' =
---                 (whitePrisoners state)
---                 + (fromIntegral $ length wDead)
---             (bDead, wDead) = partition
---                              (\(Stone (_, c)) -> c == Black)
---                              -- (dead ++ dead')
---                              dead
-
---             koBlocked' =
---                 case dead of
---                   [koStone@(Stone (v,_))] ->
---                       if [stone] == (killedStones goban' koStone)
---                       then [v]
---                       else []
---                   _ -> []
-
-
---       Pass _color ->
---           state {
---                 moveHistory = (moveHistory state) ++ [move]
---                ,koBlocked = []
---               }
-
---       Resign _color ->
---           state {
---                 moveHistory = (moveHistory state) ++ [move]
---                ,koBlocked = []
---               }
 
 
 
@@ -232,9 +173,12 @@ intAllAdjacentStonesSameColor g ps = do
           else Nothing
 
 
+
+
+
 emptyStrings :: GameState s -> [[Int]]
 emptyStrings state =
-    emptyStrings' initFrees []
+  emptyStrings' initFrees []
 
     where
       emptyStrings' frees xs 
@@ -252,7 +196,7 @@ emptyStrings state =
       -- maybe actually looking it up in the goban is faster?
       isFree i = i `S.member` initFrees
 
-      initFrees = freeVertices state
+      initFrees = freeVerticesSet state
 
       n = boardsize state
 
@@ -272,19 +216,6 @@ maxIntSet genF filterF p =
 
 
 
-nextMoves :: GameState s -> Color -> ST s [Move]
-nextMoves state color =
-    filterM (isSaneMove state color) frees >>=
-            (return . (map (\v -> StoneMove (Stone (v, color)))))
-    where
-      frees =
-          map (intToVertex (boardsize state))
-                  $ S.toList
-                  $ case koBlocked state of
-                      Nothing -> freeVertices state
-                      Just i ->
-                          S.delete (vertexToInt (boardsize state) i)
-                               $ freeVertices state
 
 --       -- frees =
 --       --     if length (moveHistory state) > m
@@ -296,6 +227,8 @@ nextMoves state color =
 --       -- m = truncate $ sqrt (fromIntegral (sizeOfGoban goban) :: Float)
 
 
+
+-- probably a candidate for moving back to STVector
 isSaneMove :: GameState s -> Color -> Vertex -> ST s Bool
 isSaneMove state color p =
     -- (not (isPotentialFullEye g color p)) &&
@@ -303,25 +236,42 @@ isSaneMove state color p =
     where
       g = goban state
 
-thisMoveColor :: GameState s -> ST s Color
+
+
+
+
+thisMoveColor :: GameState s -> Color
 thisMoveColor state =
-    return $ case moveHistory state of
-               [] ->
-                   error "thisMoveColor called when moveHistory still empty"
-               moves ->
-                   case last moves of
-                     (StoneMove (Stone (_, color))) -> color
-                     (Pass color) -> color
-                     (Resign color) -> color
+    case moveHistory state of
+      [] ->
+          error "thisMoveColor called when moveHistory still empty"
+      moves ->
+          case last moves of
+            (StoneMove (Stone (_, color))) -> color
+            (Pass color) -> color
+            (Resign color) -> color
 
-nextMoveColor :: GameState s -> ST s Color
+nextMoveColor :: GameState s -> Color
 nextMoveColor state =
-    return $ case moveHistory state of
-               [] -> Black
-               moves ->
-                   otherColor $
-                   case last moves of
-                     (StoneMove (Stone (_, color))) -> color
-                     (Pass color) -> color
-                     (Resign color) -> color
+    case moveHistory state of
+      [] -> Black
+      moves ->
+          otherColor $
+          case last moves of
+            (StoneMove (Stone (_, color))) -> color
+            (Pass color) -> color
+            (Resign color) -> color
 
+
+freeVertices :: GameState s -> [Vertex]
+freeVertices state =
+    map (intToVertex (boardsize state))
+            $ S.toList
+            $ case koBlocked state of
+                Nothing -> freeVerticesSet state
+                Just i ->
+                    S.delete (vertexToInt (boardsize state) i)
+                         $ freeVerticesSet state
+
+isKoBlocked ::  GameState s -> Vertex -> Bool
+isKoBlocked state p = Just p == koBlocked state
