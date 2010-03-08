@@ -44,6 +44,7 @@ maxString genF filterF p =
           filter filterF $ genF n
 
 
+
 scoreToResult :: Color -> Score -> Double
 scoreToResult color thisScore =
     if thisScore == 0

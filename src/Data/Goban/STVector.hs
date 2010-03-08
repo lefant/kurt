@@ -18,9 +18,15 @@ module Data.Goban.STVector ( STGoban(..)
                            , newGoban
                            , addStone
                            , deleteStones
+                           , gobanSize
                            , borderVertices
                            , size
-                           -- , territory
+                           , adjacentStones
+                           , intAdjacentStones
+                           , verticesToStones
+                           , adjacentVertices
+                           , intAscAdjacentVertices
+
                            -- , saneMoves
                            -- , isSaneMove
                            -- , stonesColor
@@ -81,6 +87,15 @@ vertexToStone g vertex = do
   return $ case s of
              VertexColor color -> Just $ Stone (vertex, color)
              Empty -> Nothing
+             Border -> Nothing
+
+intVertexToStone :: STGoban s -> Int -> ST s (Maybe Stone)
+intVertexToStone g@(STGoban n _v) i = do
+  s <- intReadGoban g i
+  return $ case s of
+             VertexColor color -> Just $ Stone (intToVertex n i, color)
+             Empty -> Nothing
+             Border -> Nothing
 
 
 writeGoban :: STGoban s -> Vertex -> VertexState -> ST s ()
@@ -90,6 +105,10 @@ writeGoban (STGoban n v) vertex state =
 readGoban :: STGoban s -> Vertex -> ST s VertexState
 readGoban (STGoban n v) vertex =
     VM.read v (vertexToInt n vertex) >>= (return . wordToState)
+
+intReadGoban :: STGoban s -> Int -> ST s VertexState
+intReadGoban (STGoban _n v) i =
+    VM.read v i >>= (return . wordToState)
 
 
 gobanSize :: STGoban s -> ST s Boardsize
@@ -170,10 +189,36 @@ wordToState n =
 
 
 
+adjacentStones :: STGoban s -> Vertex -> ST s [Stone]
+adjacentStones g p =
+    verticesToStones g $ adjacentVertices p
+
+intAdjacentStones :: STGoban s -> Int -> ST s [Stone]
+intAdjacentStones g@(STGoban n _v) p =
+    intVerticesToStones g $ intAscAdjacentVertices n p
+
+
+verticesToStones :: STGoban s -> [Vertex] -> ST s [Stone]
+verticesToStones g ps =
+    mapM (vertexToStone g) ps >>= (return . catMaybes)
+
+intVerticesToStones :: STGoban s -> [Int] -> ST s [Stone]
+intVerticesToStones g ps =
+    mapM (intVertexToStone g) ps >>= (return . catMaybes)
+  
 
 
 
+adjacentVertices :: Vertex -> [Vertex]
+adjacentVertices (x, y) =
+    [(x,y-1),(x-1,y),(x+1,y),(x,y+1)]
 
+intAscAdjacentVertices :: Boardsize -> Int -> [Int]
+intAscAdjacentVertices n vertex =
+    -- make sure to be in ascending order
+    map (vertexToInt n) [(x,y-1),(x-1,y),(x+1,y),(x,y+1)]
+    where
+      (x, y) = (intToVertex n) vertex
 
 
 
@@ -252,36 +297,8 @@ wordToState n =
 --           (not (isSuicideVertex goban color p))
 
 
--- territory :: STGoban -> Color -> Score
--- territory goban color =
---     sum $ map (fromIntegral . length)
---             $ filter f (emptyStrings goban)
---     where
---       f :: [Vertex] -> Bool
---       f gs =
---           all (((==) color) . stoneColor)
---                   $ concatMap (adjacentStones goban) gs
-
--- stonesColor :: STGoban -> Color -> Score
--- stonesColor goban color =
---     fromIntegral $ length $ filter (((==) color) . stoneColor) $ verticesToStones goban $ allVertices (sizeOfGoban goban)
 
 
--- emptyStrings :: STGoban -> [[Vertex]]
--- emptyStrings goban =
---     emptyStrings' empties []
---     where
---       empties = (freeVertices goban)
-
---       emptyStrings' [] gs = gs
---       emptyStrings' (a : as) gs =
---           emptyStrings' (as \\ ma) (ma : gs)
---           where
---             ma = maxEmptyString a
-
---       maxEmptyString = maxString (adjacentVertices goban) isEmptyVertex
-
---       isEmptyVertex v = (vertexToStone goban v) == Nothing
 
 
 -- isSuicideVertex :: STGoban -> Color -> Vertex -> Bool
@@ -402,13 +419,7 @@ wordToState n =
 -- neighbourStones goban (Stone (p, _)) =
 --     adjacentStones goban p
 
--- adjacentStones :: STGoban -> Vertex -> [Stone]
--- adjacentStones goban p =
---     verticesToStones goban $ adjacentVertices goban p
 
--- verticesToStones :: STGoban -> [Vertex] -> [Stone]
--- verticesToStones goban ps =
---     catMaybes $ fmap (vertexToStone goban) ps
 
 
 
