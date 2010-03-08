@@ -15,6 +15,11 @@ Mutable Goban Implementation based on Data.Vector.Unboxed.Mutable
 -}
 
 module Data.Goban.STVector ( STGoban(..)
+                           , newGoban
+                           , addStone
+                           , deleteStones
+                           , borderVertices
+                           , size
                            -- , territory
                            -- , saneMoves
                            -- , isSaneMove
@@ -29,73 +34,66 @@ module Data.Goban.STVector ( STGoban(..)
                            -- , groupOfStone
                            ) where
 
--- import qualified Data.Vector as V
-import qualified Data.Vector.Unboxed.Mutable as VM
+import Control.Monad (liftM)
+import Control.Monad.ST (ST)
+import Data.Maybe (catMaybes)
 import Data.Word (Word)
 import Data.List ((\\), nub)
-import Data.Maybe (catMaybes)
+import qualified Data.Vector.Unboxed.Mutable as VM
 
 -- import Debug.Trace (trace)
 
 
-import Control.Monad (liftM)
-import Control.Monad.ST (ST)
 import Data.Goban.Goban
-import Data.Goban.Utils (stoneColor, otherColor, allVertices, inBounds, nonEdgeVertices, maxString)
+import Data.Goban.Utils (verticesFromStones)
+-- import Data.Goban.Utils (stoneColor, otherColor, allVertices, inBounds, nonEdgeVertices, maxString)
+
+
 
 
 data STGoban s = STGoban !Boardsize (VM.STVector s Word)
 
+-- this should be some kind of enum instance
+-- so we can do toEnum / fromEnum instead of stateToWord
 data VertexState = VertexColor Color | Empty | Border
 
 
 newGoban :: Boardsize -> ST s (STGoban s)
-newGoban boardsize = do
-  v <- VM.newWith size (stateToWord Empty)
-  mapM_ (\n -> VM.write v n (stateToWord Border)) borderVertices
-  return $ STGoban boardsize v
+newGoban n = do
+  v <- VM.newWith (size n) (stateToWord Empty)
+  mapM_ (\i -> VM.write v i (stateToWord Border)) (borderVertices n)
+  return $ STGoban n v
+
+
+addStone :: STGoban s -> Stone -> ST s ()
+addStone g (Stone (vertex, color)) =
+    writeGoban g vertex (VertexColor color)
+
+deleteStones :: STGoban s -> [Stone] -> ST s ()
+deleteStones g stones =
+    mapM_ (\p -> writeGoban g p Empty) stoneVertices
     where
-      size = 1 + (vertexToInt boardsize (maxEdge, maxEdge))
-      maxEdge = boardsize + 1
-      borderVertices =
-          map (vertexToInt boardsize)
-                  [(x, y) | x <- [0, maxEdge], y <- [0, maxEdge] ]
+      stoneVertices = verticesFromStones stones
+
+vertexToStone :: STGoban s -> Vertex -> ST s (Maybe Stone)
+vertexToStone g vertex = do
+  s <- readGoban g vertex
+  return $ case s of
+             VertexColor color -> Just $ Stone (vertex, color)
+             Empty -> Nothing
 
 
--- addStone (STGoban (boardsize, goban)) (Stone (vertex, color)) =
---     -- trace ("addStone: " ++ show (intVertex, intState))
---     STGoban (boardsize, goban')
---     where
---       goban' = goban V.// [(intVertex, intState)]
---       intVertex = vertexToInt boardsize vertex
---       intState = stateToInt (VertexColor color)
+writeGoban :: STGoban s -> Vertex -> VertexState -> ST s ()
+writeGoban (STGoban n v) vertex state =
+    VM.write v (vertexToInt n vertex) (stateToWord state)
+
+readGoban :: STGoban s -> Vertex -> ST s VertexState
+readGoban (STGoban n v) vertex =
+    VM.read v (vertexToInt n vertex) >>= (return . wordToState)
 
 
--- deleteStones (STGoban (boardsize, goban)) stones =
---     STGoban (boardsize, goban')
---     where
---       goban' = goban V.// (map intPair stones)
---       intPair (Stone (vertex, _)) =
---           (intVertex, intState)
---           where
---             intVertex = vertexToInt boardsize vertex
---             intState = stateToInt Empty
-
--- freeVertices (STGoban (boardsize, goban)) =
---     map (intToVertex boardsize) $ V.toList $
---         V.findIndices ((stateToInt Empty) ==) goban
-
--- vertexToStone (STGoban (boardsize, goban)) p =
---     -- trace ("vertexToStone " ++ show (p, intVertex))
---     result
---     where
---       result =
---           case intToState $ goban V.! intVertex of
---             VertexColor color -> Just $ Stone (p, color)
---             Empty -> Nothing
---       intVertex = vertexToInt boardsize p
-
--- sizeOfGoban (STGoban (boardsize, _)) = boardsize
+gobanSize :: STGoban s -> ST s Boardsize
+gobanSize (STGoban n _) = return n
 
 
 
@@ -103,31 +101,46 @@ newGoban boardsize = do
 
 -- helpers: vertex / integer conversion
 
-vertexToInt :: Boardsize -> Vertex -> Int
-vertexToInt boardsize (x, y)
-    | x > boardsize = error "vertexToInt: x > boardsize"
-    | x < 0 = error "vertexToInt: x < 1"
-    | y > boardsize = error "vertexToInt: y > boardsize"
-    | y < 0 = error "vertexToInt: y < 1"
-vertexToInt boardsize (x, y) =
-    y * boardsize + x
+borderVertices :: Boardsize -> [Int]
+borderVertices n =
+    map (vertexToInt n)
+            [(x, y) | x <- [0, maxEdge n], y <- [0, maxEdge n] ]
 
 {-# INLINE vertexToInt #-}
-
-intToVertex :: Boardsize -> Int -> Vertex
-intToVertex boardsize n
-    | n < 0 = error "intToVertex: n < 0"
-    | n > ((boardsize + 2) ^ (2 :: Int)) =
-        error "intToVertex: n > ((boardsize+2) ^ 2)"
-intToVertex boardsize n =
-    (x, y)
-    where
-      y = (n `div` maxEdge)
-      x = (n `mod` maxEdge)
-      maxEdge = boardsize + 2
+vertexToInt :: Boardsize -> Vertex -> Int
+vertexToInt n (x, y)
+    | x > n = error "vertexToInt: x > boardsize"
+    | x < 0 = error "vertexToInt: x < 1"
+    | y > n = error "vertexToInt: y > boardsize"
+    | y < 0 = error "vertexToInt: y < 1"
+vertexToInt n (x, y) =
+    y * n + x
 
 {-# INLINE intToVertex #-}
+intToVertex :: Boardsize -> Int -> Vertex
+intToVertex n i
+    | i < 0 = error "intToVertex: n < 0"
+    | i > ((n + 2) ^ (2 :: Int)) =
+        error "intToVertex: n > ((boardsize+2) ^ 2)"
+intToVertex n i =
+    (x, y)
+    where
+      y = (i `div` maxEdge2)
+      x = (i `mod` maxEdge2)
+      -- double check this does not need to be (maxEdge n)
+      maxEdge2 = n + 2
 
+{-# INLINE size #-}
+size :: Boardsize -> Int
+size n = 1 + (vertexToInt n (maxEdge n, maxEdge n))
+
+{-# INLINE maxEdge #-}
+maxEdge :: Boardsize -> Int
+maxEdge n = n + 1
+
+
+
+-- helpers: state / word conversion
 
 stateToWord :: VertexState -> Word
 stateToWord Empty = 0
