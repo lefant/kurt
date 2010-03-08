@@ -23,6 +23,7 @@ module Data.Goban.STVector ( STGoban(..)
                            , vertexToInt
                            , borderVertices
                            , size
+                           , isSaneMove
                            , isSuicideVertex
                            , isPotentialFullEye
                            , killedStones
@@ -182,6 +183,12 @@ wordToState n =
 
 
 
+
+
+isSaneMove :: STGoban s -> Color -> Vertex -> ST s Bool
+isSaneMove g color p =
+    -- (not (isPotentialFullEye g color p)) &&
+    isSuicideVertex g color p >>= (return . not)
 
 
 

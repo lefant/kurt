@@ -35,9 +35,9 @@ import qualified Data.IntSet as S
 -- import Text.Printf (printf)
 
 
-import Data.Goban.GameState (GameState(..), newGameState, scoreGameState, updateGameState, getLeafGameState, thisMoveColor, nextMoveColor, nextMoves, isSaneMove, freeVertices)
+import Data.Goban.GameState (GameState(..), newGameState, scoreGameState, updateGameState, getLeafGameState, thisMoveColor, nextMoveColor, nextMoves, freeVertices)
 import Data.Goban.Goban (Move(..), Stone(..), Color, Vertex, Score)
-import Data.Goban.STVector ()
+import Data.Goban.STVector (isSaneMove)
 import Data.Goban.Utils (winningScore, scoreToResult)
 
 
@@ -198,18 +198,19 @@ genMoveRand state rGen =
       pickSane [] =
            return $ Pass color
       pickSane [p] = do
-        sane <- isSaneMove state color p
+        sane <- isSaneMove g color p
         return $ (if sane
                   then StoneMove (Stone (p, color))
                   else Pass color)
       pickSane ps = do
         p <- pick ps rGen
-        sane <- isSaneMove state color p
+        sane <- isSaneMove g color p
         (if sane
          then return $ StoneMove (Stone (p, color))
          else pickSane (ps \\ [p]))
 
       color = nextMoveColor state
+      g = goban state
 
 pick :: [Vertex] -> Gen s -> ST s Vertex
 pick as rGen = do

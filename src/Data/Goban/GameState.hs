@@ -21,7 +21,6 @@ module Data.Goban.GameState ( GameState(..)
                             , updateGameState
                             , nextMoves
                             , freeVertices
-                            , isSaneMove
                             , thisMoveColor
                             , nextMoveColor
                             ) where
@@ -36,7 +35,7 @@ import qualified Data.IntSet as S
 import Data.Goban.Goban
 import Data.Goban.Utils
 import Data.Goban.STVector (STGoban)
-import Data.Goban.STVector (newGoban, size, intToVertex, vertexToInt, borderVertices, intAscAdjacentVertices, intAdjacentStones, isSuicideVertex, killedStones)
+import Data.Goban.STVector (newGoban, size, intToVertex, vertexToInt, borderVertices, intAscAdjacentVertices, intAdjacentStones, isSaneMove, killedStones)
 import Data.Goban.STVector (addStone, deleteStones)
 
 
@@ -94,7 +93,7 @@ newGameState n initKomi = do
 
 nextMoves :: GameState s -> Color -> ST s [Move]
 nextMoves state color =
-    filterM (isSaneMove state color) (freeVertices state) >>=
+    filterM (isSaneMove (goban state) color) (freeVertices state) >>=
                 (return . (map (\v -> StoneMove (Stone (v, color)))))
 
 
@@ -214,27 +213,6 @@ maxIntSet genF filterF p =
             ks = S.filter filterF $ genF i
             (i, is') = S.deleteFindMin is
 
-
-
-
---       -- frees =
---       --     if length (moveHistory state) > m
---       --     then
---       --         freeVertices goban
---       --     else
---       --         freeNonEdgeVertices goban
-
---       -- m = truncate $ sqrt (fromIntegral (sizeOfGoban goban) :: Float)
-
-
-
--- probably a candidate for moving back to STVector
-isSaneMove :: GameState s -> Color -> Vertex -> ST s Bool
-isSaneMove state color p =
-    -- (not (isPotentialFullEye g color p)) &&
-    isSuicideVertex g color p >>= (return . not)
-    where
-      g = goban state
 
 
 
