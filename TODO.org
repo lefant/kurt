@@ -17,6 +17,9 @@
 *** fix isSaneMove
 *** fix thisMoveColor / nextMoveColor
 
+*** testing: need to subtract bDead and wDead from b/wStones in updateGameState
+*** testing: need to re-add deadStones toFreeVertices
+
 ** if copyGoban is used cleverly, maybe runOneRandom use runST with the RealWorld
 
 

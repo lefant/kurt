@@ -32,6 +32,7 @@ module Data.Goban.STVector ( STGoban(..)
                            , neighbourStones
                            , adjacentStones
                            , intAdjacentStones
+                           , intVerticesFromStones
                            , verticesToStones
                            , adjacentVertices
                            , intAscAdjacentVertices
@@ -45,7 +46,7 @@ import Data.Word (Word)
 import Data.List ((\\), nub)
 import qualified Data.Vector.Unboxed.Mutable as VM
 
--- import Debug.Trace (trace)
+import Debug.Trace (trace)
 
 
 import Data.Goban.Goban
@@ -72,12 +73,13 @@ newGoban n = do
 copyGoban :: STGoban s -> ST s (STGoban s)
 copyGoban (STGoban n v) = do
   (STGoban _n v') <- newGoban n
-  VM.copy v v'
+  VM.copy v' v
   return $ STGoban n v'
 
 
 addStone :: STGoban s -> Stone -> ST s ()
 addStone g (Stone (vertex, color)) =
+    trace ("addStone " ++ show (vertex, color))
     writeGoban g vertex (VertexColor color)
 
 deleteStones :: STGoban s -> [Stone] -> ST s ()
@@ -200,17 +202,29 @@ wordToState n =
 
 isSaneMove :: STGoban s -> Color -> Vertex -> ST s Bool
 isSaneMove g color p =
-    -- (not (isPotentialFullEye g color p)) &&
-    isSuicideVertex g color p >>= (return . not)
+    -- trace ("isSaneMove called with " ++ show (color, p)) $ do
+    do
+      potEye <- isPotentialFullEye g color p
+      (if potEye
+       then
+           trace ("isSaneMove potEye " ++ show (color, p)) $
+           return False
+       else do
+         suicide <- isSuicideVertex g color p
+         (if suicide
+          then
+              trace ("isSaneMove suicide" ++ show (color, p)) $
+              return False
+          else return True))
 
 
 
 isPotentialFullEye :: STGoban s -> Color -> Vertex -> ST s Bool
-isPotentialFullEye g color v = do
-  as <- mapM (readGoban g) $ adjacentVertices v
+isPotentialFullEye g color p = do
+  as <- mapM (readGoban g) $ adjacentVertices p
   (if all isSameColorOrBorder as
    then do
-     ds <- mapM (readGoban g) $ diagonalVertices v
+     ds <- mapM (readGoban g) $ diagonalVertices p
      opponentDiagonalCount <- return $ length $ filter isOtherColor ds
      return $ ((opponentDiagonalCount == 0)
                || ((length ds == 4) && opponentDiagonalCount == 1))
@@ -238,24 +252,39 @@ isSuicideVertex g color v =
 
 
 isSuicide :: STGoban s -> Stone -> ST s Bool
-isSuicide g stone = do
-  addStone g stone
-  a <- isDead g stone
-  (if a
+isSuicide g stone@(Stone (p, c)) = do
+  frees1 <- adjacentFree g p
+  (if null frees1
+   -- stone has no liberties remaining itself
    then do
-     dead <- killedStones g stone
-     deleteStones g dead
-     isDead g stone
+     as <- adjacentStones g p
+     pdsc <- potDeadColor as c
+     dsc <- deadStones2 g stone pdsc
+     (if (not . null) pdsc || null dsc
+      then return False
+      else do
+        pdoc <- potDeadColor as (otherColor c)
+        doc <- deadStones2 g stone pdoc
+        (if null doc
+         then return True
+         else return False))
+   -- we have at least a liberty
    else return False)
+   where
+     potDeadColor as color =
+         filterM hasOneLiberty $
+                 filter (\(Stone (_p, color')) -> color == color') as
+
+     hasOneLiberty (Stone (p', _c)) = do
+       as <- adjacentFree g p'
+       return $ (length as == 1)
 
 
-isDead :: STGoban s -> Stone -> ST s Bool
-isDead g stone =
-    deadStones g stone >>= (return . not . null)
-
-deadStones :: STGoban s -> Stone -> ST s [Stone]
-deadStones g stone@(Stone (_p, color)) =
-    anyInMaxStringAlive [stone] []
+deadStones2 :: STGoban s -> Stone -> [Stone] -> ST s [Stone]
+deadStones2 _ _ [] = return []
+deadStones2 g stone stones@( (Stone (_p, color)) : _ ) = do
+  initStones <- mapM (neighbourStones g) stones
+  anyInMaxStringAlive (nub ((concat initStones) \\ [stone])) stones
     where
       anyInMaxStringAlive [] gs = return gs
       anyInMaxStringAlive (n@(Stone (p, _color)) : ns) gs = do
@@ -265,11 +294,14 @@ deadStones g stone@(Stone (_p, color)) =
                hs <- liftM (filter filterF) $ genF n
                anyInMaxStringAlive (ns ++ (((hs) \\ gs) \\ ns)) (n : gs)
            else return [])
-
       genF = neighbourStones g
       filterF (Stone (_p', color')) =
           color == color'
 
+
+isDead :: STGoban s -> Stone -> ST s Bool
+isDead g stone =
+    deadStones g stone >>= (return . not . null)
 
 
 
@@ -287,6 +319,22 @@ killedStones g stone@(Stone (_p, color)) =
           (otherColor color) == color'
 
 
+deadStones :: STGoban s -> Stone -> ST s [Stone]
+deadStones g stone@(Stone (_p, color)) =
+    anyInMaxStringAlive [stone] []
+    where
+      anyInMaxStringAlive [] gs = return gs
+      anyInMaxStringAlive (n@(Stone (p, _color)) : ns) gs = do
+          frees <- adjacentFree g p
+          (if null frees
+           then do
+               hs <- liftM (filter filterF) $ genF n
+               anyInMaxStringAlive (ns ++ (((hs) \\ gs) \\ ns)) (n : gs)
+           else return [])
+
+      genF = neighbourStones g
+      filterF (Stone (_p', color')) =
+          color == color'
 
 
 
@@ -333,6 +381,11 @@ intAscAdjacentVertices n vertex =
     where
       (x, y) = (intToVertex n) vertex
 
+intVerticesFromStones :: Int -> [Stone] -> [Int]
+intVerticesFromStones n stones =
+    map (\(Stone (p, _c)) -> vertexToInt n p) stones
+
+
 diagonalVertices :: Vertex -> [Vertex]
 diagonalVertices (x, y) =
     [(x+1,y+1),(x-1,y+1),(x+1,y-1),(x-1,y-1)]
@@ -342,7 +395,7 @@ diagonalVertices (x, y) =
 showboard :: STGoban s -> ST s String
 showboard g@(STGoban n _v) = do
   stones <- mapM (intVertexToStone g) $ [0 .. (maxIntIndex n)] \\ (borderVertices n)
-  return $ unlines $ reverse $ show' stones
+  return $ (++) "\n" $ unlines $ reverse $ show' stones
     where
       show' [] = []
       show' ls' = (concatMap showStone left) : (show' right)

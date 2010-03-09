@@ -92,6 +92,7 @@ verticesFromStones ss = map (\(Stone (p, _c)) -> p) ss
 stoneColor :: Stone -> Color
 stoneColor (Stone (_vertex, color)) = color
 
+
 otherColor :: Color -> Color
 otherColor Black = White
 otherColor White = Black

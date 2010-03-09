@@ -34,6 +34,9 @@ import Data.Goban.STVector (showboard)
 import Kurt.GoEngine (EngineState(..), newEngineState, genMove)
 
 
+import Debug.Trace (trace)
+
+
 type CommandHandler s = [Argument] -> EngineState s -> IO (Either String (String, EngineState s))
 
 lookupC :: String -> [(String, CommandHandler RealWorld)] -> Maybe (String, CommandHandler RealWorld)
@@ -195,19 +198,24 @@ cmd_boardsize _ _ = error "cmd_boardsize called with illegal argument type"
 cmd_showboard :: CommandHandler RealWorld
 cmd_showboard [] state = do
     str <- stToIO $ showboard $ goban $ getGameState state
-    return $ Right ("showboard received:\n"
-                    ++ str, state)
+    return $ Right ("showboard" ++ str, state)
 cmd_showboard _ _ = error "cmd_showboard called with illegal argument type"
 
 cmd_play :: CommandHandler RealWorld
 cmd_play [(MoveArgument move)] state = do
   gState' <- stToIO $ updateGameState (getGameState state) move
+  str <- stToIO $ showboard $ goban $ getGameState state
+  trace ("cmd_play" ++ str) $ return ()
   return $ Right ("", state { getGameState = gState' })
 cmd_play _ _ = error "cmd_play called with illegal argument type"
 
 cmd_genmove :: CommandHandler RealWorld
 cmd_genmove [(ColorArgument color)] state = do
+  str <- stToIO $ showboard $ goban $ getGameState state
+  trace ("cmd_genmove before goengine" ++ str) $ return ()
   move <- genMove state color
+  str' <- stToIO $ showboard $ goban $ getGameState state
+  trace ("cmd_genmove after goengine" ++ str') $ return ()
   gState' <- stToIO $ updateGameState (getGameState state) move
   return $ Right (gtpShowMove move, state { getGameState = gState' })
 cmd_genmove _ _ = error "cmd_genmove called with illegal argument type"

@@ -21,6 +21,7 @@ module Data.Goban.GameState ( GameState(..)
                             , updateGameState
                             , nextMoves
                             , freeVertices
+                            -- , freeVertex
                             , thisMoveColor
                             , nextMoveColor
                             ) where
@@ -34,9 +35,9 @@ import qualified Data.IntSet as S
 
 import Data.Goban.Goban
 import Data.Goban.Utils
-import Data.Goban.STVector (STGoban)
-import Data.Goban.STVector (newGoban, copyGoban, intToVertex, vertexToInt, maxIntIndex, borderVertices, intAscAdjacentVertices, intAdjacentStones, isSaneMove, killedStones)
-import Data.Goban.STVector (addStone, deleteStones)
+import Data.Goban.STVector
+-- import Data.Goban.STVector (newGoban, copyGoban, intToVertex, vertexToInt, maxIntIndex, borderVertices, intAscAdjacentVertices, intVerticesFromStones, intAdjacentStones, isSaneMove, killedStones, showboard)
+-- import Data.Goban.STVector (addStone, deleteStones)
 
 
 import Debug.Trace (trace)
@@ -112,46 +113,56 @@ getLeafGameState state moves = do
 
 updateGameState :: GameState s -> Move -> ST s (GameState s)
 updateGameState state move =
-            case move of
-               Pass _color ->
-                   return $ state {
-                         moveHistory = (moveHistory state) ++ [move]
-                       , koBlocked = Nothing
+    case move of
+      Pass _color ->
+          return $ state {
+                       moveHistory = (moveHistory state) ++ [move]
+                     , koBlocked = Nothing
+                     }
+      Resign _color ->
+          return $ state {
+                       moveHistory = (moveHistory state) ++ [move]
+                     , koBlocked = Nothing
+                     }
+      StoneMove stone@(Stone (p, c)) ->
+          do
+            str1 <- showboard g
+            trace ("updateGameState before" ++ str1) $ return ()
+            addStone g stone
+            str2 <- showboard g
+            trace ("updateGameState after addStone" ++ str2) $ return ()
+            dead <- killedStones g stone
+            trace ("updateGameState dead" ++ show dead) $ return ()
+            deleteStones g dead
+            str4 <- showboard g
+            trace ("updateGameState after deleteStones" ++ str4) $ return ()
+            return $ state {
+                         goban = g
+                       , moveHistory = (moveHistory state) ++ [move]
+                       , blackStones =
+                         (if c == Black
+                          then (blackStones state) + 1
+                          else (blackStones state) + (length dead))
+                       , whiteStones =
+                         (if c == White
+                          then (whiteStones state) + 1
+                          else (whiteStones state) + (length dead))
+                       , koBlocked =
+                         case dead of
+                           [Stone (k, _)] -> Just k
+                           _ -> Nothing
+                       , freeVerticesSet = freeVerticesSet' p dead
                        }
-               Resign _color ->
-                   return $ state {
-                         moveHistory = (moveHistory state) ++ [move]
-                       , koBlocked = Nothing
-                       }
-               StoneMove stone@(Stone (p, c)) ->
-                   if isKoBlocked state p
-                   then error "updateGameState: move in ko violation"
-                   else (let g = goban state in
-                         do
-                           addStone g stone
-                           dead <- killedStones g stone
-                           deleteStones g dead
-                           return $ state {
-                                        -- goban = g
-                                        moveHistory = (moveHistory state) ++ [move]
-                                      , blackStones =
-                                      (if c == Black
-                                       then (blackStones state) + 1
-                                       else (blackStones state))
-                                      , whiteStones =
-                                      (if c == White
-                                       then (whiteStones state) + 1
-                                       else (whiteStones state))
-                                      , koBlocked =
-                                      case dead of
-                                        [Stone (k, _)] -> Just k
-                                        _ -> Nothing
-                                      , freeVerticesSet =
-                                        S.delete
-                                             (vertexToInt (boardsize state) p)
-                                             (freeVerticesSet state)
-                                      })
+    where
+      g = goban state
 
+      freeVerticesSet' p dead =
+          S.union
+               (S.fromList $
+                 intVerticesFromStones (boardsize state) dead)
+               (S.delete
+                     (vertexToInt (boardsize state) p)
+                     (freeVerticesSet state))
 
 
 scoreGameState :: GameState s -> ST s Score
@@ -202,10 +213,10 @@ emptyStrings state =
               emptyStrings' frees'' ((S.toList iMax) : xs)
           where
             frees'' = frees' `S.intersection` iMax
-            iMax = maxIntSet adjacentVertices isFree i
+            iMax = maxIntSet myAdjacentVertices isFree i
             (i, frees') = S.deleteFindMin frees
 
-      adjacentVertices i =
+      myAdjacentVertices i =
           S.fromDistinctAscList (intAscAdjacentVertices n i)
 
       -- maybe actually looking it up in the goban is faster?
@@ -267,6 +278,10 @@ freeVertices state =
                     S.delete (vertexToInt (boardsize state) i)
                          $ freeVerticesSet state
 
-isKoBlocked ::  GameState s -> Vertex -> Bool
-isKoBlocked state p =
-    Just p == koBlocked state
+
+
+-- freeVertex :: GameState s -> Vertex -> Bool
+-- freeVertex state p =
+--     i `S.member` (freeVerticesSet state)
+--     where
+--       i = vertexToInt (boardsize state) p

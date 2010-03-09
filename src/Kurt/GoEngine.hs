@@ -36,7 +36,7 @@ import Data.List ((\\))
 
 import Data.Goban.GameState (GameState(..), newGameState, scoreGameState, updateGameState, getLeafGameState, thisMoveColor, nextMoveColor, nextMoves, freeVertices)
 import Data.Goban.Goban (Move(..), Stone(..), Color, Vertex, Score)
-import Data.Goban.STVector (isSaneMove)
+import Data.Goban.STVector (isSaneMove, showboard)
 import Data.Goban.Utils (winningScore, scoreToResult)
 
 
@@ -68,12 +68,14 @@ defaultBoardSize = 9
 newEngineState :: ST s (EngineState s)
 newEngineState = do
   gs <- newGameState defaultBoardSize defaultKomi
+  boardStr <- showboard $ goban gs
+  trace ("newEngineState" ++ boardStr) $ return ()
   return $ EngineState {
                    getGameState = gs
                  , boardSize = defaultBoardSize
                  , getKomi = defaultKomi
                  , simulCount = 1000
-                 , timePerMove = 1000 }
+                 , timePerMove = 5 }
 
 
 
@@ -83,20 +85,29 @@ genMove :: EngineState RealWorld -> Color -> IO Move
 genMove eState color = do
   moves <- stToIO $ nextMoves gState color
   score <- stToIO $ scoreGameState gState
+  boardStr <- stToIO $ showboard $ goban gState
+  trace ("genMove" ++ boardStr) $ return ()
+  trace ("genMove freeVertices: " ++ show (freeVertices gState)) $ return ()
+  trace ("genMove moves: " ++ show moves) $ return ()
+  trace ("genMove score: " ++ show score) $ return ()
   (if null moves
    then
        if winningScore color score
        then return $ Pass color
        else return $ Resign color
    else
-       initUct eState color)
+       initUCT eState color)
     where
       gState = getGameState eState
 
-initUct :: EngineState RealWorld -> Color -> IO Move
-initUct eState color = do
+initUCT :: EngineState RealWorld -> Color -> IO Move
+initUCT eState color = do
   now <- getCurrentTime
   moves <- stToIO $ nextMoves gState color
+  boardStr <- stToIO $ showboard $ goban gState
+  trace ("initUCT" ++ boardStr) $ return ()
+  trace ("initUCT freeVertices: " ++ show (freeVertices gState)) $ return ()
+  trace ("initUCT moves: " ++ show moves) $ return ()
   uctLoop (rootNode moves) gState $ UTCTime { utctDay = (utctDay now)
                                             , utctDayTime =
                                                 thinkPicosecs
