@@ -18,10 +18,11 @@ module Kurt.MainLoop ( startLoop
                      ) where
     
 
-import Data.Char
-import Data.List
+import Control.Monad.ST (stToIO, RealWorld)
 import System.IO
 import Text.Parsec.String (Parser)
+import Data.Char
+import Data.List
 
 
 import Network.GoTextProtocol2.Server.Parser
@@ -33,9 +34,9 @@ import Data.Goban.STVector (showboard)
 import Kurt.GoEngine (EngineState(..), newEngineState, genMove)
 
 
-type CommandHandler = [Argument] -> EngineState -> IO (Either String (String, EngineState))
+type CommandHandler s = [Argument] -> EngineState s -> IO (Either String (String, EngineState s))
 
-lookupC :: String -> [(String, CommandHandler)] -> Maybe (String, CommandHandler)
+lookupC :: String -> [(String, CommandHandler RealWorld)] -> Maybe (String, CommandHandler RealWorld)
 lookupC cmd cl = find (\(x, _) -> x == cmd) cl
 
 
@@ -63,7 +64,7 @@ commandargparserlist =
 
 
 
-commandHandlers :: [(String, CommandHandler)]
+commandHandlers :: [(String, CommandHandler RealWorld)]
 commandHandlers =
     [
      ("boardsize", cmd_boardsize)
@@ -91,9 +92,9 @@ startLoop =
     do
       hSetBuffering stdin LineBuffering
       hSetBuffering stdout LineBuffering
-      loop $ stToIO newEngineState
+      (stToIO $ newEngineState) >>= loop
 
-loop :: EngineState -> IO ()
+loop :: EngineState RealWorld -> IO ()
 loop oldState =
     do
       input <- getLine
@@ -138,41 +139,41 @@ outputIdOrBlank Nothing = " "
 outputIdOrBlank (Just lineId) = "[" ++ (show lineId) ++ "] "
 
 
-cmd_known_command :: CommandHandler
+cmd_known_command :: CommandHandler RealWorld
 cmd_known_command [(StringArgument cmd)] state =
     return $ case lookupC cmd commandHandlers of
       Nothing -> Right ("false", state)
       Just (_, _) -> Right ("true", state)
 cmd_known_command _ _ = error "cmd_known_command called with illegal argument type"
 
-cmd_list_commands :: CommandHandler
+cmd_list_commands :: CommandHandler RealWorld
 cmd_list_commands _ state =
     return $ Right ((reverse $ drop 1 $ reverse $ unlines $ map fst commandHandlers), state)
 
-cmd_name :: CommandHandler
+cmd_name :: CommandHandler RealWorld
 cmd_name _ state =
     return $ Right ("kurt", state)
 
-cmd_protocol_version :: CommandHandler
+cmd_protocol_version :: CommandHandler RealWorld
 cmd_protocol_version _ state =
     return $ Right ("2", state)
 
-cmd_quit :: CommandHandler
+cmd_quit :: CommandHandler RealWorld
 cmd_quit _ _ =
     error "bye!"
 
-cmd_version :: CommandHandler
+cmd_version :: CommandHandler RealWorld
 cmd_version _ state =
     return $ Right ("0.0.1", state)
 
 
-cmd_clear_board :: CommandHandler
+cmd_clear_board :: CommandHandler RealWorld
 cmd_clear_board [] state = do
   gState' <- stToIO $ newGameState (boardSize state) (getKomi state)
   return $ Right ("", state { getGameState = gState' })
 cmd_clear_board _ _ = error "cmd_clear_board called with illegal argument type"
 
-cmd_komi :: CommandHandler
+cmd_komi :: CommandHandler RealWorld
 cmd_komi [(FloatArgument f)] state =
     return $ Right ("",
                     state {
@@ -182,7 +183,7 @@ cmd_komi [(FloatArgument f)] state =
       gState = getGameState state
 cmd_komi _ _ = error "cmd_komi called with illegal argument type"
 
-cmd_boardsize :: CommandHandler
+cmd_boardsize :: CommandHandler RealWorld
 cmd_boardsize [(IntArgument n)] state =
     return $ Right ("",
                     state {
@@ -191,26 +192,27 @@ cmd_boardsize [(IntArgument n)] state =
                     , boardSize = n } )
 cmd_boardsize _ _ = error "cmd_boardsize called with illegal argument type"
 
-cmd_showboard :: CommandHandler
-cmd_showboard [] state =
+cmd_showboard :: CommandHandler RealWorld
+cmd_showboard [] state = do
+    str <- stToIO $ showboard $ goban $ getGameState state
     return $ Right ("showboard received:\n"
-                    ++ (showboard (goban $ getGameState state)), state)
+                    ++ str, state)
 cmd_showboard _ _ = error "cmd_showboard called with illegal argument type"
 
-cmd_play :: CommandHandler
+cmd_play :: CommandHandler RealWorld
 cmd_play [(MoveArgument move)] state = do
   gState' <- stToIO $ updateGameState (getGameState state) move
   return $ Right ("", state { getGameState = gState' })
 cmd_play _ _ = error "cmd_play called with illegal argument type"
 
-cmd_genmove :: CommandHandler
+cmd_genmove :: CommandHandler RealWorld
 cmd_genmove [(ColorArgument color)] state = do
   move <- genMove state color
   gState' <- stToIO $ updateGameState (getGameState state) move
   return $ Right (gtpShowMove move, state { getGameState = gState' })
 cmd_genmove _ _ = error "cmd_genmove called with illegal argument type"
 
-cmd_final_score :: CommandHandler
+cmd_final_score :: CommandHandler RealWorld
 cmd_final_score [] state = do
   scoreFloat <- stToIO $ scoreGameState $ getGameState state
   return $ Right (scoreString scoreFloat, state)
@@ -222,20 +224,20 @@ cmd_final_score [] state = do
 cmd_final_score _ _ = error "cmd_final_score called with illegal argument type"
 
 
-cmd_kurt_simuls :: CommandHandler
+cmd_kurt_simuls :: CommandHandler RealWorld
 cmd_kurt_simuls [(IntArgument n)] state =
     return $ Right ("", state { simulCount = n })
 cmd_kurt_simuls _ _ = error "cmd_kurt_simuls called with illegal argument type"
 
 
-cmd_gogui_analyze_commands :: CommandHandler
+cmd_gogui_analyze_commands :: CommandHandler RealWorld
 cmd_gogui_analyze_commands [] state =
     return $ Right (
            "gfx/kurt_uct_debug/kurt_uct_debug"
           , state)
 cmd_gogui_analyze_commands _ _ = error "cmd_gogui_analyze_commands called with illegal argument type"
 
-cmd_kurt_uct_debug :: CommandHandler
+cmd_kurt_uct_debug :: CommandHandler RealWorld
 cmd_kurt_uct_debug [] state =
     return $ Right ("uctDebug disabled", state)
     -- where
@@ -243,7 +245,7 @@ cmd_kurt_uct_debug [] state =
 cmd_kurt_uct_debug _ _ = error "cmd_kurt_uct_debug called with illegal argument type"
 
 
-cmd_time_left :: CommandHandler
+cmd_time_left :: CommandHandler RealWorld
 cmd_time_left [(TimeLeftArgument (seconds, stones))] state =
     return
     $ Right ("", state { timePerMove = milliseconds } )

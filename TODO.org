@@ -20,6 +20,7 @@
 *** can use runSTUArray or the like
 
 *** isSaneMove still needs love
+*** showboard still needs love
 
 
 * new glue between uctNew and gobanNew

@@ -33,6 +33,7 @@ module Data.Goban.STVector ( STGoban(..)
                            , verticesToStones
                            , adjacentVertices
                            , intAscAdjacentVertices
+                           , showboard
                            ) where
 
 import Control.Monad (liftM, filterM)
@@ -325,6 +326,31 @@ diagonalVertices (x, y) =
     [(x+1,y+1),(x-1,y+1),(x+1,y-1),(x-1,y-1)]
 
 
+
+showboard :: STGoban s -> ST s String
+showboard g =
+    return "showboard currently unimplemented"
+
+-- showboard :: STGoban -> String
+-- showboard goban =
+--     show' $ map (vertexToStone goban) $ allVertices (sizeOfGoban goban)
+--     where
+--       show' [] = ""
+--       show' ls' = concatMap showStone left ++ "\n" ++ show' right
+--           where
+--             (left, right) = splitAt n ls'
+--       n = sizeOfGoban goban
+--       showStone Nothing = "."
+--       showStone (Just (Stone (_, color)))
+--           | color == Black = "x"
+--           | color == White = "o"
+--       showStone something = error ("showStone: unmatched " ++ show something)
+
+
+
+
+
+
 -- groupOfStone :: STGoban s -> Stone -> ST s [Stone]
 -- groupOfStone g stone@(Stone (_p, color)) =
 --     maxStringM genF' filterF' stone
@@ -360,20 +386,4 @@ diagonalVertices (x, y) =
 -- freeNonEdgeVertices goban =
 --     filter (((==) Nothing) . (vertexToStone goban)) $
 --            nonEdgeVertices (sizeOfGoban goban)
-
--- showboard :: STGoban -> String
--- showboard goban =
---     show' $ map (vertexToStone goban) $ allVertices (sizeOfGoban goban)
---     where
---       show' [] = ""
---       show' ls' = concatMap showStone left ++ "\n" ++ show' right
---           where
---             (left, right) = splitAt n ls'
---       n = sizeOfGoban goban
---       showStone Nothing = "."
---       showStone (Just (Stone (_, color)))
---           | color == Black = "x"
---           | color == White = "o"
---       showStone something = error ("showStone: unmatched " ++ show something)
-
 

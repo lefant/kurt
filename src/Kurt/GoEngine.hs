@@ -23,14 +23,13 @@ module Kurt.GoEngine ( genMove
 
 
 import Control.Monad (liftM)
-import Control.Monad.ST (ST, stToIO)
+import Control.Monad.ST (ST, RealWorld, stToIO)
 import System.Random.MWC (Gen, create, uniform)
 import Data.Time.Clock ( UTCTime(..)
                        , picosecondsToDiffTime
                        , getCurrentTime
                        )
 import Data.List ((\\))
-import qualified Data.IntSet as S
 -- import Data.List (sort)
 -- import Text.Printf (printf)
 
@@ -80,7 +79,7 @@ newEngineState = do
 
 
 
-genMove :: EngineState s -> Color -> IO Move
+genMove :: EngineState RealWorld -> Color -> IO Move
 genMove eState color = do
   moves <- stToIO $ nextMoves gState color
   score <- stToIO $ scoreGameState gState
@@ -94,7 +93,7 @@ genMove eState color = do
     where
       gState = getGameState eState
 
-initUct :: EngineState s -> Color -> IO Move
+initUct :: EngineState RealWorld -> Color -> IO Move
 initUct eState color = do
   now <- getCurrentTime
   moves <- stToIO $ nextMoves gState color
@@ -109,7 +108,7 @@ initUct eState color = do
           $ fromIntegral (timePerMove eState) * 1000000000
 
 
-uctLoop :: UCTTreeLoc Move -> GameState s -> UTCTime -> IO Move
+uctLoop :: UCTTreeLoc Move -> GameState RealWorld -> UTCTime -> IO Move
 uctLoop !loc rootGameState deadline = do
   -- done <- return $ trace ("uctLoop debug tree\n\n\n" ++
   --       (drawTree $ fmap show $ tree loc)) False
@@ -191,7 +190,6 @@ runOneRandom initState rGenInit =
 
 
 
--- genMoveRand :: 
 genMoveRand :: GameState s -> Gen s -> ST s Move
 genMoveRand state rGen =
     pickSane $ freeVertices state
