@@ -260,7 +260,7 @@ isSuicide g stone@(Stone (p, c)) = do
      as <- adjacentStones g p
      pdsc <- potDeadColor as c
      dsc <- deadStones2 g stone pdsc
-     (if (not . null) pdsc || null dsc
+     (if null dsc && (not . null) pdsc
       then return False
       else do
         pdoc <- potDeadColor as (otherColor c)
@@ -284,10 +284,13 @@ deadStones2 :: STGoban s -> Stone -> [Stone] -> ST s [Stone]
 deadStones2 _ _ [] = return []
 deadStones2 g stone stones@( (Stone (_p, color)) : _ ) = do
   initStones <- mapM (neighbourStones g) stones
-  anyInMaxStringAlive (nub ((concat initStones) \\ [stone])) stones
+  initStones' <- return $ nub ((filter filterF (concat initStones)) \\ [stone])
+  result <- anyInMaxStringAlive initStones' stones
+  trace ("deadStones2 " ++ show (stone, stones, result)) $ return result
     where
       anyInMaxStringAlive [] gs = return gs
       anyInMaxStringAlive (n@(Stone (p, _color)) : ns) gs = do
+          trace ("anyInMaxStringAlive2 " ++ show n) $ return ()
           frees <- adjacentFree g p
           (if null frees
            then do

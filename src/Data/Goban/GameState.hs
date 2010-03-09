@@ -126,16 +126,16 @@ updateGameState state move =
                      }
       StoneMove stone@(Stone (p, c)) ->
           do
-            str1 <- showboard g
-            trace ("updateGameState before" ++ str1) $ return ()
+            -- str1 <- showboard g
+            -- trace ("updateGameState before" ++ str1) $ return ()
             addStone g stone
-            str2 <- showboard g
-            trace ("updateGameState after addStone" ++ str2) $ return ()
+            -- str2 <- showboard g
+            -- trace ("updateGameState after addStone" ++ str2) $ return ()
             dead <- killedStones g stone
-            trace ("updateGameState dead" ++ show dead) $ return ()
+            -- trace ("updateGameState dead" ++ show dead) $ return ()
             deleteStones g dead
-            str4 <- showboard g
-            trace ("updateGameState after deleteStones" ++ str4) $ return ()
+            -- str4 <- showboard g
+            -- trace ("updateGameState after deleteStones" ++ str4) $ return ()
             return $ state {
                          goban = g
                        , moveHistory = (moveHistory state) ++ [move]
