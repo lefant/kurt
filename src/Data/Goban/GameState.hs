@@ -35,7 +35,7 @@ import qualified Data.IntSet as S
 import Data.Goban.Goban
 import Data.Goban.Utils
 import Data.Goban.STVector (STGoban)
-import Data.Goban.STVector (newGoban, size, intToVertex, vertexToInt, borderVertices, intAscAdjacentVertices, intAdjacentStones, isSaneMove, killedStones)
+import Data.Goban.STVector (newGoban, intToVertex, vertexToInt, maxIntIndex, borderVertices, intAscAdjacentVertices, intAdjacentStones, isSaneMove, killedStones)
 import Data.Goban.STVector (addStone, deleteStones)
 
 
@@ -86,7 +86,7 @@ newGameState n initKomi = do
                    -- , whitePrisoners = 0
                    }
   where
-    initFreeVertices = S.fromList $ [0 .. (size n)] \\ (borderVertices n)
+    initFreeVertices = S.fromList $ [0 .. (maxIntIndex n)] \\ (borderVertices n)
 
 
 

@@ -22,7 +22,8 @@ module Data.Goban.STVector ( STGoban(..)
                            , intToVertex
                            , vertexToInt
                            , borderVertices
-                           , size
+                           -- , maxEdge
+                           , maxIntIndex
                            , isSaneMove
                            , isSuicideVertex
                            , isPotentialFullEye
@@ -119,40 +120,43 @@ gobanSize (STGoban n _) = return n
 
 borderVertices :: Boardsize -> [Int]
 borderVertices n =
-    map (vertexToInt n)
-            [(x, y) | x <- [0, maxEdge n], y <- [0, maxEdge n] ]
+    map (vertexToInt n) $
+            [(x, y) | x <- [0, n + 1], y <- [0 .. n + 1] ]
+            ++ [(x, y) | x <- [1 .. n], y <- [0, n + 1] ]
 
 {-# INLINE vertexToInt #-}
 vertexToInt :: Boardsize -> Vertex -> Int
 vertexToInt n (x, y)
-    | x > n = error "vertexToInt: x > boardsize"
-    | x < 0 = error "vertexToInt: x < 1"
-    | y > n = error "vertexToInt: y > boardsize"
-    | y < 0 = error "vertexToInt: y < 1"
+    | x > n + 1 = error "vertexToInt: x > n + 1"
+    | x < 0 = error "vertexToInt: x < 0"
+    | y > n + 1 = error "vertexToInt: y > n + 1"
+    | y < 0 = error "vertexToInt: y < 0"
 vertexToInt n (x, y) =
-    y * n + x
+    y * (n + 2) + x
 
 {-# INLINE intToVertex #-}
 intToVertex :: Boardsize -> Int -> Vertex
 intToVertex n i
     | i < 0 = error "intToVertex: n < 0"
-    | i > ((n + 2) ^ (2 :: Int)) =
-        error "intToVertex: n > ((boardsize+2) ^ 2)"
+    | i > size n =
+        error "intToVertex: i > size n"
 intToVertex n i =
     (x, y)
     where
-      y = (i `div` maxEdge2)
-      x = (i `mod` maxEdge2)
-      -- double check this does not need to be (maxEdge n)
-      maxEdge2 = n + 2
+      y = i `div` (n + 2)
+      x = i `mod` (n + 2)
 
 {-# INLINE size #-}
 size :: Boardsize -> Int
-size n = 1 + (vertexToInt n (maxEdge n, maxEdge n))
+size n = maxIntIndex n + 1
 
-{-# INLINE maxEdge #-}
-maxEdge :: Boardsize -> Int
-maxEdge n = n + 1
+{-# INLINE maxIntIndex #-}
+maxIntIndex :: Boardsize -> Int
+maxIntIndex n = vertexToInt n (n + 1, n + 1)
+
+-- {-# INLINE maxEdge #-}
+-- maxEdge :: Boardsize -> Int
+-- maxEdge n = n + 1
 
 
 
@@ -169,6 +173,7 @@ stateToWord Border = 3
 wordToState :: Word -> VertexState
 wordToState n =
     case (fromIntegral n) :: Int of
+      0 -> Empty
       1 -> VertexColor Black
       2 -> VertexColor White
       3 -> Border
