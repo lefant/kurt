@@ -91,7 +91,7 @@ startLoop =
     do
       hSetBuffering stdin LineBuffering
       hSetBuffering stdout LineBuffering
-      loop newEngineState
+      loop $ stToIO newEngineState
 
 loop :: EngineState -> IO ()
 loop oldState =
@@ -167,11 +167,9 @@ cmd_version _ state =
 
 
 cmd_clear_board :: CommandHandler
-cmd_clear_board [] state =
-    return $ Right ("",
-                    state {
-                      getGameState =
-                      newGameState (boardSize state) (getKomi state)})
+cmd_clear_board [] state = do
+  gState' <- stToIO $ newGameState (boardSize state) (getKomi state)
+  return $ Right ("", state { getGameState = gState' })
 cmd_clear_board _ _ = error "cmd_clear_board called with illegal argument type"
 
 cmd_komi :: CommandHandler
@@ -200,31 +198,27 @@ cmd_showboard [] state =
 cmd_showboard _ _ = error "cmd_showboard called with illegal argument type"
 
 cmd_play :: CommandHandler
-cmd_play [(MoveArgument move)] state =
-    return $ Right ("",
-                    state {
-                      getGameState =
-                      updateGameState (getGameState state) move })
+cmd_play [(MoveArgument move)] state = do
+  gState' <- stToIO $ updateGameState (getGameState state) move
+  return $ Right ("", state { getGameState = gState' })
 cmd_play _ _ = error "cmd_play called with illegal argument type"
 
 cmd_genmove :: CommandHandler
 cmd_genmove [(ColorArgument color)] state = do
   move <- genMove state color
-  return $ Right (gtpShowMove move,
-                  state {
-                    getGameState =
-                    updateGameState (getGameState state) move })
+  gState' <- stToIO $ updateGameState (getGameState state) move
+  return $ Right (gtpShowMove move, state { getGameState = gState' })
 cmd_genmove _ _ = error "cmd_genmove called with illegal argument type"
 
 cmd_final_score :: CommandHandler
-cmd_final_score [] state =
-    return $ Right (scoreString scoreFloat, state)
+cmd_final_score [] state = do
+  scoreFloat <- stToIO $ scoreGameState $ getGameState state
+  return $ Right (scoreString scoreFloat, state)
     where
       scoreString s
           | s < 0 = "W+" ++ (show (-1 * s))
           | s > 0 = "B+" ++ (show s)
           | otherwise = "0"
-      scoreFloat = (scoreGameState $ getGameState state)
 cmd_final_score _ _ = error "cmd_final_score called with illegal argument type"
 
 

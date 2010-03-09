@@ -100,7 +100,7 @@ nextMoves state color =
 
 -- compute game state at the end of a move sequence by replaying it
 getLeafGameState :: GameState s -> [Move] -> ST s (GameState s)
-getLeafGameState = foldM updateGameState
+getLeafGameState state moves = foldM updateGameState state moves
 
 
 

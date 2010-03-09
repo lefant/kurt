@@ -115,20 +115,21 @@ uctLoop !loc rootGameState deadline = do
   --       (drawTree $ fmap show $ tree loc)) False
   done <- return False
   (loc', path) <- return $ selectLeafPath policyUCB1 loc
-  leafGameState <- return $ getLeafGameState rootGameState path
+  leafGameState <- stToIO $ getLeafGameState rootGameState path
   -- rGen <- trace ("uctLoop leafGameState \n" ++ (showboard (goban $ leafGameState))) $ newStdGen
   -- FIXME: rave will also need a sequence of moves here
   rGen <- stToIO create
   score <- stToIO $ runOneRandom leafGameState rGen
   value <- return $ scoreToResult (thisMoveColor leafGameState) score
-  loc'' <- return $ expandNode loc' $ nextMoves leafGameState (nextMoveColor leafGameState)
+  moves <- stToIO $ nextMoves leafGameState $ nextMoveColor leafGameState
+  loc'' <- return $ expandNode loc' moves
   loc''' <- return $ backpropagate value loc''
   now <- getCurrentTime
   timeIsUp <- return $ (now > deadline)
   (if (done || timeIsUp)
    then do
      rootScore <- stToIO $ scoreGameState rootGameState
-     bestMoveFromLoc loc''' rootGameState rootScore
+     return $ bestMoveFromLoc loc''' rootGameState rootScore
    else uctLoop loc''' rootGameState deadline)
 
 
