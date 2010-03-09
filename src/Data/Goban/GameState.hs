@@ -35,8 +35,11 @@ import qualified Data.IntSet as S
 import Data.Goban.Goban
 import Data.Goban.Utils
 import Data.Goban.STVector (STGoban)
-import Data.Goban.STVector (newGoban, intToVertex, vertexToInt, maxIntIndex, borderVertices, intAscAdjacentVertices, intAdjacentStones, isSaneMove, killedStones)
+import Data.Goban.STVector (newGoban, copyGoban, intToVertex, vertexToInt, maxIntIndex, borderVertices, intAscAdjacentVertices, intAdjacentStones, isSaneMove, killedStones)
 import Data.Goban.STVector (addStone, deleteStones)
+
+
+import Debug.Trace (trace)
 
 
 type IntVertexSet = S.IntSet
@@ -100,7 +103,10 @@ nextMoves state color =
 
 -- compute game state at the end of a move sequence by replaying it
 getLeafGameState :: GameState s -> [Move] -> ST s (GameState s)
-getLeafGameState state moves = foldM updateGameState state moves
+getLeafGameState state moves = do
+  g' <- copyGoban $ goban state
+  state' <- return $ state { goban = g' }
+  foldM updateGameState state' moves
 
 
 
@@ -120,21 +126,31 @@ updateGameState state move =
                StoneMove stone@(Stone (p, c)) ->
                    if isKoBlocked state p
                    then error "updateGameState: move in ko violation"
-                   else (do
-                          addStone (goban state) stone
-                          dead <- killedStones (goban state) stone
-                          deleteStones (goban state) dead
-                          return $ state {
-                                       moveHistory = (moveHistory state) ++ [move]
-                                     , blackStones =
-                                       (if c == Black then (blackStones state) + 1 else (blackStones state))
-                                     , whiteStones =
-                                       (if c == White then (whiteStones state) + 1 else (whiteStones state))
-                                     , koBlocked =
-                                       case dead of
-                                         [Stone (k, _)] -> Just k
-                                         _ -> Nothing
-                                     })
+                   else (let g = goban state in
+                         do
+                           addStone g stone
+                           dead <- killedStones g stone
+                           deleteStones g dead
+                           return $ state {
+                                        -- goban = g
+                                        moveHistory = (moveHistory state) ++ [move]
+                                      , blackStones =
+                                      (if c == Black
+                                       then (blackStones state) + 1
+                                       else (blackStones state))
+                                      , whiteStones =
+                                      (if c == White
+                                       then (whiteStones state) + 1
+                                       else (whiteStones state))
+                                      , koBlocked =
+                                      case dead of
+                                        [Stone (k, _)] -> Just k
+                                        _ -> Nothing
+                                      , freeVerticesSet =
+                                        S.delete
+                                             (vertexToInt (boardsize state) p)
+                                             (freeVerticesSet state)
+                                      })
 
 
 
@@ -252,4 +268,5 @@ freeVertices state =
                          $ freeVerticesSet state
 
 isKoBlocked ::  GameState s -> Vertex -> Bool
-isKoBlocked state p = Just p == koBlocked state
+isKoBlocked state p =
+    Just p == koBlocked state

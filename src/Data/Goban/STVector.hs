@@ -16,6 +16,7 @@ Mutable Goban Implementation based on Data.Vector.Unboxed.Mutable
 
 module Data.Goban.STVector ( STGoban(..)
                            , newGoban
+                           , copyGoban
                            , addStone
                            , deleteStones
                            , gobanSize
@@ -67,6 +68,12 @@ newGoban n = do
   v <- VM.newWith (size n) (stateToWord Empty)
   mapM_ (\i -> VM.write v i (stateToWord Border)) (borderVertices n)
   return $ STGoban n v
+
+copyGoban :: STGoban s -> ST s (STGoban s)
+copyGoban (STGoban n v) = do
+  (STGoban _n v') <- newGoban n
+  VM.copy v v'
+  return $ STGoban n v'
 
 
 addStone :: STGoban s -> Stone -> ST s ()
