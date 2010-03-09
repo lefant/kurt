@@ -340,24 +340,19 @@ diagonalVertices (x, y) =
 
 
 showboard :: STGoban s -> ST s String
-showboard g =
-    return "showboard currently unimplemented"
-
--- showboard :: STGoban -> String
--- showboard goban =
---     show' $ map (vertexToStone goban) $ allVertices (sizeOfGoban goban)
---     where
---       show' [] = ""
---       show' ls' = concatMap showStone left ++ "\n" ++ show' right
---           where
---             (left, right) = splitAt n ls'
---       n = sizeOfGoban goban
---       showStone Nothing = "."
---       showStone (Just (Stone (_, color)))
---           | color == Black = "x"
---           | color == White = "o"
---       showStone something = error ("showStone: unmatched " ++ show something)
-
+showboard g@(STGoban n _v) = do
+  stones <- mapM (intVertexToStone g) $ [0 .. (maxIntIndex n)] \\ (borderVertices n)
+  return $ unlines $ reverse $ show' stones
+    where
+      show' [] = []
+      show' ls' = (concatMap showStone left) : (show' right)
+          where
+            (left, right) = splitAt n ls'
+      showStone Nothing = "."
+      showStone (Just (Stone (_, color)))
+          | color == Black = "x"
+          | color == White = "o"
+      showStone something = error ("showStone: unmatched " ++ show something)
 
 
 

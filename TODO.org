@@ -13,14 +13,11 @@
 ** GameState versus Goban and representation still could be improved
 
 ** new state / board implementation
-*** ephemeral?
-*** updateGameState -> updateBoard becomes destructive
-**** really test benchmark
-**** must be completely isolated and self-contained
-*** can use runSTUArray or the like
+*** fix apparently buggy isSuicideVertex
+*** fix isSaneMove
+*** fix thisMoveColor / nextMoveColor
 
-*** isSaneMove still needs love
-*** showboard still needs love
+** if copyGoban is used cleverly, maybe runOneRandom use runST with the RealWorld
 
 
 * new glue between uctNew and gobanNew
