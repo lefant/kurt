@@ -24,7 +24,7 @@ module Kurt.GoEngine ( genMove
 
 import Control.Monad (liftM)
 import Control.Monad.ST (ST, RealWorld, stToIO)
-import System.Random.MWC (Gen, create, uniform)
+import System.Random.MWC (Gen, uniform, withSystemRandom, save, restore)
 import Data.Time.Clock ( UTCTime(..)
                        , picosecondsToDiffTime
                        , getCurrentTime
@@ -108,7 +108,9 @@ initUCT eState color = do
   -- trace ("initUCT" ++ boardStr) $ return ()
   -- trace ("initUCT freeVertices: " ++ show (freeVertices gState)) $ return ()
   -- trace ("initUCT moves: " ++ show moves) $ return ()
-  rGen <- stToIO create
+  -- rGen <- stToIO create
+  seed <- withSystemRandom save
+  rGen <- stToIO $ restore seed
   uctLoop (rootNode moves) gState rGen $ UTCTime { utctDay = (utctDay now)
                                                  , utctDayTime =
                                                      thinkPicosecs
