@@ -75,7 +75,7 @@ newEngineState = do
                  , boardSize = defaultBoardSize
                  , getKomi = defaultKomi
                  , simulCount = 1000
-                 , timePerMove = 100 }
+                 , timePerMove = 2000 }
 
 
 
@@ -151,7 +151,7 @@ bestMoveFromLoc loc state score =
       [] ->
           error "bestMoveFromLoc: principalVariation is empty"
       (node : _) ->
-          if value < 0.15
+          if value < 0.1
           then
               if winningScore color score
               then
