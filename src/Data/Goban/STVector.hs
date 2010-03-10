@@ -79,7 +79,6 @@ copyGoban (STGoban n v) = do
 
 addStone :: STGoban s -> Stone -> ST s ()
 addStone g (Stone (vertex, color)) =
-    trace ("addStone " ++ show (vertex, color))
     writeGoban g vertex (VertexColor color)
 
 deleteStones :: STGoban s -> [Stone] -> ST s ()
@@ -207,13 +206,13 @@ isSaneMove g color p =
       potEye <- isPotentialFullEye g color p
       (if potEye
        then
-           trace ("isSaneMove potEye " ++ show (color, p)) $
+           -- trace ("isSaneMove potEye " ++ show (color, p)) $
            return False
        else do
          suicide <- isSuicideVertex g color p
          (if suicide
           then
-              trace ("isSaneMove suicide" ++ show (color, p)) $
+              -- trace ("isSaneMove suicide" ++ show (color, p)) $
               return False
           else return True))
 
@@ -285,12 +284,12 @@ deadStones2 _ _ [] = return []
 deadStones2 g stone stones@( (Stone (_p, color)) : _ ) = do
   initStones <- mapM (neighbourStones g) stones
   initStones' <- return $ nub ((filter filterF (concat initStones)) \\ [stone])
-  result <- anyInMaxStringAlive initStones' stones
-  trace ("deadStones2 " ++ show (stone, stones, result)) $ return result
+  anyInMaxStringAlive initStones' stones
+  -- trace ("deadStones2 " ++ show (stone, stones, result)) $ return result
     where
       anyInMaxStringAlive [] gs = return gs
       anyInMaxStringAlive (n@(Stone (p, _color)) : ns) gs = do
-          trace ("anyInMaxStringAlive2 " ++ show n) $ return ()
+          -- trace ("anyInMaxStringAlive2 " ++ show n) $ return ()
           frees <- adjacentFree g p
           (if null frees
            then do
@@ -302,9 +301,9 @@ deadStones2 g stone stones@( (Stone (_p, color)) : _ ) = do
           color == color'
 
 
-isDead :: STGoban s -> Stone -> ST s Bool
-isDead g stone =
-    deadStones g stone >>= (return . not . null)
+-- isDead :: STGoban s -> Stone -> ST s Bool
+-- isDead g stone =
+--     deadStones g stone >>= (return . not . null)
 
 
 

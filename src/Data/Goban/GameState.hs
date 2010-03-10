@@ -142,11 +142,11 @@ updateGameState state move =
                        , blackStones =
                          (if c == Black
                           then (blackStones state) + 1
-                          else (blackStones state) + (length dead))
+                          else (blackStones state) - (length dead))
                        , whiteStones =
                          (if c == White
                           then (whiteStones state) + 1
-                          else (whiteStones state) + (length dead))
+                          else (whiteStones state) - (length dead))
                        , koBlocked =
                          case dead of
                            [Stone (k, _)] -> Just k
@@ -173,6 +173,10 @@ scoreGameState state = do
   whiteTerritory <- return $ countTerritory White colorTs
   b <- return $ fromIntegral $ (blackStones state) + blackTerritory
   w <- return $ fromIntegral $ (whiteStones state) + whiteTerritory
+  -- trace ("scoreGameState empties " ++ show empties) $ return ()
+  -- trace ("scoreGameState colorTs " ++ show colorTs) $ return ()
+  -- trace ("scoreGameState stones " ++ show (blackStones state, whiteStones state)) $ return ()
+  -- trace ("scoreGameState " ++ show ((blackTerritory, b), (whiteTerritory, w))) $ return ()
   return $ b - w - (komi state)
 
   where
@@ -212,7 +216,7 @@ emptyStrings state =
           | otherwise =
               emptyStrings' frees'' ((S.toList iMax) : xs)
           where
-            frees'' = frees' `S.intersection` iMax
+            frees'' = frees' `S.difference` iMax
             iMax = maxIntSet myAdjacentVertices isFree i
             (i, frees') = S.deleteFindMin frees
 
