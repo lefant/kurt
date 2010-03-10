@@ -13,9 +13,6 @@
 ** GameState versus Goban and representation still could be improved
 
 ** new state / board implementation
-*** testing already fixed?: fix thisMoveColor / nextMoveColor
-
-*** check if updateGameState is doing the right thing for playouts
 
 ** if copyGoban is used cleverly, maybe runOneRandom use runST with the RealWorld
 

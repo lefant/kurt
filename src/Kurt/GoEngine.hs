@@ -68,14 +68,14 @@ defaultBoardSize = 9
 newEngineState :: ST s (EngineState s)
 newEngineState = do
   gs <- newGameState defaultBoardSize defaultKomi
-  boardStr <- showboard $ goban gs
-  trace ("newEngineState" ++ boardStr) $ return ()
+  -- boardStr <- showboard $ goban gs
+  -- trace ("newEngineState" ++ boardStr) $ return ()
   return $ EngineState {
                    getGameState = gs
                  , boardSize = defaultBoardSize
                  , getKomi = defaultKomi
                  , simulCount = 1000
-                 , timePerMove = 5 }
+                 , timePerMove = 100 }
 
 
 

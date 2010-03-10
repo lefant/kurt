@@ -225,12 +225,15 @@ isPotentialFullEye g color p = do
    then do
      ds <- mapM (readGoban g) $ diagonalVertices p
      opponentDiagonalCount <- return $ length $ filter isOtherColor ds
+     borderDiagonalCount <- return $ length $ filter isBorder ds
      return $ ((opponentDiagonalCount == 0)
-               || ((length ds == 4) && opponentDiagonalCount == 1))
+               || ((opponentDiagonalCount == 1)
+                   && (borderDiagonalCount == 0)))
    else return False)
 
    where
      isSameColorOrBorder c = c == Border || c == VertexColor color
+     isBorder c = c == Border
      isOtherColor c = c == VertexColor (otherColor color)
 
 
@@ -257,16 +260,21 @@ isSuicide g stone@(Stone (p, c)) = do
    -- stone has no liberties remaining itself
    then do
      as <- adjacentStones g p
-     pdsc <- potDeadColor as c
-     dsc <- deadStones2 g stone pdsc
-     (if null dsc && (not . null) pdsc
-      then return False
-      else do
-        pdoc <- potDeadColor as (otherColor c)
-        doc <- deadStones2 g stone pdoc
-        (if null doc
-         then return True
-         else return False))
+     asc <- aliveColor as c
+     (if null asc
+      then do
+        pdsc <- potDeadColor as c
+        dsc <- deadStones2 g stone pdsc
+        (if null dsc && (not . null) pdsc
+         then return False
+         else do
+           pdoc <- potDeadColor as (otherColor c)
+           doc <- deadStones2 g stone pdoc
+           (if null doc
+            then return True
+            else return False))
+      -- unconditionally alive neighbour of same color
+      else return False)
    -- we have at least a liberty
    else return False)
    where
@@ -277,6 +285,14 @@ isSuicide g stone@(Stone (p, c)) = do
      hasOneLiberty (Stone (p', _c)) = do
        as <- adjacentFree g p'
        return $ (length as == 1)
+
+     aliveColor as color =
+         filterM hasSeveralLiberties $
+                 filter (\(Stone (_p, color')) -> color == color') as
+
+     hasSeveralLiberties (Stone (p', _c)) = do
+       as <- adjacentFree g p'
+       return $ (length as > 1)
 
 
 deadStones2 :: STGoban s -> Stone -> [Stone] -> ST s [Stone]
