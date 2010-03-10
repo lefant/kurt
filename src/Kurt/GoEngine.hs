@@ -85,11 +85,11 @@ genMove :: EngineState RealWorld -> Color -> IO Move
 genMove eState color = do
   moves <- stToIO $ nextMoves gState color
   score <- stToIO $ scoreGameState gState
-  boardStr <- stToIO $ showboard $ goban gState
-  trace ("genMove" ++ boardStr) $ return ()
-  trace ("genMove freeVertices: " ++ show (freeVertices gState)) $ return ()
-  trace ("genMove moves: " ++ show moves) $ return ()
-  trace ("genMove score: " ++ show score) $ return ()
+  -- boardStr <- stToIO $ showboard $ goban gState
+  -- trace ("genMove" ++ boardStr) $ return ()
+  -- trace ("genMove freeVertices: " ++ show (freeVertices gState)) $ return ()
+  -- trace ("genMove moves: " ++ show moves) $ return ()
+  -- trace ("genMove score: " ++ show score) $ return ()
   (if null moves
    then
        if winningScore color score
@@ -104,10 +104,10 @@ initUCT :: EngineState RealWorld -> Color -> IO Move
 initUCT eState color = do
   now <- getCurrentTime
   moves <- stToIO $ nextMoves gState color
-  boardStr <- stToIO $ showboard $ goban gState
-  trace ("initUCT" ++ boardStr) $ return ()
-  trace ("initUCT freeVertices: " ++ show (freeVertices gState)) $ return ()
-  trace ("initUCT moves: " ++ show moves) $ return ()
+  -- boardStr <- stToIO $ showboard $ goban gState
+  -- trace ("initUCT" ++ boardStr) $ return ()
+  -- trace ("initUCT freeVertices: " ++ show (freeVertices gState)) $ return ()
+  -- trace ("initUCT moves: " ++ show moves) $ return ()
   uctLoop (rootNode moves) gState $ UTCTime { utctDay = (utctDay now)
                                             , utctDayTime =
                                                 thinkPicosecs
