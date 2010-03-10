@@ -13,16 +13,9 @@
 ** GameState versus Goban and representation still could be improved
 
 ** new state / board implementation
-*** scoring way off
-
-
-*** fix thisMoveColor / nextMoveColor
-
-*** testing: need to subtract bDead and wDead from b/wStones in updateGameState
-*** testing: need to re-add deadStones toFreeVertices
+*** testing already fixed?: fix thisMoveColor / nextMoveColor
 
 *** check if updateGameState is doing the right thing for playouts
-
 
 ** if copyGoban is used cleverly, maybe runOneRandom use runST with the RealWorld
 

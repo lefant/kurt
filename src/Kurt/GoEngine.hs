@@ -108,10 +108,11 @@ initUCT eState color = do
   -- trace ("initUCT" ++ boardStr) $ return ()
   -- trace ("initUCT freeVertices: " ++ show (freeVertices gState)) $ return ()
   -- trace ("initUCT moves: " ++ show moves) $ return ()
-  uctLoop (rootNode moves) gState $ UTCTime { utctDay = (utctDay now)
-                                            , utctDayTime =
-                                                thinkPicosecs
-                                                + (utctDayTime now) }
+  rGen <- stToIO create
+  uctLoop (rootNode moves) gState rGen $ UTCTime { utctDay = (utctDay now)
+                                                 , utctDayTime =
+                                                     thinkPicosecs
+                                                     + (utctDayTime now) }
     where
       gState = getGameState eState
       thinkPicosecs =
@@ -119,8 +120,8 @@ initUCT eState color = do
           $ fromIntegral (timePerMove eState) * 1000000000
 
 
-uctLoop :: UCTTreeLoc Move -> GameState RealWorld -> UTCTime -> IO Move
-uctLoop !loc rootGameState deadline = do
+uctLoop :: UCTTreeLoc Move -> GameState RealWorld -> Gen RealWorld -> UTCTime -> IO Move
+uctLoop !loc rootGameState rGen deadline = do
   -- done <- return $ trace ("uctLoop debug tree\n\n\n" ++
   --       (drawTree $ fmap show $ tree loc)) False
   done <- return False
@@ -128,7 +129,6 @@ uctLoop !loc rootGameState deadline = do
   leafGameState <- stToIO $ getLeafGameState rootGameState path
   -- rGen <- trace ("uctLoop leafGameState \n" ++ (showboard (goban $ leafGameState))) $ newStdGen
   -- FIXME: rave will also need a sequence of moves here
-  rGen <- stToIO create
   score <- stToIO $ runOneRandom leafGameState rGen
   value <- return $ scoreToResult (thisMoveColor leafGameState) score
   moves <- stToIO $ nextMoves leafGameState $ nextMoveColor leafGameState
@@ -140,7 +140,7 @@ uctLoop !loc rootGameState deadline = do
    then do
      rootScore <- stToIO $ scoreGameState rootGameState
      return $ bestMoveFromLoc loc''' rootGameState rootScore
-   else uctLoop loc''' rootGameState deadline)
+   else uctLoop loc''' rootGameState rGen deadline)
 
 
 
@@ -175,6 +175,7 @@ bestMoveFromLoc loc state score =
 
 
 runOneRandom :: GameState s -> Gen s -> ST s Score
+-- runOneRandom :: GameState RealWorld -> Gen RealWorld -> ST RealWorld Score
 runOneRandom initState rGenInit =
     run initState 0 rGenInit
     where
