@@ -21,6 +21,10 @@ module Data.Tree.UCT.GameTree ( UCTTreeLoc
                               , MoveNode(..)
                               , nodeFromMove
                               , UCTNode(..)
+                              , RaveValue
+                              , RaveMap(..)
+                              , newRaveMap
+                              , Value
                               -- , UctNode(..)
                               -- , UctLabel(..)
                               -- , defaultUctLabel
@@ -30,6 +34,7 @@ module Data.Tree.UCT.GameTree ( UCTTreeLoc
 import Data.Tree (Tree, Forest)
 import Data.Tree.Zipper (TreeLoc)
 import Data.Word (Word)
+import qualified Data.Map as M
 import Text.Printf (printf)
 
 -- import Debug.Trace (trace)
@@ -40,17 +45,18 @@ type UCTTreeLoc a = TreeLoc (MoveNode a)
 type UCTTree a = Tree (MoveNode a)
 type UCTForest a = Forest (MoveNode a)
 
+type Value = Double
 
 
 -- things the game logic must be able to provide for moves
 class (Eq a, Show a) => UCTNode a where
-    initialMoveValue :: a -> Double
-    updateBackpropagationValue :: a -> Double -> Double
+    initialMoveValue :: a -> Value
+    updateBackpropagationValue :: a -> Value -> Value
 
 
 data MoveNode a = MoveNode { nodeMove   :: a
                            , nodeVisits :: !Word
-                           , nodeValue  :: !Double
+                           , nodeValue  :: !Value
                            }
 
 instance (UCTNode a) => Show (MoveNode a) where
@@ -78,9 +84,12 @@ nodeFromMove move = MoveNode { nodeMove = move
 
 
 
+type RaveValue = (Value, Word)
 
+newtype RaveMap a = RaveMap (M.Map a RaveValue)
 
-
+newRaveMap :: (UCTNode a) => RaveMap a
+newRaveMap = RaveMap M.empty
 
 
 

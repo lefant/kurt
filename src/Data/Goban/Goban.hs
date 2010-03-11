@@ -35,7 +35,7 @@ import Data.Tree.UCT.GameTree (UCTNode(..))
 data Move = StoneMove Stone
           | Pass Color
           | Resign Color
-            deriving (Eq)
+            deriving (Eq, Ord)
 
 instance Show Move where
     show (StoneMove stone) = show stone
@@ -51,7 +51,7 @@ instance UCTNode Move where
 
 
 newtype Stone = Stone (Vertex, Color)
-    deriving (Eq)
+    deriving (Eq, Ord)
 
 instance Show Stone where
     show (Stone (p, color)) =

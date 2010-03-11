@@ -17,13 +17,16 @@ module Data.Tree.UCT ( rootNode
                      , selectLeafPath
                      , principalVariation
                      , policyUCB1
+                     , policyRaveUCB1
                      , expandNode
                      , backpropagate
+                     , updateRaveMap
                      ) where
 
 
 import Data.Maybe (fromJust)
-import Data.List (unfoldr, maximumBy)
+import Data.List (unfoldr, maximumBy, foldl')
+import qualified Data.Map as M
 import Data.Ord (comparing)
 import Data.Word (Word)
 import Data.Tree (Tree(..))
@@ -37,6 +40,8 @@ import Data.Tree.UCT.GameTree
 exploratoryC :: Double
 exploratoryC = 1
 
+raveWeight :: Double
+raveWeight = 3000
 
 
 rootNode :: (UCTNode a) => [a] -> UCTTreeLoc a
@@ -82,7 +87,6 @@ selectLeaf policy initLoc =
           where
             selectedTree = policy $ tree loc
 
-
 policyUCB1 :: UCTNode a => UCTPolicy a
 policyUCB1 node =
     maximumBy
@@ -91,7 +95,7 @@ policyUCB1 node =
     where
       parentVisits = nodeVisits $ rootLabel node
 
-ucb1 :: UCTNode a => Word -> MoveNode a -> Double
+ucb1 :: UCTNode a => Word -> MoveNode a -> Value
 ucb1 parentVisits node =
     -- trace ("ucb1: "
     --        ++ show (nodeMove node, oldValue, ucb1part, value))
@@ -108,7 +112,6 @@ ucb1 parentVisits node =
                 ((log (fromIntegral parentVisits))
                  / ((fromIntegral (nodeVisits node) + 1))))
 
-
 policyMaxRobust :: UCTNode a => UCTPolicy a
 policyMaxRobust node =
     maximumBy
@@ -118,6 +121,31 @@ policyMaxRobust node =
 principalVariation :: (UCTNode a) => UCTTreeLoc a -> [MoveNode a]
 principalVariation loc =
     pathToLeaf $ selectLeaf policyMaxRobust loc
+
+
+
+policyRaveUCB1 :: (UCTNode a, Ord a) => RaveMap a -> UCTPolicy a
+policyRaveUCB1 (RaveMap m) parentNode =
+    maximumBy
+    (comparing (combinedVal . rootLabel))
+    $ subForest parentNode
+    where
+      combinedVal node =
+          beta * raveVal + (1 - beta) * uctVal
+          where
+            beta = fromIntegral raveCount
+                   / (intSum + intSum / raveWeight)
+            intSum = fromIntegral $ raveCount + uctCount
+
+            (raveVal, raveCount) = case M.lookup move m of
+                                     Just p -> p
+                                     Nothing -> (0, 0)
+            uctVal = ucb1 parentVisits node
+            uctCount = nodeVisits node
+            move = nodeMove node
+
+      parentVisits = nodeVisits $ rootLabel parentNode
+
 
 -- computes list of moves needed to reach the passed leaf loc from the root
 pathToLeaf :: UCTNode a => UCTTreeLoc a -> [(MoveNode a)]
@@ -167,7 +195,7 @@ subForestFromMoves moves =
 
 
 -- updates node with a new value
-updateNodeValue :: UCTNode a => Double -> MoveNode a -> MoveNode a
+updateNodeValue :: UCTNode a => Value -> MoveNode a -> MoveNode a
 updateNodeValue value node =
     -- trace ("updateNodeValue "
     --        ++ show (nodeMove node, value)
@@ -182,7 +210,7 @@ updateNodeValue value node =
       oldValue = nodeValue node
 
 
-backpropagate :: UCTNode a => Double -> UCTTreeLoc a -> UCTTreeLoc a
+backpropagate :: UCTNode a => Value -> UCTTreeLoc a -> UCTTreeLoc a
 backpropagate value loc =
     case parent loc' of
       Nothing ->
@@ -197,3 +225,21 @@ backpropagate value loc =
       value' =
           updateBackpropagationValue (nodeMove $ rootLabel $ tree $ loc) value
 
+
+updateRaveMap :: (UCTNode a, Ord a) => RaveMap a -> Value -> [a] -> RaveMap a
+updateRaveMap initMap v moves =
+    foldl' updateOneMove initMap moves
+
+    where
+      updateOneMove :: (UCTNode a, Ord a) => RaveMap a -> a -> RaveMap a
+      updateOneMove (RaveMap m) move =
+          case M.lookup move m of
+            Just (oldValue, oldVisits) ->
+                RaveMap $ M.insert move (newValue, newVisits) m
+                where
+                  newValue =
+                      ((oldValue * (fromIntegral oldVisits)) + v)
+                      / fromIntegral newVisits
+                  newVisits = succ oldVisits
+            Nothing ->
+                RaveMap $ M.insert move (v, 1) m

@@ -131,8 +131,7 @@ uctLoop !loc rootGameState rGen deadline = do
   (loc', path) <- return $ selectLeafPath policyUCB1 loc
   leafGameState <- stToIO $ getLeafGameState rootGameState path
   -- rGen <- trace ("uctLoop leafGameState \n" ++ (showboard (goban $ leafGameState))) $ newStdGen
-  -- FIXME: rave will also need a sequence of moves here
-  score <- stToIO $ runOneRandom leafGameState rGen
+  (score, playedStones) <- stToIO $ runOneRandom leafGameState rGen
   value <- return $ scoreToResult (thisMoveColor leafGameState) score
   moves <- stToIO $ nextMoves leafGameState $ nextMoveColor leafGameState
   loc'' <- return $ expandNode loc' moves
@@ -177,14 +176,14 @@ bestMoveFromLoc loc state score =
 
 
 
-runOneRandom :: GameState s -> Gen s -> ST s Score
+runOneRandom :: GameState s -> Gen s -> ST s (Score, [Stone])
 -- runOneRandom :: GameState RealWorld -> Gen RealWorld -> ST RealWorld Score
 runOneRandom initState rGenInit =
-    run initState 0 rGenInit
+    run initState 0 rGenInit []
     where
-      run :: GameState s -> Int -> Gen s -> ST s Score
-      run _ 1000 _ = return 0
-      run state runCount rGen = do
+      run :: GameState s -> Int -> Gen s -> [Stone] -> ST s (Score, [Stone])
+      run _ 1000 _ _ = return (0, [])
+      run state runCount rGen moves = do
         move <- genMoveRand state rGen
         state' <- updateGameState state move
         case move of
@@ -192,14 +191,15 @@ runOneRandom initState rGenInit =
                     move' <- genMoveRand state' rGen
                     state'' <- updateGameState state' move'
                     case move' of
-                      (Pass _) ->
-                          scoreGameState state''
-                      (StoneMove _) ->
-                          run state'' (runCount + 1) rGen
+                      (Pass _) -> do
+                                 score <- scoreGameState state''
+                                 return (score, moves)
+                      (StoneMove sm) ->
+                          run state'' (runCount + 1) rGen (sm : moves)
                       (Resign _) ->
                           error "runOneRandom encountered Resign"
-          (StoneMove _) ->
-              run state' (runCount + 1) rGen
+          (StoneMove sm) ->
+              run state' (runCount + 1) rGen (sm : moves)
           (Resign _) ->
               error "runOneRandom encountered Resign"
 

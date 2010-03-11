@@ -28,6 +28,7 @@ module Data.Goban.Utils ( maxString
 import Data.List ((\\))
 
 import Data.Goban.Goban
+import Data.Tree.UCT.GameTree (Value)
 
 -- import Debug.Trace (trace)
 
@@ -45,7 +46,7 @@ maxString genF filterF p =
 
 
 
-scoreToResult :: Color -> Score -> Double
+scoreToResult :: Color -> Score -> Value
 scoreToResult color thisScore =
     if thisScore == 0
     then 0.5
