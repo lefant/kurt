@@ -37,6 +37,7 @@ module Data.Goban.STVector ( STGoban(..)
                            , intAscAdjacentVertices
                            , allStones
                            , showboard
+                           , allLibertiesColorCount
                            ) where
 
 import Control.Monad (liftM, filterM)
@@ -428,6 +429,16 @@ allStones :: STGoban s -> ST s [Vertex]
 allStones g@(STGoban n _v) = do
   mapM (intVertexToStone g) ([0 .. (maxIntIndex n)] \\ (borderVertices n)) >>= (return . verticesFromStones . catMaybes)
 
+
+allLibertiesColorCount :: STGoban s -> Color -> ST s Int
+allLibertiesColorCount g@(STGoban n _v) color = do
+  stones <- mapM (intVertexToStone g) ([0 .. (maxIntIndex n)] \\ (borderVertices n))
+  liberties <- mapM (adjacentFree g) $ verticesFromStones $ filter sameColor $ catMaybes stones
+  return $ length $ concat liberties
+
+    where
+      sameColor (Stone (_p, color')) =
+          color == color'
 
 
 

@@ -19,6 +19,7 @@ module Data.Tree.UCT ( rootNode
                      , policyUCB1
                      , policyRaveUCB1
                      , expandNode
+                     , constantHeuristic
                      , backpropagate
                      , updateRaveMap
                      ) where
@@ -38,23 +39,17 @@ import Data.Tree.UCT.GameTree
 
 
 exploratoryC :: Double
-exploratoryC = 0.4
+exploratoryC = 0.5
 
 raveWeight :: Double
-raveWeight = 3
+raveWeight = 1
 
 
 rootNode :: (UCTNode a) => [a] -> UCTTreeLoc a
 rootNode moves =
     expandNode
-    (fromTree $
-     Node
-     (nodeFromMove
-       -- (last moves)
-       (error "move at rootNode is undefined")
-     )
-     []
-    )
+    (fromTree $ newMoveNode (error "move at rootNode is undefined") (0.5, 1))
+    constantHeuristic
     moves
 
 
@@ -147,6 +142,8 @@ policyRaveUCB1 (RaveMap m) parentNode =
       parentVisits = nodeVisits $ rootLabel parentNode
 
 
+
+
 -- computes list of moves needed to reach the passed leaf loc from the root
 pathToLeaf :: UCTNode a => UCTTreeLoc a -> [(MoveNode a)]
 pathToLeaf initLoc =
@@ -165,20 +162,25 @@ pathToLeaf initLoc =
 -- expansion
 ----------------------------------
 
-expandNode :: UCTNode a => UCTTreeLoc a -> [a] -> UCTTreeLoc a
-expandNode loc children =
+type UCTHeuristic a = a -> (Value, Word)
+
+
+expandNode :: UCTNode a => UCTTreeLoc a -> UCTHeuristic a -> [a] -> UCTTreeLoc a
+expandNode loc h children =
     -- trace ("expandNode " ++ show children)
     modifyTree expandChildren loc
     where
-    expandChildren node =
-        -- trace ("expandChildren " ++ show (subForest n))
-        n
-        where
-          n = node { subForest = subForestFromMoves children }
+      expandChildren node =
+          n
+          where
+            n = node { subForest = subForestFromMoves children }
 
-subForestFromMoves :: UCTNode a => [a] -> UCTForest a
-subForestFromMoves moves =
-    map (((flip Node) []) . nodeFromMove) moves
+      subForestFromMoves moves =
+          map (\m -> newMoveNode m (h m)) moves
+
+constantHeuristic :: UCTNode a => UCTHeuristic a
+constantHeuristic _move = (0.5, 1)
+
 
 
 -- simulation needs to be handled exclusively by game code
