@@ -44,7 +44,6 @@ instance Show Move where
 
 instance UCTNode Move where
     -- we use estimated win rate of move as value for uct nodes
-    initialMoveValue _ = 0.5
     updateBackpropagationValue _ v = 1 - v
 
 

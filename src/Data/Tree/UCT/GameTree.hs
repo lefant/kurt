@@ -19,7 +19,7 @@ module Data.Tree.UCT.GameTree ( UCTTreeLoc
                               , UCTTree
                               , UCTForest
                               , MoveNode(..)
-                              , nodeFromMove
+                              , newMoveNode
                               , UCTNode(..)
                               -- , UctNode(..)
                               -- , UctLabel(..)
@@ -27,7 +27,7 @@ module Data.Tree.UCT.GameTree ( UCTTreeLoc
                               ) where
 
 
-import Data.Tree (Tree, Forest)
+import Data.Tree (Tree(..), Forest)
 import Data.Tree.Zipper (TreeLoc)
 import Data.Word (Word)
 import Text.Printf (printf)
@@ -44,7 +44,6 @@ type UCTForest a = Forest (MoveNode a)
 
 -- things the game logic must be able to provide for moves
 class (Eq a, Show a) => UCTNode a where
-    initialMoveValue :: a -> Double
     updateBackpropagationValue :: a -> Double -> Double
 
 
@@ -71,10 +70,12 @@ instance (UCTNode a) => Eq (MoveNode a) where
 -- instance (Show a) => Show (MoveNode a) where
 --     show node = show $ nodeMove node
 
-nodeFromMove :: (UCTNode a) => a -> MoveNode a
-nodeFromMove move = MoveNode { nodeMove = move
-                             , nodeVisits = 1
-                             , nodeValue = initialMoveValue move }
+newMoveNode :: (UCTNode a) => a -> (Value, Word) -> UCTTree a
+newMoveNode move (value, visits) =
+    Node { rootLabel = MoveNode { nodeMove = move
+                                , nodeVisits = visits
+                                , nodeValue = value }
+         , subForest = [] }
 
 
 

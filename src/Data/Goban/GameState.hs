@@ -24,19 +24,21 @@ module Data.Goban.GameState ( GameState(..)
                             -- , freeVertex
                             , thisMoveColor
                             , nextMoveColor
+                            , centerHeuristic
                             ) where
 
 
 import Control.Monad (filterM, foldM)
 import Control.Monad.ST (ST)
 import Data.List ((\\))
+import Data.Word (Word)
 import qualified Data.IntSet as S
 
 
 import Data.Goban.Goban
 import Data.Goban.Utils
 import Data.Goban.STVector
-
+import Data.Tree.UCT.GameTree (Value)
 
 -- import Debug.Trace (trace)
 
@@ -281,6 +283,11 @@ freeVertices state =
                     S.delete (vertexToInt (boardsize state) i)
                          $ freeVerticesSet state
 
+
+centerHeuristic :: Boardsize -> Move -> (Value, Word)
+centerHeuristic n (StoneMove (Stone ((x, y), _color))) =
+    (0.5 + (fromIntegral (max (minimum [ x, n - x, y, n - y ]) 3) / 10), 10)
+centerHeuristic _ _ = error "centerHeuristic received non StoneMove arg"
 
 
 -- freeVertex :: GameState s -> Vertex -> Bool
