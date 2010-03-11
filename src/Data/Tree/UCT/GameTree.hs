@@ -21,6 +21,7 @@ module Data.Tree.UCT.GameTree ( UCTTreeLoc
                               , MoveNode(..)
                               , newMoveNode
                               , UCTNode(..)
+                              , Value
                               -- , UctNode(..)
                               -- , UctLabel(..)
                               -- , defaultUctLabel
@@ -40,16 +41,16 @@ type UCTTreeLoc a = TreeLoc (MoveNode a)
 type UCTTree a = Tree (MoveNode a)
 type UCTForest a = Forest (MoveNode a)
 
-
+type Value = Double
 
 -- things the game logic must be able to provide for moves
 class (Eq a, Show a) => UCTNode a where
-    updateBackpropagationValue :: a -> Double -> Double
+    updateBackpropagationValue :: a -> Value -> Value
 
 
 data MoveNode a = MoveNode { nodeMove   :: a
                            , nodeVisits :: !Word
-                           , nodeValue  :: !Double
+                           , nodeValue  :: !Value
                            }
 
 instance (UCTNode a) => Show (MoveNode a) where

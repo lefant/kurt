@@ -35,10 +35,10 @@ import Data.Tree.Zipper (TreeLoc, tree, fromTree, hasChildren, parent, findChild
 import Data.Tree.UCT.GameTree
 
 
-exploratoryC :: Double
+exploratoryC :: Value
 exploratoryC = 0.5
 
-raveWeight :: Double
+raveWeight :: Value
 raveWeight = 1
 
 
@@ -88,7 +88,7 @@ policyUCB1 node =
     where
       parentVisits = nodeVisits $ rootLabel node
 
-ucb1 :: UCTNode a => Word -> MoveNode a -> Double
+ucb1 :: UCTNode a => Word -> MoveNode a -> Value
 ucb1 parentVisits node =
     -- trace ("ucb1: "
     --        ++ show (nodeMove node, oldValue, ucb1part, value))
@@ -116,36 +116,7 @@ principalVariation :: (UCTNode a) => UCTTreeLoc a -> [MoveNode a]
 principalVariation loc =
     pathToLeaf $ selectLeaf policyMaxRobust loc
 
-<<<<<<< HEAD:src/Data/Tree/UCT.hs
-=======
 
-
-policyRaveUCB1 :: (UCTNode a, Ord a) => RaveMap a -> UCTPolicy a
-policyRaveUCB1 (RaveMap m) parentNode =
-    maximumBy
-    (comparing (combinedVal . rootLabel))
-    $ subForest parentNode
-    where
-      combinedVal node =
-          beta * raveVal + (1 - beta) * uctVal
-          where
-            beta = fromIntegral raveCount
-                   / (intSum + intSum / raveWeight)
-            intSum = fromIntegral $ raveCount + uctCount
-
-            (raveVal, raveCount) = case M.lookup move m of
-                                     Just p -> p
-                                     Nothing -> (0, 0)
-            uctVal = ucb1 parentVisits node
-            uctCount = nodeVisits node
-            move = nodeMove node
-
-      parentVisits = nodeVisits $ rootLabel parentNode
-
-
-
-
->>>>>>> basic pluggable uct heuristic support:src/Data/Tree/UCT.hs
 -- computes list of moves needed to reach the passed leaf loc from the root
 pathToLeaf :: UCTNode a => UCTTreeLoc a -> [(MoveNode a)]
 pathToLeaf initLoc =
@@ -199,7 +170,7 @@ constantHeuristic _move = (0.5, 1)
 
 
 -- updates node with a new value
-updateNodeValue :: UCTNode a => Double -> MoveNode a -> MoveNode a
+updateNodeValue :: UCTNode a => Value -> MoveNode a -> MoveNode a
 updateNodeValue value node =
     -- trace ("updateNodeValue "
     --        ++ show (nodeMove node, value)
@@ -214,7 +185,7 @@ updateNodeValue value node =
       oldValue = nodeValue node
 
 
-backpropagate :: UCTNode a => Double -> UCTTreeLoc a -> UCTTreeLoc a
+backpropagate :: UCTNode a => Value -> UCTTreeLoc a -> UCTTreeLoc a
 backpropagate value loc =
     case parent loc' of
       Nothing ->
