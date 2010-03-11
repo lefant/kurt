@@ -40,7 +40,7 @@ import Data.Goban.Utils
 import Data.Goban.STVector
 import Data.Tree.UCT.GameTree (Value)
 
--- import Debug.Trace (trace)
+import Debug.Trace (trace)
 
 
 
@@ -286,7 +286,14 @@ freeVertices state =
 
 centerHeuristic :: Boardsize -> Move -> (Value, Word)
 centerHeuristic n (StoneMove (Stone ((x, y), _color))) =
-    (0.5 + (fromIntegral (max (minimum [ x, n - x, y, n - y ]) 3) / 10), 10)
+    -- trace ("centerHeuristic " ++ show (x, y, result))
+    result
+    where
+      result = 
+          (0.2
+           + (fromIntegral
+              (minimum [ x - 1, n - x, y - 1, n - y, 3]) / 5),
+           1000)
 centerHeuristic _ _ = error "centerHeuristic received non StoneMove arg"
 
 

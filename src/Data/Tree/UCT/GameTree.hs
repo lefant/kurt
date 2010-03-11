@@ -33,7 +33,7 @@ import Data.Tree.Zipper (TreeLoc)
 import Data.Word (Word)
 import Text.Printf (printf)
 
--- import Debug.Trace (trace)
+import Debug.Trace (trace)
 
 
 
@@ -73,6 +73,7 @@ instance (UCTNode a) => Eq (MoveNode a) where
 
 newMoveNode :: (UCTNode a) => a -> (Value, Word) -> UCTTree a
 newMoveNode move (value, visits) =
+    trace ("newMoveNode: " ++ show (move, value, visits))
     Node { rootLabel = MoveNode { nodeMove = move
                                 , nodeVisits = visits
                                 , nodeValue = value }

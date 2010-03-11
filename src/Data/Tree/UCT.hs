@@ -30,7 +30,7 @@ import Data.Word (Word)
 import Data.Tree (Tree(..))
 import Data.Tree.Zipper (TreeLoc, tree, fromTree, hasChildren, parent, findChild, modifyTree, modifyLabel)
 
--- import Debug.Trace (trace)
+import Debug.Trace (trace)
 
 import Data.Tree.UCT.GameTree
 
@@ -45,7 +45,8 @@ raveWeight = 1
 rootNode :: (UCTNode a) => [a] -> UCTTreeLoc a
 rootNode moves =
     expandNode
-    (fromTree $ newMoveNode (error "move at rootNode is undefined") (0.5, 1))
+    -- (fromTree $ newMoveNode (error "move at rootNode is undefined") (0.5, 1))
+    (fromTree $ newMoveNode (last moves) (0.5, 1000))
     constantHeuristic
     moves
 
@@ -172,17 +173,18 @@ constantHeuristic _move = (0.5, 1)
 -- updates node with a new value
 updateNodeValue :: UCTNode a => Value -> MoveNode a -> MoveNode a
 updateNodeValue value node =
-    -- trace ("updateNodeValue "
-    --        ++ show (nodeMove node, value)
-    --       )
+    trace ("updateNodeValue "
+           ++ show (nodeMove node, value, oldValue, oldVisits, newValue, newVisits)
+          )
     node { nodeVisits = newVisits
-         , nodeValue = ((oldValue * (fromIntegral oldVisits)) + value)
-                       / fromIntegral newVisits
+         , nodeValue = newValue
          }
     where
-      oldVisits = nodeVisits node
-      newVisits = succ oldVisits
+      newValue = ((oldValue * (fromIntegral oldVisits)) + value)
+                       / fromIntegral newVisits
       oldValue = nodeValue node
+      newVisits = succ oldVisits
+      oldVisits = nodeVisits node
 
 
 backpropagate :: UCTNode a => Value -> UCTTreeLoc a -> UCTTreeLoc a
