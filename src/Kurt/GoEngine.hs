@@ -36,7 +36,7 @@ import Data.List ((\\))
 
 import Data.Goban.GameState (GameState(..), newGameState, scoreGameState, updateGameState, getLeafGameState, thisMoveColor, nextMoveColor, nextMoves, freeVertices)
 import Data.Goban.Goban (Move(..), Stone(..), Color, Vertex, Score)
-import Data.Goban.STVector (isSaneMove, showboard)
+import Data.Goban.STVector (isSaneMove)
 import Data.Goban.Utils (winningScore, scoreToResult)
 
 
@@ -49,6 +49,7 @@ import Data.Tree.Zipper (tree)
 import Data.Tree.UCT.GameTree (MoveNode(..))
 -- import Data.Tree (drawTree)
 -- import Data.Tree.Zipper (tree)
+-- import Data.Goban.STVector (showboard)
 
 data EngineState s = EngineState {
       getGameState    :: GameState s

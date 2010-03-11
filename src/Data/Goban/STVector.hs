@@ -35,6 +35,7 @@ module Data.Goban.STVector ( STGoban(..)
                            , verticesToStones
                            , adjacentVertices
                            , intAscAdjacentVertices
+                           , allStones
                            , showboard
                            ) where
 
@@ -423,6 +424,9 @@ showboard g@(STGoban n _v) = do
           | color == White = "o"
       showStone something = error ("showStone: unmatched " ++ show something)
 
+allStones :: STGoban s -> ST s [Vertex]
+allStones g@(STGoban n _v) = do
+  mapM (intVertexToStone g) ([0 .. (maxIntIndex n)] \\ (borderVertices n)) >>= (return . verticesFromStones . catMaybes)
 
 
 

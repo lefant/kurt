@@ -22,6 +22,7 @@ module Data.Goban.Goban ( -- STGoban(..)
                         , Boardsize
                         , Score
                         , gtpShowMove
+                        , gtpShowVertex
                         , letterToX
                         ) where
 
@@ -37,8 +38,7 @@ data Move = StoneMove Stone
             deriving (Eq)
 
 instance Show Move where
-    show (StoneMove (Stone ((x, y), color))) =
-        (show color) ++ " " ++ [(xToLetter x)] ++ (show y)
+    show (StoneMove stone) = show stone
     show (Pass _color) = "pass"
     show (Resign _color) = "resign"
 
@@ -51,8 +51,11 @@ instance UCTNode Move where
 
 
 newtype Stone = Stone (Vertex, Color)
-    deriving (Show, Eq)
+    deriving (Eq)
 
+instance Show Stone where
+    show (Stone (p, color)) =
+        (show color) ++ " " ++ gtpShowVertex p
 
 data Color = Black
            | White
@@ -77,10 +80,13 @@ type Score = Float
 
 
 gtpShowMove :: Move -> String
-gtpShowMove (StoneMove (Stone ((x, y), _color))) =
-    [(xToLetter x)] ++ (show y)
+gtpShowMove (StoneMove (Stone (p, _color))) = gtpShowVertex p
 gtpShowMove (Pass _color) = "pass"
 gtpShowMove (Resign _color) = "resign"
+
+gtpShowVertex :: Vertex -> String
+gtpShowVertex (x, y) =
+    [(xToLetter x)] ++ (show y)
 
 xToLetter :: Coord -> Char
 xToLetter n =

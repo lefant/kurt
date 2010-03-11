@@ -28,8 +28,8 @@ import Data.List
 import Network.GoTextProtocol2.Server.Parser
 import Network.GoTextProtocol2.Types
 import Data.Goban.GameState (GameState(..), newGameState, updateGameState, scoreGameState)
-import Data.Goban.Goban (gtpShowMove)
-import Data.Goban.STVector (showboard)
+import Data.Goban.Goban (gtpShowMove, gtpShowVertex)
+import Data.Goban.STVector (showboard, allStones)
 
 import Kurt.GoEngine (EngineState(..), newEngineState, genMove)
 
@@ -49,6 +49,7 @@ commandargparserlist =
      ("boardsize", intArgParser)
     ,("clear_board", noArgumentParser)
     ,("final_score", noArgumentParser)
+    ,("final_status_list", stringArgParser)
     ,("genmove", colorArgParser)
     ,("known_command", stringArgParser)
     ,("komi", floatArgParser)
@@ -73,6 +74,7 @@ commandHandlers =
      ("boardsize", cmd_boardsize)
     ,("clear_board", cmd_clear_board)
     ,("final_score", cmd_final_score)
+    ,("final_status_list", cmd_final_status_list)
     ,("genmove", cmd_genmove)
     ,("known_command", cmd_known_command)
     ,("komi", cmd_komi)
@@ -232,6 +234,18 @@ cmd_final_score [] state = do
           | s > 0 = "B+" ++ (show s)
           | otherwise = "0"
 cmd_final_score _ _ = error "cmd_final_score called with illegal argument type"
+
+cmd_final_status_list :: CommandHandler RealWorld
+cmd_final_status_list [StringArgument arg] state =
+    case arg of
+      "dead" -> return $ Right ("", state)
+      "seki" -> return $ Right ("", state)
+      "alive" ->
+          do
+            stones <- stToIO $ allStones $ goban $ getGameState state
+            return $ Right (unwords $ map gtpShowVertex stones, state)
+      other -> error ("cmd_final_status_list illegal arg: " ++ other)
+cmd_final_status_list _ _ = error "cmd_final_status_list called with illegal argument type"
 
 
 cmd_kurt_simuls :: CommandHandler RealWorld
