@@ -36,11 +36,10 @@ import qualified Data.IntSet as S
 import Data.Goban.Goban
 import Data.Goban.Utils
 import Data.Goban.STVector
--- import Data.Goban.STVector (newGoban, copyGoban, intToVertex, vertexToInt, maxIntIndex, borderVertices, intAscAdjacentVertices, intVerticesFromStones, intAdjacentStones, isSaneMove, killedStones, showboard)
--- import Data.Goban.STVector (addStone, deleteStones)
 
 
-import Debug.Trace (trace)
+-- import Debug.Trace (trace)
+
 
 
 type IntVertexSet = S.IntSet

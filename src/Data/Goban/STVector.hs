@@ -23,7 +23,6 @@ module Data.Goban.STVector ( STGoban(..)
                            , intToVertex
                            , vertexToInt
                            , borderVertices
-                           -- , maxEdge
                            , maxIntIndex
                            , isSaneMove
                            , isSuicideVertex
@@ -46,12 +45,11 @@ import Data.Word (Word)
 import Data.List ((\\), nub)
 import qualified Data.Vector.Unboxed.Mutable as VM
 
-import Debug.Trace (trace)
+-- import Debug.Trace (trace)
 
 
 import Data.Goban.Goban
 import Data.Goban.Utils (verticesFromStones, otherColor)
--- import Data.Goban.Utils (stoneColor, otherColor, allVertices, inBounds, nonEdgeVertices, maxString)
 
 
 

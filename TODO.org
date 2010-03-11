@@ -2,26 +2,44 @@
 
 * Roadmap march:
 
-* implement zobrist hash of moves / board
+* kgs support
+** final_status_list - we play until all dead are captured, so just return empty
+** kgs-genmove_cleanup, we behave that way in genmove
+
+** time management
+*** time_settings
+*** kgs-time_settings
+
+
+* cheap heuristic
+** cheap stone count
+** cheap territory estimate
+
+
+* rave
+** Data.Map keyed with moves caching encountered uct values
+
+
+* implement zobrist hash of moves / board  / towards transposition tables
 ** target 64bit word
 ** suitable as key to DataMap or the like
 ** quickcheck testing
 ** http://www.gnu.org/software/gnugo/gnugo_11.html#SEC139
 
 
+
 * refactoring
 ** GameState versus Goban and representation still could be improved
 
-** new state / board implementation
+** STVector
+*** toEnum / fromEnum would clearly be better than word(To/From)state
 
 ** if copyGoban is used cleverly, maybe runOneRandom use runST with the RealWorld
 
 
-* new glue between uctNew and gobanNew
-** propagation of UCT values / rave values
 
 * towards heuristic
-** capture count / atari / atari evade
+** prior: even game more likely
 ** patterns
 
 * Data.Tree.UCT
@@ -29,14 +47,13 @@
 
 
 
-* prior: even game more likely
 
 
 General:
 * ko / superko
 ** naive implementation done
 * scoring
-** territory done
+** area for now
 * timer could be more sophisticated
 * testing
 ** quickcheck
@@ -46,18 +63,10 @@ General:
 * benchmark
 ** criterion
 * better board representation
-** immutable array
-** abstract implementation
+** more high level stuff
+*** incremential group and liberty tracking?
 
 
-Kurt.Move:
-* better move generation logic ;)
-** we are trying...
-** initial primitive monte carlo player
-** need to tune for speed!!!
-
-Data.Goban:
-* track ko state
 
 * Data.Goban.UArray
 ** http://stackoverflow.com/questions/976936/how-to-create-unboxed-mutable-array-instance/978143#978143
@@ -68,7 +77,6 @@ Data.Goban:
 Network.GoTextProtocol2.Server:
 * merge commandargparserlist and commandHandlers lists
 * implement a way so commandHandlers can be passed in from an inheriting module running startLoop
-
 
 Network.GoTextProtocol2.Parser:
 * handle #-prefix comments and empty lines
