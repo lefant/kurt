@@ -38,10 +38,10 @@ import Data.Tree.UCT.GameTree
 
 
 exploratoryC :: Double
-exploratoryC = 1
+exploratoryC = 0.4
 
 raveWeight :: Double
-raveWeight = 3000
+raveWeight = 3
 
 
 rootNode :: (UCTNode a) => [a] -> UCTTreeLoc a
@@ -227,7 +227,7 @@ backpropagate value loc =
 
 
 updateRaveMap :: (UCTNode a, Ord a) => RaveMap a -> Value -> [a] -> RaveMap a
-updateRaveMap initMap v moves =
+updateRaveMap initMap value moves =
     foldl' updateOneMove initMap moves
 
     where
@@ -238,8 +238,8 @@ updateRaveMap initMap v moves =
                 RaveMap $ M.insert move (newValue, newVisits) m
                 where
                   newValue =
-                      ((oldValue * (fromIntegral oldVisits)) + v)
+                      ((oldValue * (fromIntegral oldVisits)) + value)
                       / fromIntegral newVisits
                   newVisits = succ oldVisits
             Nothing ->
-                RaveMap $ M.insert move (v, 1) m
+                RaveMap $ M.insert move (value, 1) m

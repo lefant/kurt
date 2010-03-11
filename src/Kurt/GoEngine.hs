@@ -40,7 +40,7 @@ import Data.Goban.STVector (isSaneMove)
 import Data.Goban.Utils (winningScore, scoreToResult)
 
 
-import Data.Tree.UCT.GameTree (UCTTreeLoc)
+import Data.Tree.UCT.GameTree (UCTTreeLoc, RaveMap, newRaveMap)
 import Data.Tree.UCT
 
 import Debug.Trace (trace)
@@ -112,7 +112,7 @@ initUCT eState color = do
   -- rGen <- stToIO create
   seed <- withSystemRandom save
   rGen <- stToIO $ restore seed
-  uctLoop (rootNode moves) gState rGen $ UTCTime { utctDay = (utctDay now)
+  uctLoop (rootNode moves) gState initRaveMap rGen $ UTCTime { utctDay = (utctDay now)
                                                  , utctDayTime =
                                                      thinkPicosecs
                                                      + (utctDayTime now) }
@@ -121,18 +121,19 @@ initUCT eState color = do
       thinkPicosecs =
           picosecondsToDiffTime
           $ fromIntegral (timePerMove eState) * 1000000000
+      initRaveMap = newRaveMap
 
-
-uctLoop :: UCTTreeLoc Move -> GameState RealWorld -> Gen RealWorld -> UTCTime -> IO Move
-uctLoop !loc rootGameState rGen deadline = do
+uctLoop :: UCTTreeLoc Move -> GameState RealWorld -> RaveMap Move -> Gen RealWorld -> UTCTime -> IO Move
+uctLoop !loc rootGameState raveMap rGen deadline = do
   -- done <- return $ trace ("uctLoop debug tree\n\n\n" ++
   --       (drawTree $ fmap show $ tree loc)) False
   done <- return False
-  (loc', path) <- return $ selectLeafPath policyUCB1 loc
+  (loc', path) <- return $ selectLeafPath (policyRaveUCB1 raveMap) loc
   leafGameState <- stToIO $ getLeafGameState rootGameState path
   -- rGen <- trace ("uctLoop leafGameState \n" ++ (showboard (goban $ leafGameState))) $ newStdGen
-  (score, playedStones) <- stToIO $ runOneRandom leafGameState rGen
+  (score, playedMoves) <- stToIO $ runOneRandom leafGameState rGen
   value <- return $ scoreToResult (thisMoveColor leafGameState) score
+  raveMap' <- return $ updateRaveMap raveMap value $ drop ((length playedMoves) `div` 3) playedMoves
   moves <- stToIO $ nextMoves leafGameState $ nextMoveColor leafGameState
   loc'' <- return $ expandNode loc' moves
   loc''' <- return $ backpropagate value loc''
@@ -142,7 +143,7 @@ uctLoop !loc rootGameState rGen deadline = do
    then do
      rootScore <- stToIO $ scoreGameState rootGameState
      return $ bestMoveFromLoc loc''' rootGameState rootScore
-   else uctLoop loc''' rootGameState rGen deadline)
+   else uctLoop loc''' rootGameState raveMap' rGen deadline)
 
 
 
@@ -176,12 +177,12 @@ bestMoveFromLoc loc state score =
 
 
 
-runOneRandom :: GameState s -> Gen s -> ST s (Score, [Stone])
+runOneRandom :: GameState s -> Gen s -> ST s (Score, [Move])
 -- runOneRandom :: GameState RealWorld -> Gen RealWorld -> ST RealWorld Score
 runOneRandom initState rGenInit =
     run initState 0 rGenInit []
     where
-      run :: GameState s -> Int -> Gen s -> [Stone] -> ST s (Score, [Stone])
+      run :: GameState s -> Int -> Gen s -> [Move] -> ST s (Score, [Move])
       run _ 1000 _ _ = return (0, [])
       run state runCount rGen moves = do
         move <- genMoveRand state rGen
@@ -194,11 +195,11 @@ runOneRandom initState rGenInit =
                       (Pass _) -> do
                                  score <- scoreGameState state''
                                  return (score, moves)
-                      (StoneMove sm) ->
+                      sm@(StoneMove _) ->
                           run state'' (runCount + 1) rGen (sm : moves)
                       (Resign _) ->
                           error "runOneRandom encountered Resign"
-          (StoneMove sm) ->
+          sm@(StoneMove _) ->
               run state' (runCount + 1) rGen (sm : moves)
           (Resign _) ->
               error "runOneRandom encountered Resign"
