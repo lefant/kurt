@@ -78,10 +78,12 @@ instance (UCTNode a) => Eq (MoveNode a) where
 
 newMoveNode :: (UCTNode a) => a -> (Value, Word) -> UCTTree a
 newMoveNode move (value, visits) =
+    -- trace ("newMoveNode: " ++ show (move, value, visits))
     Node { rootLabel = MoveNode { nodeMove = move
                                 , nodeVisits = visits
                                 , nodeValue = value }
          , subForest = [] }
+
 
 
 
