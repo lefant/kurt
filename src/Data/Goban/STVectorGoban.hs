@@ -50,7 +50,7 @@ import Data.Word (Word)
 import Data.List ((\\), nub)
 import qualified Data.Vector.Unboxed.Mutable as VM
 
--- import Debug.Trace (trace)
+-- import Debug.TraceOrId (trace)
 
 
 import Data.Goban.Types

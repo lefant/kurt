@@ -43,7 +43,7 @@ import Data.Goban.STVectorGoban (isSaneMove)
 import Data.Tree.UCT.GameTree (UCTTreeLoc, RaveMap, newRaveMap)
 import Data.Tree.UCT
 
-import Debug.Trace (trace)
+import Debug.TraceOrId (trace)
 import Data.Tree (rootLabel)
 import Data.Tree.Zipper (tree)
 import Data.Tree.UCT.GameTree (MoveNode(..))

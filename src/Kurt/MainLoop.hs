@@ -34,7 +34,7 @@ import Data.Goban.STVectorGoban (allStones)
 import Kurt.GoEngine (EngineState(..), newEngineState, genMove)
 
 
-import Debug.Trace (trace)
+import Debug.TraceOrId (trace)
 
 
 type CommandHandler s = [Argument] -> EngineState s -> IO (Either String (String, EngineState s))

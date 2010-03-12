@@ -37,7 +37,7 @@ import Data.Tree.Zipper (TreeLoc)
 import qualified Data.Map as M
 import Text.Printf (printf)
 
--- import Debug.Trace (trace)
+-- import Debug.TraceOrId (trace)
 
 
 

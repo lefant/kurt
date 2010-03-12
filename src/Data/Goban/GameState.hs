@@ -37,7 +37,7 @@ import Data.Goban.Types
 import Data.Goban.Utils
 import Data.Goban.STVectorGoban
 
--- import Debug.Trace (trace)
+-- import Debug.TraceOrId (trace)
 
 
 

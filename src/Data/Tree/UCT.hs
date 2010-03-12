@@ -32,7 +32,7 @@ import Data.Ord (comparing)
 import Data.Tree (Tree(..))
 import Data.Tree.Zipper (TreeLoc, tree, fromTree, hasChildren, parent, findChild, modifyTree, modifyLabel)
 
-import Debug.Trace (trace)
+import Debug.TraceOrId (trace)
 
 import Data.Tree.UCT.GameTree
 
