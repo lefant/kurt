@@ -34,7 +34,7 @@ import qualified Data.IntSet as S
 
 import Data.Goban.Types
 import Data.Goban.Utils
-import Data.Goban.STVector
+import Data.Goban.STVectorGoban
 
 -- import Debug.Trace (trace)
 

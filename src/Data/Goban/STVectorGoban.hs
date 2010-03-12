@@ -14,33 +14,33 @@ Mutable Goban Implementation based on Data.Vector.Unboxed.Mutable
 
 -}
 
-module Data.Goban.STVector ( STGoban(..)
-                           , newGoban
-                           , copyGoban
-                           , addStone
-                           , deleteStones
-                           , gobanSize
-                           , intToVertex
-                           , vertexToInt
-                           , borderVertices
-                           , maxIntIndex
-                           , isSaneMove
-                           , isSuicideVertex
-                           , isPotentialFullEye
-                           , killedStones
-                           , neighbourStones
-                           , adjacentStones
-                           , intAdjacentStones
-                           , intVerticesFromStones
-                           , verticesToStones
-                           , adjacentVertices
-                           , intAscAdjacentVertices
-                           , allStones
-                           , showboard
-                           , allLibertiesColorCount
-                           , colorTerritories
-                           , intAllAdjacentStonesSameColor
-                           ) where
+module Data.Goban.STVectorGoban ( STGoban(..)
+                                , newGoban
+                                , copyGoban
+                                , addStone
+                                , deleteStones
+                                , gobanSize
+                                , intToVertex
+                                , vertexToInt
+                                , borderVertices
+                                , maxIntIndex
+                                , isSaneMove
+                                , isSuicideVertex
+                                , isPotentialFullEye
+                                , killedStones
+                                , neighbourStones
+                                , adjacentStones
+                                , intAdjacentStones
+                                , intVerticesFromStones
+                                , verticesToStones
+                                , adjacentVertices
+                                , intAscAdjacentVertices
+                                , allStones
+                                , showboard
+                                , allLibertiesColorCount
+                                , colorTerritories
+                                , intAllAdjacentStonesSameColor
+                                ) where
 
 import Control.Monad (liftM, filterM)
 import Control.Monad.ST (ST)

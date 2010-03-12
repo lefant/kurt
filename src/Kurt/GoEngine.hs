@@ -37,7 +37,7 @@ import Data.List ((\\))
 import Data.Goban.Types (Move(..), Stone(..), Color, Vertex, Score)
 import Data.Goban.Utils (winningScore, scoreToResult, centerHeuristic)
 import Data.Goban.GameState (GameState(..), newGameState, scoreGameState, updateGameState, getLeafGameState, thisMoveColor, nextMoveColor, nextMoves, freeVertices)
-import Data.Goban.STVector (isSaneMove)
+import Data.Goban.STVectorGoban (isSaneMove)
 
 
 import Data.Tree.UCT.GameTree (UCTTreeLoc, RaveMap, newRaveMap)

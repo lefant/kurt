@@ -29,7 +29,7 @@ library
                  ,Kurt.GoEngine
                  ,Data.Tree.UCT
                  ,Data.Goban.GameState
-                 ,Data.Goban.STVector
+                 ,Data.Goban.STVectorGoban
                  ,Data.Goban.Utils
                  ,Data.Goban.Types
   build-depends:
