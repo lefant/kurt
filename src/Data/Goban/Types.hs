@@ -21,6 +21,16 @@ module Data.Goban.Types ( Move(..)
                         , Vertex
                         , Boardsize
                         , Score
+
+                        , moveColor
+                        , isStoneMove
+
+                        , allVertices
+                        , adjacentVertices
+                        , diagonalVertices
+
+                        , otherColor
+
                         , gtpShowMove
                         , gtpShowVertex
                         , letterToX
@@ -49,7 +59,9 @@ instance UCTNode Move where
 
 
 
-data Stone = Stone Vertex Color
+data Stone = Stone { stoneVertex :: !Vertex
+                   , stoneColor  :: !Color
+                   }
            deriving (Eq, Ord)
 
 instance Show Stone where
@@ -88,8 +100,42 @@ type Boardsize = Int
 type Score = Float
 
 
+-- further accessors and minor helper functions
+
+moveColor :: Move -> Color
+moveColor (Move stone) = stoneColor stone
+moveColor (Pass color) = color
+moveColor (Resign color) = color
+
+isStoneMove :: Move -> Bool
+isStoneMove (Move _) = True
+isStoneMove (Pass _) = False
+isStoneMove (Resign _) = False
 
 
+
+
+
+allVertices :: Boardsize -> [Vertex]
+allVertices n =
+    [(x, y) | y <- reverse [1 .. n], x <- [1 .. n]]
+
+adjacentVertices :: Vertex -> [Vertex]
+adjacentVertices (x, y) =
+    [(x,y-1),(x-1,y),(x+1,y),(x,y+1)]
+
+diagonalVertices :: Vertex -> [Vertex]
+diagonalVertices (x, y) =
+    [(x+1,y+1),(x-1,y+1),(x+1,y-1),(x-1,y-1)]
+
+
+otherColor :: Color -> Color
+otherColor Black = White
+otherColor White = Black
+
+
+
+-- convert between GTPs A1 and (1, 1) vertex format
 
 gtpShowMove :: Move -> String
 gtpShowMove (Move (Stone vertex _color)) = gtpShowVertex vertex

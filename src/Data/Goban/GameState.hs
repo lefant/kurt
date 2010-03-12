@@ -156,7 +156,7 @@ updateGameState state move =
       freeVerticesSet' p dead =
           S.union
                (S.fromList $
-                 intVerticesFromStones (boardsize state) dead)
+                 map ((vertexToInt (boardsize state)) . stoneVertex) dead)
                (S.delete
                      (vertexToInt (boardsize state) p)
                      (freeVerticesSet state))

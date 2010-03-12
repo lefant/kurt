@@ -20,14 +20,6 @@ module Data.Goban.Utils ( maxString
                         , winningScore
 
                         , centerHeuristic
-
-                        , verticesFromStones
-                        , stoneColor
-                        , otherColor
-                        , inBounds
-                        , allVertices
-                        , adjacentVertices
-                        , diagonalVertices
                         ) where
 
 
@@ -111,62 +103,3 @@ centerHeuristic n (Move (Stone (x, y) _color)) =
 centerHeuristic _ _ = error "centerHeuristic received non StoneMove arg"
 
 
-
-
-
-
-
------ mostly random stuff that should be reorganized below
-----------------------------------------------------------
-
-
-
-verticesFromStones :: [Stone] -> [Vertex]
-verticesFromStones ss = map (\(Stone p _c) -> p) ss
-
-
-
-stoneColor :: Stone -> Color
-stoneColor (Stone _vertex color) = color
-
-
-otherColor :: Color -> Color
-otherColor Black = White
-otherColor White = Black
-
-
-
-inBounds :: Boardsize -> Vertex -> Bool
-inBounds boardsize (x, y) =
-    and [x > 0, x <= boardsize, y > 0, y <= boardsize]
-
-
-
-allVertices :: Boardsize -> [Vertex]
-allVertices n =
-    [(x, y) | y <- reverse [1 .. n], x <- [1 .. n]]
-
-adjacentVertices :: Vertex -> [Vertex]
-adjacentVertices (x, y) =
-    [(x,y-1),(x-1,y),(x+1,y),(x,y+1)]
-
-diagonalVertices :: Vertex -> [Vertex]
-diagonalVertices (x, y) =
-    [(x+1,y+1),(x-1,y+1),(x+1,y-1),(x-1,y-1)]
-
-
-
--- moveColor :: Move -> Color
--- moveColor (StoneMove stone) = stoneColor stone
--- moveColor (Pass color) = color
-
-
--- nonEdgeVertices :: Boardsize -> [Vertex]
--- nonEdgeVertices boardsize =
---     [(x, y) | x <- [lower .. upper], y <- [lower .. upper]]
---     where
---       upper = boardsize - lower + 1
---       lower =
---           if boardsize >= 9
---           then 3
---           else 2

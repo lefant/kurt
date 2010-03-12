@@ -31,7 +31,6 @@ module Data.Goban.STVectorGoban ( STGoban(..)
                                 , neighbourStones
                                 , adjacentStones
                                 , intAdjacentStones
-                                , intVerticesFromStones
                                 , verticesToStones
                                 , adjacentVertices
                                 , intAscAdjacentVertices
@@ -53,7 +52,6 @@ import qualified Data.Vector.Unboxed.Mutable as VM
 
 
 import Data.Goban.Types
-import Data.Goban.Utils
 
 
 
@@ -80,9 +78,7 @@ addStone g (Stone vertex color) =
 
 deleteStones :: STGoban s -> [Stone] -> ST s ()
 deleteStones g stones =
-    mapM_ (\p -> writeGoban g p Empty) stoneVertices
-    where
-      stoneVertices = verticesFromStones stones
+    mapM_ (\p -> writeGoban g p Empty) $ map stoneVertex stones
 
 vertexToStone :: STGoban s -> Vertex -> ST s (Maybe Stone)
 vertexToStone g vertex = do
@@ -200,9 +196,6 @@ intAscAdjacentVertices n vertex =
     where
       (x, y) = (intToVertex n) vertex
 
-intVerticesFromStones :: Int -> [Stone] -> [Int]
-intVerticesFromStones n stones =
-    map (\(Stone p _c) -> vertexToInt n p) stones
 
 
 
@@ -375,7 +368,6 @@ neighbourStones :: STGoban s -> Stone -> ST s [Stone]
 neighbourStones g (Stone p _) =
     adjacentStones g p
 
-
 adjacentStones :: STGoban s -> Vertex -> ST s [Stone]
 adjacentStones g p =
     verticesToStones g $ adjacentVertices p
@@ -403,6 +395,8 @@ adjacentFree g initP = do
 
 
 
+
+
 showboard :: STGoban s -> ST s String
 showboard g@(STGoban n _v) = do
   stones <- mapM (intVertexToStone g) $ [0 .. (maxIntIndex n)] \\ (borderVertices n)
@@ -420,13 +414,13 @@ showboard g@(STGoban n _v) = do
 
 allStones :: STGoban s -> ST s [Vertex]
 allStones g@(STGoban n _v) = do
-  mapM (intVertexToStone g) ([0 .. (maxIntIndex n)] \\ (borderVertices n)) >>= (return . verticesFromStones . catMaybes)
+  mapM (intVertexToStone g) ([0 .. (maxIntIndex n)] \\ (borderVertices n)) >>= (return . (map stoneVertex) . catMaybes)
 
 
 allLibertiesColorCount :: STGoban s -> Color -> ST s Int
 allLibertiesColorCount g@(STGoban n _v) color = do
   stones <- mapM (intVertexToStone g) ([0 .. (maxIntIndex n)] \\ (borderVertices n))
-  liberties <- mapM (adjacentFree g) $ verticesFromStones $ filter sameColor $ catMaybes stones
+  liberties <- mapM (adjacentFree g) $ map stoneVertex $ filter sameColor $ catMaybes stones
   return $ length $ concat liberties
 
     where
@@ -482,7 +476,7 @@ intAllAdjacentStonesSameColor g ps = do
 --       ls' =
 --           concatMap
 --           (adjacentFree goban)
---           (verticesFromStones groupStones)
+--           (map stoneVertex groupStones)
 
 
 
