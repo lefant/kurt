@@ -18,8 +18,6 @@ module Data.Goban.Utils ( maxString
 
                         , scoreToResult
                         , winningScore
-
-                        , centerHeuristic
                         ) where
 
 
@@ -27,7 +25,8 @@ import Data.List ((\\))
 import qualified Data.IntSet as S
 
 import Data.Goban.Types
-import Data.Tree.UCT.GameTree (Value, Count)
+import Data.Tree.UCT.GameTree (Value)
+
 
 -- import Debug.TraceOrId (trace)
 
@@ -87,19 +86,4 @@ winningScore color thisScore =
       White ->
           -- trace ("winningScore White " ++ show (thisScore < 0))
           thisScore < 0
-
-
-
-centerHeuristic :: Boardsize -> Move -> (Value, Count)
-centerHeuristic n (Move (Stone (x, y) _color)) =
-    -- trace ("centerHeuristic " ++ show (x, y, result))
-    result
-    where
-      result = 
-          (0.2
-           + (fromIntegral
-              (minimum [ x - 1, n - x, y - 1, n - y, 3]) / 5),
-           1000)
-centerHeuristic _ _ = error "centerHeuristic received non StoneMove arg"
-
 

@@ -20,6 +20,7 @@ module Data.Goban.GameState ( GameState(..)
                             , scoreGameState
                             , getLeafGameState
                             , updateGameState
+                            , centerHeuristic
                             , nextMoves
                             , freeVertices
                             , thisMoveColor
@@ -34,6 +35,7 @@ import qualified Data.IntSet as S
 
 
 import Data.Goban.Types
+import Data.Tree.UCT (UCTHeuristic)
 import Data.Goban.Utils
 import Data.Goban.STVectorGoban
 
@@ -185,9 +187,6 @@ scoreGameState state = do
                 $ filter ((== color) . fst) $ concat ts
 
 
-
-
-
 emptyStrings :: GameState s -> [[Int]]
 emptyStrings state =
   emptyStrings' initFrees []
@@ -212,6 +211,29 @@ emptyStrings state =
 
       n = boardsize state
 
+
+
+
+
+centerHeuristic :: GameState s -> UCTHeuristic Move
+centerHeuristic state (Move (Stone (x, y) _color)) =
+    -- trace ("centerHeuristic " ++ show (s, (h, (l, m, beta, halfBeta), result)))
+    result
+    where
+      result = (0.5 - halfBeta + beta * h, 10)
+
+      -- must be between 0 and 1
+      h = fromIntegral (minimum [ x, n - x + 1, y, n - y + 1, 3]) ^ (2 :: Int)
+          / 9
+
+      -- scaling factor between 1 at the beginning and 0 when l gets big
+      beta = fromIntegral m / fromIntegral (l + m)
+      halfBeta = beta / 2
+
+      l = length $ moveHistory state
+      n = boardsize state
+      m = n
+centerHeuristic _ _ = error "centerHeuristic received non StoneMove arg"
 
 
 

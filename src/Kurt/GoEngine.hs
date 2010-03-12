@@ -30,22 +30,20 @@ import Data.Time.Clock ( UTCTime(..)
                        , getCurrentTime
                        )
 import Data.List ((\\))
--- import Data.List (sort)
--- import Text.Printf (printf)
 
 
-import Data.Goban.Types (Move(..), Stone(..), Color, Vertex, Score)
-import Data.Goban.Utils (winningScore, scoreToResult, centerHeuristic)
-import Data.Goban.GameState (GameState(..), newGameState, scoreGameState, updateGameState, getLeafGameState, thisMoveColor, nextMoveColor, nextMoves, freeVertices)
+import Data.Goban.Types (Move(..), Stone(..), Color(..), Vertex, Score)
+import Data.Goban.Utils (winningScore, scoreToResult)
+import Data.Goban.GameState (GameState(..), newGameState, scoreGameState, updateGameState, getLeafGameState, centerHeuristic, thisMoveColor, nextMoveColor, nextMoves, freeVertices)
 import Data.Goban.STVectorGoban (isSaneMove)
 
 
-import Data.Tree.UCT.GameTree (UCTTreeLoc, RaveMap, newRaveMap)
+import Data.Tree.UCT.GameTree (UCTTreeLoc, RaveMap, newRaveMap, newMoveNode)
 import Data.Tree.UCT
 
 import Debug.TraceOrId (trace)
 import Data.Tree (rootLabel)
-import Data.Tree.Zipper (tree)
+import Data.Tree.Zipper (tree, fromTree)
 import Data.Tree.UCT.GameTree (MoveNode(..))
 -- import Data.Tree (drawTree)
 -- import Data.Tree.Zipper (tree)
@@ -104,15 +102,15 @@ genMove eState color = do
 initUCT :: EngineState RealWorld -> Color -> IO Move
 initUCT eState color = do
   now <- getCurrentTime
-  moves <- stToIO $ nextMoves gState color
-  -- boardStr <- stToIO $ showGoban $ goban gState
-  -- trace ("initUCT" ++ boardStr) $ return ()
-  -- trace ("initUCT freeVertices: " ++ show (freeVertices gState)) $ return ()
-  -- trace ("initUCT moves: " ++ show moves) $ return ()
-  -- rGen <- stToIO create
+
   seed <- withSystemRandom save
   rGen <- stToIO $ restore seed
-  uctLoop (rootNode moves) gState initRaveMap rGen $ UTCTime { utctDay = (utctDay now)
+
+  initLoc <- return $ fromTree $ newMoveNode (trace "something weird is accessing the move at the root UCT tree" (Move (Stone (25,25) Black))) (0.5, 1)
+  moves <- stToIO $ nextMoves gState color
+  initLoc' <- return $ expandNode initLoc (centerHeuristic gState) moves
+
+  uctLoop initLoc' gState initRaveMap rGen $ UTCTime { utctDay = (utctDay now)
                                                  , utctDayTime =
                                                      thinkPicosecs
                                                      + (utctDayTime now) }
@@ -135,7 +133,8 @@ uctLoop !loc rootGameState raveMap rGen deadline = do
   value <- return $ scoreToResult (thisMoveColor leafGameState) score
   raveMap' <- return $ updateRaveMap raveMap value $ drop ((length playedMoves) `div` 3) playedMoves
   moves <- stToIO $ nextMoves leafGameState $ nextMoveColor leafGameState
-  loc'' <- return $ expandNode loc' (centerHeuristic (boardsize rootGameState)) moves
+  -- loc'' <- return $ expandNode loc' (centerHeuristic (boardsize rootGameState)) moves
+  loc'' <- return $ expandNode loc' constantHeuristic moves
   loc''' <- return $ backpropagate value loc''
   now <- getCurrentTime
   timeIsUp <- return $ (now > deadline)

@@ -13,8 +13,7 @@ UCT tree search using Data.Tree.Zipper for updates in the Tree
 
 -}
 
-module Data.Tree.UCT ( rootNode
-                     , selectLeafPath
+module Data.Tree.UCT ( selectLeafPath
                      , principalVariation
                      , policyUCB1
                      , policyRaveUCB1
@@ -22,6 +21,7 @@ module Data.Tree.UCT ( rootNode
                      , constantHeuristic
                      , backpropagate
                      , updateRaveMap
+                     , UCTHeuristic
                      ) where
 
 
@@ -30,27 +30,27 @@ import Data.List (unfoldr, maximumBy, foldl')
 import qualified Data.Map as M
 import Data.Ord (comparing)
 import Data.Tree (Tree(..))
-import Data.Tree.Zipper (TreeLoc, tree, fromTree, hasChildren, parent, findChild, modifyTree, modifyLabel)
+import Data.Tree.Zipper (TreeLoc, tree, hasChildren, parent, findChild, modifyTree, modifyLabel)
 
-import Debug.TraceOrId (trace)
+-- import Debug.TraceOrId (trace)
 
 import Data.Tree.UCT.GameTree
 
 
 exploratoryC :: Value
-exploratoryC = 0.5
+exploratoryC = 0.4
 
 raveWeight :: Value
-raveWeight = 1
+raveWeight = 1.5
 
 
-rootNode :: (UCTNode a) => [a] -> UCTTreeLoc a
-rootNode moves =
-    expandNode
-    -- (fromTree $ newMoveNode (error "move at rootNode is undefined") (0.5, 1))
-    (fromTree $ newMoveNode (last moves) (0.5, 1000))
-    constantHeuristic
-    moves
+-- rootNode :: (UCTNode a) => [a] -> UCTTreeLoc a
+-- rootNode moves =
+--     expandNode
+--     -- (fromTree $ newMoveNode (error "move at rootNode is undefined") (0.5, 1))
+--     (fromTree $ newMoveNode (last moves) (0.5, 1000))
+--     constantHeuristic
+--     moves
 
 
 -- selection section
@@ -198,13 +198,15 @@ constantHeuristic _move = (0.5, 1)
 -- updates node with a new value
 updateNodeValue :: UCTNode a => Value -> MoveNode a -> MoveNode a
 updateNodeValue value node =
-    trace ("updateNodeValue "
-           ++ show (nodeMove node, value, oldValue, oldVisits, newValue, newVisits)
-          )
-    node { nodeVisits = newVisits
-         , nodeValue = newValue
-         }
+    -- trace ("updateNodeValue "
+    --        ++ show (node, node', value)
+    --       )
+    node'
     where
+      node' =
+          node { nodeVisits = newVisits
+               , nodeValue = newValue
+               }
       newValue = ((oldValue * (fromIntegral oldVisits)) + value)
                        / fromIntegral newVisits
       oldValue = nodeValue node
