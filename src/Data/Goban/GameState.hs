@@ -16,6 +16,7 @@ Go GameState Implementation
 
 module Data.Goban.GameState ( GameState(..)
                             , newGameState
+                            , showGameState
                             , scoreGameState
                             , getLeafGameState
                             , updateGameState
@@ -54,22 +55,19 @@ data GameState s = GameState { goban           :: !(STGoban s)
                              -- , whitePrisoners  :: !Score
                              }
 
-
--- instance Show GameState where
---     show state =
---         case moveHistory state of
---           [] -> ""
---           moves ->
---               show $ last moves
---               -- case last moves of
---               --   (StoneMove (Stone ((x, y), color))) ->
---               --       c ++ [(xToLetter x)] ++ (show y)
---               --       where
---               --         c = case color of
---               --               Black -> "b "
---               --               White -> "w "
---               --   (Pass _color) -> "pass"
---               --   (Resign _color) -> "resign"
+showGameState :: GameState s -> ST s String
+showGameState state = do
+  gobanStr <- showGoban $ goban state
+  return (gobanStr
+          ++ "blackStones: " ++ show (blackStones state)
+          ++ " whiteStones: " ++ show (whiteStones state)
+          ++ " komi: " ++ show (komi state)
+          ++ "\n"
+          ++ "koBlocked: " ++ show (koBlocked state)
+          ++ " moveHistory: " ++ show (moveHistory state)
+          ++ "\n"
+          ++ "freeVerticesSet: " ++ show (freeVerticesSet state)
+          ++ "\n")
 
 
 newGameState :: Boardsize -> Score -> ST s (GameState s)

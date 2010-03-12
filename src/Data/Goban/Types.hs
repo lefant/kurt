@@ -30,10 +30,12 @@ module Data.Goban.Types ( Move(..)
                         , diagonalVertices
 
                         , otherColor
+                        , showColorForBoard
 
                         , gtpShowMove
                         , gtpShowVertex
                         , letterToX
+                        , xToLetter
                         ) where
 
 
@@ -76,7 +78,7 @@ data VertexState = Colored Color | Empty | Border
                  deriving (Eq)
 
 instance Show VertexState where
-    show (Colored color) = show color
+    show (Colored color) = showColorForBoard color
     show Empty = "."
     show Border = " "
 
@@ -89,6 +91,10 @@ data Color = Black
 instance Show Color where
     show Black = "b"
     show White = "w"
+
+showColorForBoard :: Color -> String
+showColorForBoard Black = "x"
+showColorForBoard White = "o"
 
 
 type Vertex = (Coord, Coord)
