@@ -27,9 +27,9 @@ import Data.List
 
 import Network.GoTextProtocol2.Server.Parser
 import Network.GoTextProtocol2.Types
-import Data.Goban.GameState (GameState(..), newGameState, updateGameState, scoreGameState)
+import Data.Goban.GameState (GameState(..), newGameState, showGameState, updateGameState, scoreGameState)
 import Data.Goban.Types (gtpShowMove, gtpShowVertex)
-import Data.Goban.STVectorGoban (showGoban, allStones)
+import Data.Goban.STVectorGoban (allStones)
 
 import Kurt.GoEngine (EngineState(..), newEngineState, genMove)
 
@@ -199,17 +199,17 @@ cmd_boardsize _ _ = error "cmd_boardsize called with illegal argument type"
 
 cmd_showboard :: CommandHandler RealWorld
 cmd_showboard [] state = do
-    str <- stToIO $ showGoban $ goban $ getGameState state
+    str <- stToIO $ showGameState $ getGameState state
     return $ Right ("showboard" ++ str, state)
 cmd_showboard _ _ = error "cmd_showboard called with illegal argument type"
 
 cmd_play :: CommandHandler RealWorld
 cmd_play [(MoveArgument move)] state = do
   gState' <- stToIO $ updateGameState (getGameState state) move
-  str <- stToIO $ showGoban $ goban $ getGameState state
-  trace ("cmd_play board" ++ str) $ return ()
+  str <- stToIO $ showGameState $ getGameState state
+  trace ("cmd_play board: " ++ str) $ return ()
   score <- stToIO $ scoreGameState gState'
-  trace ("cmd_play score " ++ show score) $ return ()
+  trace ("cmd_play score: " ++ show score) $ return ()
   return $ Right ("", state { getGameState = gState' })
 cmd_play _ _ = error "cmd_play called with illegal argument type"
 
@@ -217,10 +217,10 @@ cmd_genmove :: CommandHandler RealWorld
 cmd_genmove [(ColorArgument color)] state = do
   move <- genMove state color
   gState' <- stToIO $ updateGameState (getGameState state) move
-  str <- stToIO $ showGoban $ goban gState'
-  trace ("cmd_genmove board" ++ str) $ return ()
+  str <- stToIO $ showGameState gState'
+  trace ("cmd_genmove board:" ++ str) $ return ()
   score <- stToIO $ scoreGameState gState'
-  trace ("cmd_genmove score " ++ show score) $ return ()
+  trace ("cmd_genmove score: " ++ show score) $ return ()
   return $ Right (gtpShowMove move, state { getGameState = gState' })
 cmd_genmove _ _ = error "cmd_genmove called with illegal argument type"
 

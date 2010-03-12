@@ -63,7 +63,7 @@ data STGoban s = STGoban !Boardsize (VM.STVector s Word)
 showGoban :: STGoban s -> ST s String
 showGoban g@(STGoban n _v) = do
   vertexStates <- mapM (intReadGoban g) $ [0 .. (maxIntIndex n)] \\ (borderVertices n)
-  return $ (++) "\n" $ unlines $ reverse $ (xLegend : (show' (1 :: Int) vertexStates))
+  return $ (++) "\n\n" $ unlines $ reverse $ (xLegend : (show' (1 :: Int) vertexStates))
     where
       show' _ [] = [xLegend]
       show' ln ls' = (ln' ++ concatMap ((" " ++) . show) left ++ ln')

@@ -58,16 +58,21 @@ data GameState s = GameState { goban           :: !(STGoban s)
 showGameState :: GameState s -> ST s String
 showGameState state = do
   gobanStr <- showGoban $ goban state
-  return (gobanStr
-          ++ "blackStones: " ++ show (blackStones state)
-          ++ " whiteStones: " ++ show (whiteStones state)
-          ++ " komi: " ++ show (komi state)
-          ++ "\n"
-          ++ "koBlocked: " ++ show (koBlocked state)
-          ++ " moveHistory: " ++ show (moveHistory state)
-          ++ "\n"
-          ++ "freeVerticesSet: " ++ show (freeVerticesSet state)
-          ++ "\n")
+  return (unlines $ zipWith (++) (lines gobanStr) $ [
+                       ""
+                      ,""
+                      ,""
+                      ,"   blackStones: " ++ show (blackStones state)
+                      ,"   whiteStones: " ++ show (whiteStones state)
+                      ,"   komi: " ++ show (komi state)
+                      ,""
+                      ,"   koBlocked: " ++ show (koBlocked state)
+                      ] ++ repeat ""
+          -- ++ " moveHistory: " ++ show (moveHistory state)
+          -- ++ "\n"
+          -- ++ "freeVerticesSet: " ++ show (freeVerticesSet state)
+          -- ++ "\n"
+         )
 
 
 newGameState :: Boardsize -> Score -> ST s (GameState s)
