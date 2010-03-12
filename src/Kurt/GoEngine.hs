@@ -195,11 +195,11 @@ runOneRandom initState rGenInit =
                       (Pass _) -> do
                                  score <- scoreGameState state''
                                  return (score, moves)
-                      sm@(StoneMove _) ->
+                      sm@(Move _) ->
                           run state'' (runCount + 1) rGen (sm : moves)
                       (Resign _) ->
                           error "runOneRandom encountered Resign"
-          sm@(StoneMove _) ->
+          sm@(Move _) ->
               run state' (runCount + 1) rGen (sm : moves)
           (Resign _) ->
               error "runOneRandom encountered Resign"
@@ -215,13 +215,13 @@ genMoveRand state rGen =
       pickSane [p] = do
         sane <- isSaneMove g color p
         return $ (if sane
-                  then StoneMove (Stone (p, color))
+                  then Move (Stone p color)
                   else Pass color)
       pickSane ps = do
         p <- pick ps rGen
         sane <- isSaneMove g color p
         (if sane
-         then return $ StoneMove (Stone (p, color))
+         then return $ Move (Stone p color)
          else pickSane (ps \\ [p]))
 
       color = nextMoveColor state

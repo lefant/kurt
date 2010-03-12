@@ -99,7 +99,7 @@ winningScore color thisScore =
 
 
 centerHeuristic :: Boardsize -> Move -> (Value, Count)
-centerHeuristic n (StoneMove (Stone ((x, y), _color))) =
+centerHeuristic n (Move (Stone (x, y) _color)) =
     -- trace ("centerHeuristic " ++ show (x, y, result))
     result
     where
@@ -122,12 +122,12 @@ centerHeuristic _ _ = error "centerHeuristic received non StoneMove arg"
 
 
 verticesFromStones :: [Stone] -> [Vertex]
-verticesFromStones ss = map (\(Stone (p, _c)) -> p) ss
+verticesFromStones ss = map (\(Stone p _c) -> p) ss
 
 
 
 stoneColor :: Stone -> Color
-stoneColor (Stone (_vertex, color)) = color
+stoneColor (Stone _vertex color) = color
 
 
 otherColor :: Color -> Color

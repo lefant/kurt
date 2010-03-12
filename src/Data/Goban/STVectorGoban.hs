@@ -59,10 +59,6 @@ import Data.Goban.Utils
 
 data STGoban s = STGoban !Boardsize (VM.STVector s Word)
 
--- this should be some kind of enum instance
--- so we can do toEnum / fromEnum instead of stateToWord
-data VertexState = VertexColor Color | Empty | Border
-                 deriving (Eq)
 
 
 newGoban :: Boardsize -> ST s (STGoban s)
@@ -79,8 +75,8 @@ copyGoban (STGoban n v) = do
 
 
 addStone :: STGoban s -> Stone -> ST s ()
-addStone g (Stone (vertex, color)) =
-    writeGoban g vertex (VertexColor color)
+addStone g (Stone vertex color) =
+    writeGoban g vertex (Colored color)
 
 deleteStones :: STGoban s -> [Stone] -> ST s ()
 deleteStones g stones =
@@ -92,7 +88,7 @@ vertexToStone :: STGoban s -> Vertex -> ST s (Maybe Stone)
 vertexToStone g vertex = do
   s <- readGoban g vertex
   return $ case s of
-             VertexColor color -> Just $ Stone (vertex, color)
+             Colored color -> Just $ Stone vertex color
              Empty -> Nothing
              Border -> Nothing
 
@@ -100,7 +96,7 @@ intVertexToStone :: STGoban s -> Int -> ST s (Maybe Stone)
 intVertexToStone g@(STGoban n _v) i = do
   s <- intReadGoban g i
   return $ case s of
-             VertexColor color -> Just $ Stone (intToVertex n i, color)
+             Colored color -> Just $ Stone (intToVertex n i) color
              Empty -> Nothing
              Border -> Nothing
 
@@ -173,8 +169,8 @@ maxIntIndex n = vertexToInt n (n + 1, n + 1)
 
 stateToWord :: VertexState -> Word
 stateToWord Empty = 0
-stateToWord (VertexColor Black) = 1
-stateToWord (VertexColor White) = 2
+stateToWord (Colored Black) = 1
+stateToWord (Colored White) = 2
 stateToWord Border = 3
 
 {-# INLINE stateToWord #-}
@@ -183,16 +179,16 @@ wordToState :: Word -> VertexState
 wordToState n =
     case (fromIntegral n) :: Int of
       0 -> Empty
-      1 -> VertexColor Black
-      2 -> VertexColor White
+      1 -> Colored Black
+      2 -> Colored White
       3 -> Border
       other -> error ("wordToState parameter out of range " ++ show other)
 
 {-# INLINE wordToState #-}
 
 -- wordToState 0 = Empty
--- wordToState 1 = VertexColor Black
--- wordToState 2 = VertexColor White
+-- wordToState 1 = Colored Black
+-- wordToState 2 = Colored White
 -- wordToState 3 = Border
 -- wordToState _ = error "intToState parameter out of range"
 
@@ -206,7 +202,7 @@ intAscAdjacentVertices n vertex =
 
 intVerticesFromStones :: Int -> [Stone] -> [Int]
 intVerticesFromStones n stones =
-    map (\(Stone (p, _c)) -> vertexToInt n p) stones
+    map (\(Stone p _c) -> vertexToInt n p) stones
 
 
 
@@ -250,9 +246,9 @@ isPotentialFullEye g color p = do
    else return False)
 
    where
-     isSameColorOrBorder c = c == Border || c == VertexColor color
+     isSameColorOrBorder c = c == Border || c == Colored color
      isBorder c = c == Border
-     isOtherColor c = c == VertexColor (otherColor color)
+     isOtherColor c = c == Colored (otherColor color)
 
 
 
@@ -268,11 +264,11 @@ isPotentialFullEye g color p = do
 
 isSuicideVertex :: STGoban s -> Color -> Vertex -> ST s Bool
 isSuicideVertex g color v =
-    isSuicide g (Stone (v, color))
+    isSuicide g (Stone v color)
 
 
 isSuicide :: STGoban s -> Stone -> ST s Bool
-isSuicide g stone@(Stone (p, c)) = do
+isSuicide g stone@(Stone p c) = do
   frees1 <- adjacentFree g p
   (if null frees1
    -- stone has no liberties remaining itself
@@ -298,31 +294,31 @@ isSuicide g stone@(Stone (p, c)) = do
    where
      potDeadColor as color =
          filterM hasOneLiberty $
-                 filter (\(Stone (_p, color')) -> color == color') as
+                 filter (\(Stone _p color') -> color == color') as
 
-     hasOneLiberty (Stone (p', _c)) = do
+     hasOneLiberty (Stone p' _c) = do
        as <- adjacentFree g p'
        return $ (length as == 1)
 
      aliveColor as color =
          filterM hasSeveralLiberties $
-                 filter (\(Stone (_p, color')) -> color == color') as
+                 filter (\(Stone _p color') -> color == color') as
 
-     hasSeveralLiberties (Stone (p', _c)) = do
+     hasSeveralLiberties (Stone p' _c) = do
        as <- adjacentFree g p'
        return $ (length as > 1)
 
 
 deadStones2 :: STGoban s -> Stone -> [Stone] -> ST s [Stone]
 deadStones2 _ _ [] = return []
-deadStones2 g stone stones@( (Stone (_p, color)) : _ ) = do
+deadStones2 g stone stones@( (Stone _p color) : _ ) = do
   initStones <- mapM (neighbourStones g) stones
   initStones' <- return $ nub ((filter filterF (concat initStones)) \\ [stone])
   anyInMaxStringAlive initStones' stones
   -- trace ("deadStones2 " ++ show (stone, stones, result)) $ return result
     where
       anyInMaxStringAlive [] gs = return gs
-      anyInMaxStringAlive (n@(Stone (p, _color)) : ns) gs = do
+      anyInMaxStringAlive (n@(Stone p _color) : ns) gs = do
           -- trace ("anyInMaxStringAlive2 " ++ show n) $ return ()
           frees <- adjacentFree g p
           (if null frees
@@ -331,7 +327,7 @@ deadStones2 g stone stones@( (Stone (_p, color)) : _ ) = do
                anyInMaxStringAlive (ns ++ (((hs) \\ gs) \\ ns)) (n : gs)
            else return [])
       genF = neighbourStones g
-      filterF (Stone (_p', color')) =
+      filterF (Stone _p' color') =
           color == color'
 
 
@@ -346,21 +342,21 @@ deadStones2 g stone stones@( (Stone (_p, color)) : _ ) = do
 -- group it will be found twice here
 -- nub at the end works around for scoring
 killedStones :: STGoban s -> Stone -> ST s [Stone]
-killedStones g stone@(Stone (_p, color)) =
+killedStones g stone@(Stone _p color) =
     neighbourStones g stone >>=
     filterM (return . hasOtherColor) >>=
     mapM (deadStones g) >>= (return . nub . concat)
     where
-      hasOtherColor (Stone (_p', color')) =
+      hasOtherColor (Stone _p' color') =
           (otherColor color) == color'
 
 
 deadStones :: STGoban s -> Stone -> ST s [Stone]
-deadStones g stone@(Stone (_p, color)) =
+deadStones g stone@(Stone _p color) =
     anyInMaxStringAlive [stone] []
     where
       anyInMaxStringAlive [] gs = return gs
-      anyInMaxStringAlive (n@(Stone (p, _color)) : ns) gs = do
+      anyInMaxStringAlive (n@(Stone p _color) : ns) gs = do
           frees <- adjacentFree g p
           (if null frees
            then do
@@ -369,14 +365,14 @@ deadStones g stone@(Stone (_p, color)) =
            else return [])
 
       genF = neighbourStones g
-      filterF (Stone (_p', color')) =
+      filterF (Stone _p' color') =
           color == color'
 
 
 
 
 neighbourStones :: STGoban s -> Stone -> ST s [Stone]
-neighbourStones g (Stone (p, _)) =
+neighbourStones g (Stone p _) =
     adjacentStones g p
 
 
@@ -417,7 +413,7 @@ showboard g@(STGoban n _v) = do
           where
             (left, right) = splitAt n ls'
       showStone Nothing = "."
-      showStone (Just (Stone (_, color)))
+      showStone (Just (Stone _ color))
           | color == Black = "x"
           | color == White = "o"
       showStone something = error ("showStone: unmatched " ++ show something)
@@ -434,7 +430,7 @@ allLibertiesColorCount g@(STGoban n _v) color = do
   return $ length $ concat liberties
 
     where
-      sameColor (Stone (_p, color')) =
+      sameColor (Stone _p color') =
           color == color'
 
 

@@ -95,7 +95,7 @@ newGameState n initKomi = do
 nextMoves :: GameState s -> Color -> ST s [Move]
 nextMoves state color =
     filterM (isSaneMove (goban state) color) (freeVertices state) >>=
-                (return . (map (\v -> StoneMove (Stone (v, color)))))
+                (return . (map (\v -> Move (Stone v color))))
 
 
 
@@ -121,7 +121,7 @@ updateGameState state move =
                        moveHistory = (moveHistory state) ++ [move]
                      , koBlocked = Nothing
                      }
-      StoneMove stone@(Stone (p, c)) ->
+      Move stone@(Stone p c) ->
           do
             -- str1 <- showboard g
             -- trace ("updateGameState before" ++ str1) $ return ()
@@ -146,7 +146,7 @@ updateGameState state move =
                           else (whiteStones state) - (length dead))
                        , koBlocked =
                          case dead of
-                           [Stone (k, _)] -> Just k
+                           [Stone k _] -> Just k
                            _ -> Nothing
                        , freeVerticesSet = freeVerticesSet' p dead
                        }
@@ -223,9 +223,9 @@ thisMoveColor state =
           error "thisMoveColor called when moveHistory still empty"
       moves ->
           case last moves of
-            (StoneMove (Stone (_, color))) -> color
-            (Pass color) -> color
-            (Resign color) -> color
+            Move (Stone _ color) -> color
+            Pass color -> color
+            Resign color -> color
 
 nextMoveColor :: GameState s -> Color
 nextMoveColor state =
@@ -234,9 +234,9 @@ nextMoveColor state =
       moves ->
           otherColor $
           case last moves of
-            (StoneMove (Stone (_, color))) -> color
-            (Pass color) -> color
-            (Resign color) -> color
+            Move (Stone _ color) -> color
+            Pass color -> color
+            Resign color -> color
 
 
 freeVertices :: GameState s -> [Vertex]

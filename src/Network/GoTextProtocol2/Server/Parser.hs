@@ -165,7 +165,7 @@ moveArgParser =
          <|> (do
                l <- letter
                n <- parseInt
-               return [MoveArgument $ StoneMove $ Stone ((letterToX l, n), c)])
+               return [MoveArgument $ Move $ Stone ((letterToX l), n) c])
          <?> "vertex (ie. something like A1, H8, Z25 or pass)")
 
 

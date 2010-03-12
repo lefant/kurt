@@ -15,8 +15,9 @@ General low-level types for Goban Implementation
 -}
 
 module Data.Goban.Types ( Move(..)
-                        , Color(..)
+                        , VertexState(..)
                         , Stone(..)
+                        , Color(..)
                         , Vertex
                         , Boardsize
                         , Score
@@ -31,15 +32,16 @@ import Data.Char (chr, ord, toUpper)
 import Data.Tree.UCT.GameTree (UCTNode(..))
 
 
-data Move = StoneMove Stone
+
+data Move = Move Stone
           | Pass Color
           | Resign Color
             deriving (Eq, Ord)
 
 instance Show Move where
-    show (StoneMove stone) = show stone
-    show (Pass _color) = "pass"
-    show (Resign _color) = "resign"
+    show (Move stone) = show stone
+    show (Pass color) = show color ++ " pass"
+    show (Resign color) = show color ++ " resign"
 
 instance UCTNode Move where
     -- we use estimated win rate of move as value for uct nodes
@@ -47,13 +49,26 @@ instance UCTNode Move where
 
 
 
-
-newtype Stone = Stone (Vertex, Color)
-    deriving (Eq, Ord)
+data Stone = Stone Vertex Color
+           deriving (Eq, Ord)
 
 instance Show Stone where
-    show (Stone (p, color)) =
-        (show color) ++ " " ++ gtpShowVertex p
+    show (Stone vertex color) =
+        (show color) ++ " " ++ gtpShowVertex vertex
+
+
+
+-- this should be some kind of enum instance
+-- so we can do toEnum / fromEnum instead of stateToWord in Goban implementations
+data VertexState = Colored Color | Empty | Border
+                 deriving (Eq)
+
+instance Show VertexState where
+    show (Colored color) = show color
+    show Empty = "."
+    show Border = " "
+
+
 
 data Color = Black
            | White
@@ -63,13 +78,12 @@ instance Show Color where
     show Black = "b"
     show White = "w"
 
+
 type Vertex = (Coord, Coord)
 
 type Coord = Int
 
 type Boardsize = Int
-
-
 
 type Score = Float
 
@@ -78,13 +92,14 @@ type Score = Float
 
 
 gtpShowMove :: Move -> String
-gtpShowMove (StoneMove (Stone (p, _color))) = gtpShowVertex p
+gtpShowMove (Move (Stone vertex _color)) = gtpShowVertex vertex
 gtpShowMove (Pass _color) = "pass"
 gtpShowMove (Resign _color) = "resign"
 
 gtpShowVertex :: Vertex -> String
 gtpShowVertex (x, y) =
     [(xToLetter x)] ++ (show y)
+
 
 xToLetter :: Coord -> Char
 xToLetter n =
