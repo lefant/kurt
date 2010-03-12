@@ -49,7 +49,7 @@ import Data.Tree.Zipper (tree)
 import Data.Tree.UCT.GameTree (MoveNode(..))
 -- import Data.Tree (drawTree)
 -- import Data.Tree.Zipper (tree)
--- import Data.Goban.STVector (showboard)
+-- import Data.Goban.STVector (showGoban)
 
 data EngineState s = EngineState {
       getGameState    :: GameState s
@@ -69,7 +69,7 @@ defaultBoardSize = 9
 newEngineState :: ST s (EngineState s)
 newEngineState = do
   gs <- newGameState defaultBoardSize defaultKomi
-  -- boardStr <- showboard $ goban gs
+  -- boardStr <- showGoban $ goban gs
   -- trace ("newEngineState" ++ boardStr) $ return ()
   return $ EngineState {
                    getGameState = gs
@@ -86,7 +86,7 @@ genMove :: EngineState RealWorld -> Color -> IO Move
 genMove eState color = do
   moves <- stToIO $ nextMoves gState color
   score <- stToIO $ scoreGameState gState
-  -- boardStr <- stToIO $ showboard $ goban gState
+  -- boardStr <- stToIO $ showGoban $ goban gState
   -- trace ("genMove" ++ boardStr) $ return ()
   -- trace ("genMove freeVertices: " ++ show (freeVertices gState)) $ return ()
   -- trace ("genMove moves: " ++ show moves) $ return ()
@@ -105,7 +105,7 @@ initUCT :: EngineState RealWorld -> Color -> IO Move
 initUCT eState color = do
   now <- getCurrentTime
   moves <- stToIO $ nextMoves gState color
-  -- boardStr <- stToIO $ showboard $ goban gState
+  -- boardStr <- stToIO $ showGoban $ goban gState
   -- trace ("initUCT" ++ boardStr) $ return ()
   -- trace ("initUCT freeVertices: " ++ show (freeVertices gState)) $ return ()
   -- trace ("initUCT moves: " ++ show moves) $ return ()
@@ -130,7 +130,7 @@ uctLoop !loc rootGameState raveMap rGen deadline = do
   done <- return False
   (loc', path) <- return $ selectLeafPath (policyRaveUCB1 raveMap) loc
   leafGameState <- stToIO $ getLeafGameState rootGameState path
-  -- rGen <- trace ("uctLoop leafGameState \n" ++ (showboard (goban $ leafGameState))) $ newStdGen
+  -- rGen <- trace ("uctLoop leafGameState \n" ++ (showGoban (goban $ leafGameState))) $ newStdGen
   (score, playedMoves) <- stToIO $ runOneRandom leafGameState rGen
   value <- return $ scoreToResult (thisMoveColor leafGameState) score
   raveMap' <- return $ updateRaveMap raveMap value $ drop ((length playedMoves) `div` 3) playedMoves

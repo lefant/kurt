@@ -17,13 +17,16 @@ Mutable Goban Implementation based on Data.Vector.Unboxed.Mutable
 module Data.Goban.STVectorGoban ( STGoban(..)
                                 , newGoban
                                 , copyGoban
+                                , showGoban
                                 , addStone
                                 , deleteStones
                                 , gobanSize
+
                                 , intToVertex
                                 , vertexToInt
                                 , borderVertices
                                 , maxIntIndex
+
                                 , isSaneMove
                                 , isSuicideVertex
                                 , isPotentialFullEye
@@ -35,7 +38,6 @@ module Data.Goban.STVectorGoban ( STGoban(..)
                                 , adjacentVertices
                                 , intAscAdjacentVertices
                                 , allStones
-                                , showboard
                                 , allLibertiesColorCount
                                 , colorTerritories
                                 , intAllAdjacentStonesSameColor
@@ -56,6 +58,17 @@ import Data.Goban.Types
 
 
 data STGoban s = STGoban !Boardsize (VM.STVector s Word)
+
+
+showGoban :: STGoban s -> ST s String
+showGoban g@(STGoban n _v) = do
+  vertexStates <- mapM (intReadGoban g) $ [0 .. (maxIntIndex n)] \\ (borderVertices n)
+  return $ (++) "\n" $ unlines $ reverse $ show' vertexStates
+    where
+      show' [] = []
+      show' ls' = (concatMap show left) : (show' right)
+          where
+            (left, right) = splitAt n ls'
 
 
 
@@ -397,20 +410,6 @@ adjacentFree g initP = do
 
 
 
-showboard :: STGoban s -> ST s String
-showboard g@(STGoban n _v) = do
-  stones <- mapM (intVertexToStone g) $ [0 .. (maxIntIndex n)] \\ (borderVertices n)
-  return $ (++) "\n" $ unlines $ reverse $ show' stones
-    where
-      show' [] = []
-      show' ls' = (concatMap showStone left) : (show' right)
-          where
-            (left, right) = splitAt n ls'
-      showStone Nothing = "."
-      showStone (Just (Stone _ color))
-          | color == Black = "x"
-          | color == White = "o"
-      showStone something = error ("showStone: unmatched " ++ show something)
 
 allStones :: STGoban s -> ST s [Vertex]
 allStones g@(STGoban n _v) = do
