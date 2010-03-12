@@ -28,7 +28,7 @@ import Data.List
 import Network.GoTextProtocol2.Server.Parser
 import Network.GoTextProtocol2.Types
 import Data.Goban.GameState (GameState(..), newGameState, updateGameState, scoreGameState)
-import Data.Goban.Goban (gtpShowMove, gtpShowVertex)
+import Data.Goban.Types (gtpShowMove, gtpShowVertex)
 import Data.Goban.STVector (showboard, allStones)
 
 import Kurt.GoEngine (EngineState(..), newEngineState, genMove)

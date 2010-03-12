@@ -34,10 +34,10 @@ import Data.List ((\\))
 -- import Text.Printf (printf)
 
 
-import Data.Goban.GameState (GameState(..), newGameState, scoreGameState, updateGameState, getLeafGameState, thisMoveColor, nextMoveColor, nextMoves, freeVertices, centerHeuristic)
-import Data.Goban.Goban (Move(..), Stone(..), Color, Vertex, Score)
+import Data.Goban.Types (Move(..), Stone(..), Color, Vertex, Score)
+import Data.Goban.Utils (winningScore, scoreToResult, centerHeuristic)
+import Data.Goban.GameState (GameState(..), newGameState, scoreGameState, updateGameState, getLeafGameState, thisMoveColor, nextMoveColor, nextMoves, freeVertices)
 import Data.Goban.STVector (isSaneMove)
-import Data.Goban.Utils (winningScore, scoreToResult)
 
 
 import Data.Tree.UCT.GameTree (UCTTreeLoc, RaveMap, newRaveMap)

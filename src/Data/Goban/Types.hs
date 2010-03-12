@@ -2,7 +2,7 @@
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
 {- |
-   Module     : Data.Goban.Goban
+   Module     : Data.Goban.Types
    Copyright  : Copyright (C) 2010 Fabian Linzberger
    License    : GNU GPL, version 3 or above
 
@@ -10,12 +10,11 @@
    Stability  : experimental
    Portability: probably
 
-General Types for Goban Implementation
+General low-level types for Goban Implementation
 
 -}
 
-module Data.Goban.Goban ( -- STGoban(..)
-                          Move(..)
+module Data.Goban.Types ( Move(..)
                         , Color(..)
                         , Stone(..)
                         , Vertex

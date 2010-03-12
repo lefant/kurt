@@ -29,7 +29,6 @@ import Data.Maybe (fromJust)
 import Data.List (unfoldr, maximumBy, foldl')
 import qualified Data.Map as M
 import Data.Ord (comparing)
-import Data.Word (Word)
 import Data.Tree (Tree(..))
 import Data.Tree.Zipper (TreeLoc, tree, fromTree, hasChildren, parent, findChild, modifyTree, modifyLabel)
 
@@ -91,7 +90,7 @@ policyUCB1 node =
     where
       parentVisits = nodeVisits $ rootLabel node
 
-ucb1 :: UCTNode a => Word -> MoveNode a -> Value
+ucb1 :: UCTNode a => Count -> MoveNode a -> Value
 ucb1 parentVisits node =
     -- trace ("ucb1: "
     --        ++ show (nodeMove node, oldValue, ucb1part, value))
@@ -162,7 +161,7 @@ pathToLeaf initLoc =
 -- expansion
 ----------------------------------
 
-type UCTHeuristic a = a -> (Value, Word)
+type UCTHeuristic a = a -> (Value, Count)
 
 
 expandNode :: UCTNode a => UCTTreeLoc a -> UCTHeuristic a -> [a] -> UCTTreeLoc a

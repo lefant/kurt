@@ -18,7 +18,7 @@ module Network.GoTextProtocol2.Types ( Id
                                      , Argument(..)
                                      ) where
 
-import Data.Goban.Goban (Move, Color)
+import Data.Goban.Types (Move, Color)
 
 type Id = Int
 

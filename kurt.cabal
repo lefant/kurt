@@ -25,13 +25,13 @@ extra-source-files:
 library
   hs-source-dirs: src
   exposed-modules:
-                  Kurt.GoEngine
-                 ,Kurt.MainLoop
+                  Kurt.MainLoop
+                 ,Kurt.GoEngine
                  ,Data.Tree.UCT
-                 ,Data.Goban.Goban
                  ,Data.Goban.GameState
-                 ,Data.Goban.Utils
                  ,Data.Goban.STVector
+                 ,Data.Goban.Utils
+                 ,Data.Goban.Types
   build-depends:
                   base >= 3 && < 5
                  ,test-framework-quickcheck

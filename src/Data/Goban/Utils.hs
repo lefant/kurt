@@ -9,26 +9,33 @@
    Stability  : experimental
    Portability: probably
 
-Various utility functions for Goban Implementation
+Various utility functions for Goban Implementation (without direct dependencies on either GameState or Goban.hs
 
 -}
 
 module Data.Goban.Utils ( maxString
+                        , maxIntSet
+
                         , scoreToResult
                         , winningScore
+
+                        , centerHeuristic
+
                         , verticesFromStones
                         , stoneColor
                         , otherColor
                         , inBounds
-                        , nonEdgeVertices
                         , allVertices
+                        , adjacentVertices
+                        , diagonalVertices
                         ) where
 
 
 import Data.List ((\\))
+import qualified Data.IntSet as S
 
-import Data.Goban.Goban
-import Data.Tree.UCT.GameTree (Value)
+import Data.Goban.Types
+import Data.Tree.UCT.GameTree (Value, Count)
 
 -- import Debug.Trace (trace)
 
@@ -43,6 +50,20 @@ maxString genF filterF p =
           maxString' (ns ++ (((fgen n) \\ gs) \\ ns)) (n : gs)
       fgen n =
           filter filterF $ genF n
+
+
+maxIntSet :: (Int -> S.IntSet) -> (Int -> Bool) -> Int -> S.IntSet
+maxIntSet genF filterF p =
+    maxIntSet' (S.singleton p) S.empty
+    where
+      maxIntSet' is js
+          | S.null is = js
+          | otherwise = maxIntSet' is'' js'
+          where
+            is'' = S.union is' $ S.difference ks js
+            js' = S.insert i js
+            ks = S.filter filterF $ genF i
+            (i, is') = S.deleteFindMin is
 
 
 
@@ -77,20 +98,33 @@ winningScore color thisScore =
 
 
 
+centerHeuristic :: Boardsize -> Move -> (Value, Count)
+centerHeuristic n (StoneMove (Stone ((x, y), _color))) =
+    -- trace ("centerHeuristic " ++ show (x, y, result))
+    result
+    where
+      result = 
+          (0.2
+           + (fromIntegral
+              (minimum [ x - 1, n - x, y - 1, n - y, 3]) / 5),
+           1000)
+centerHeuristic _ _ = error "centerHeuristic received non StoneMove arg"
+
+
+
+
+
 
 
 ----- mostly random stuff that should be reorganized below
 ----------------------------------------------------------
 
 
+
 verticesFromStones :: [Stone] -> [Vertex]
 verticesFromStones ss = map (\(Stone (p, _c)) -> p) ss
 
 
-
--- moveColor :: Move -> Color
--- moveColor (StoneMove stone) = stoneColor stone
--- moveColor (Pass color) = color
 
 stoneColor :: Stone -> Color
 stoneColor (Stone (_vertex, color)) = color
@@ -107,16 +141,32 @@ inBounds boardsize (x, y) =
     and [x > 0, x <= boardsize, y > 0, y <= boardsize]
 
 
-nonEdgeVertices :: Boardsize -> [Vertex]
-nonEdgeVertices boardsize =
-    [(x, y) | x <- [lower .. upper], y <- [lower .. upper]]
-    where
-      upper = boardsize - lower + 1
-      lower =
-          if boardsize >= 9
-          then 3
-          else 2
 
 allVertices :: Boardsize -> [Vertex]
 allVertices n =
     [(x, y) | y <- reverse [1 .. n], x <- [1 .. n]]
+
+adjacentVertices :: Vertex -> [Vertex]
+adjacentVertices (x, y) =
+    [(x,y-1),(x-1,y),(x+1,y),(x,y+1)]
+
+diagonalVertices :: Vertex -> [Vertex]
+diagonalVertices (x, y) =
+    [(x+1,y+1),(x-1,y+1),(x+1,y-1),(x-1,y-1)]
+
+
+
+-- moveColor :: Move -> Color
+-- moveColor (StoneMove stone) = stoneColor stone
+-- moveColor (Pass color) = color
+
+
+-- nonEdgeVertices :: Boardsize -> [Vertex]
+-- nonEdgeVertices boardsize =
+--     [(x, y) | x <- [lower .. upper], y <- [lower .. upper]]
+--     where
+--       upper = boardsize - lower + 1
+--       lower =
+--           if boardsize >= 9
+--           then 3
+--           else 2

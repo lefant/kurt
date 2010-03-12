@@ -10,7 +10,7 @@
    Stability  : experimental
    Portability: probably
 
-GameState Implementation
+Go GameState Implementation
 
 -}
 
@@ -21,24 +21,20 @@ module Data.Goban.GameState ( GameState(..)
                             , updateGameState
                             , nextMoves
                             , freeVertices
-                            -- , freeVertex
                             , thisMoveColor
                             , nextMoveColor
-                            , centerHeuristic
                             ) where
 
 
 import Control.Monad (filterM, foldM)
 import Control.Monad.ST (ST)
 import Data.List ((\\))
-import Data.Word (Word)
 import qualified Data.IntSet as S
 
 
-import Data.Goban.Goban
+import Data.Goban.Types
 import Data.Goban.Utils
 import Data.Goban.STVector
-import Data.Tree.UCT.GameTree (Value)
 
 -- import Debug.Trace (trace)
 
@@ -185,24 +181,6 @@ scoreGameState state = do
         sum $ map (fromIntegral . length . snd)
                 $ filter ((== color) . fst) $ concat ts
 
-colorTerritories :: STGoban s -> [Int] -> ST s ([(Color, [Int])])
-colorTerritories g t = do
-  maybeColor <- intAllAdjacentStonesSameColor g t
-  return $ case maybeColor of
-             Just tColor -> [(tColor, t)]
-             Nothing -> []
-
-intAllAdjacentStonesSameColor :: STGoban s -> [Int] -> ST s (Maybe Color)
-intAllAdjacentStonesSameColor g ps = do
-  as <- mapM (intAdjacentStones g) ps
-  return $ maybeSameColor $ map stoneColor $ concat as
-    where
-      maybeSameColor [] = Nothing
-      maybeSameColor (c : cs) =
-          if all (c ==) cs
-          then Just c
-          else Nothing
-
 
 
 
@@ -232,18 +210,6 @@ emptyStrings state =
       n = boardsize state
 
 
-maxIntSet :: (Int -> S.IntSet) -> (Int -> Bool) -> Int -> S.IntSet
-maxIntSet genF filterF p =
-    maxIntSet' (S.singleton p) S.empty
-    where
-      maxIntSet' is js
-          | S.null is = js
-          | otherwise = maxIntSet' is'' js'
-          where
-            is'' = S.union is' $ S.difference ks js
-            js' = S.insert i js
-            ks = S.filter filterF $ genF i
-            (i, is') = S.deleteFindMin is
 
 
 
@@ -284,17 +250,6 @@ freeVertices state =
                          $ freeVerticesSet state
 
 
-centerHeuristic :: Boardsize -> Move -> (Value, Word)
-centerHeuristic n (StoneMove (Stone ((x, y), _color))) =
-    -- trace ("centerHeuristic " ++ show (x, y, result))
-    result
-    where
-      result = 
-          (0.2
-           + (fromIntegral
-              (minimum [ x - 1, n - x, y - 1, n - y, 3]) / 5),
-           1000)
-centerHeuristic _ _ = error "centerHeuristic received non StoneMove arg"
 
 
 -- freeVertex :: GameState s -> Vertex -> Bool

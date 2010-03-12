@@ -29,7 +29,7 @@ import Data.Char (toLower)
 import Monad (liftM)
 
 import Network.GoTextProtocol2.Types
-import Data.Goban.Goban ( Move(..)
+import Data.Goban.Types ( Move(..)
                         , Stone(..)
                         , Color(..)
                         , letterToX

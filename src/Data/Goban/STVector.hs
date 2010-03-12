@@ -38,6 +38,8 @@ module Data.Goban.STVector ( STGoban(..)
                            , allStones
                            , showboard
                            , allLibertiesColorCount
+                           , colorTerritories
+                           , intAllAdjacentStonesSameColor
                            ) where
 
 import Control.Monad (liftM, filterM)
@@ -50,9 +52,8 @@ import qualified Data.Vector.Unboxed.Mutable as VM
 -- import Debug.Trace (trace)
 
 
-import Data.Goban.Goban
-import Data.Goban.Utils (verticesFromStones, otherColor)
-
+import Data.Goban.Types
+import Data.Goban.Utils
 
 
 
@@ -195,6 +196,23 @@ wordToState n =
 -- wordToState 3 = Border
 -- wordToState _ = error "intToState parameter out of range"
 
+
+intAscAdjacentVertices :: Boardsize -> Int -> [Int]
+intAscAdjacentVertices n vertex =
+    -- make sure to be in ascending order
+    map (vertexToInt n) [(x,y-1),(x-1,y),(x+1,y),(x,y+1)]
+    where
+      (x, y) = (intToVertex n) vertex
+
+intVerticesFromStones :: Int -> [Stone] -> [Int]
+intVerticesFromStones n stones =
+    map (\(Stone (p, _c)) -> vertexToInt n p) stones
+
+
+
+
+-- actual heavy lifting with go logic depending on goban data
+-------------------------------------------------------------
 
 
 
@@ -388,27 +406,6 @@ adjacentFree g initP = do
 
 
 
-adjacentVertices :: Vertex -> [Vertex]
-adjacentVertices (x, y) =
-    [(x,y-1),(x-1,y),(x+1,y),(x,y+1)]
-
-intAscAdjacentVertices :: Boardsize -> Int -> [Int]
-intAscAdjacentVertices n vertex =
-    -- make sure to be in ascending order
-    map (vertexToInt n) [(x,y-1),(x-1,y),(x+1,y),(x,y+1)]
-    where
-      (x, y) = (intToVertex n) vertex
-
-intVerticesFromStones :: Int -> [Stone] -> [Int]
-intVerticesFromStones n stones =
-    map (\(Stone (p, _c)) -> vertexToInt n p) stones
-
-
-diagonalVertices :: Vertex -> [Vertex]
-diagonalVertices (x, y) =
-    [(x+1,y+1),(x-1,y+1),(x+1,y-1),(x-1,y-1)]
-
-
 
 showboard :: STGoban s -> ST s String
 showboard g@(STGoban n _v) = do
@@ -439,6 +436,26 @@ allLibertiesColorCount g@(STGoban n _v) color = do
     where
       sameColor (Stone (_p, color')) =
           color == color'
+
+
+
+colorTerritories :: STGoban s -> [Int] -> ST s ([(Color, [Int])])
+colorTerritories g t = do
+  maybeColor <- intAllAdjacentStonesSameColor g t
+  return $ case maybeColor of
+             Just tColor -> [(tColor, t)]
+             Nothing -> []
+
+intAllAdjacentStonesSameColor :: STGoban s -> [Int] -> ST s (Maybe Color)
+intAllAdjacentStonesSameColor g ps = do
+  as <- mapM (intAdjacentStones g) ps
+  return $ maybeSameColor $ map stoneColor $ concat as
+    where
+      maybeSameColor [] = Nothing
+      maybeSameColor (c : cs) =
+          if all (c ==) cs
+          then Just c
+          else Nothing
 
 
 
