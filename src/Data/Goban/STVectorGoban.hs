@@ -283,22 +283,20 @@ isSuicide g stone@(Stone p c) = do
    -- stone has no liberties remaining itself
    then do
      as <- adjacentStones g p
-     asc <- aliveColor as c
-     (if null asc
-      then do
-        pdsc <- potDeadColor as c
-        dsc <- deadStones2 g stone pdsc
-        (if null dsc && (not . null) pdsc
-         then return False
-         else do
-           pdoc <- potDeadColor as (otherColor c)
-           doc <- mapM ((deadStones2 g stone) . (:[])) pdoc >>= (return . concat)
-           (if null doc
-            then return True
-            else return False))
-      -- unconditionally alive neighbour of same color
-      else return False)
-   -- we have at least a liberty
+     dsc <- deadStones3 g stone stone
+     (if null dsc && any (\(Stone _p color') -> c == color') as
+      -- same color neighbours reach a liberty
+      then return False
+      -- same color neighbours do not reach a liberty
+      else do
+        pdoc <- potDeadColor as (otherColor c)
+        doc <- mapM (deadStones3 g stone) pdoc >>= (return . concat)
+        (if null doc
+         -- all other color neighbours alive
+         then return True
+         -- at least one other color neighbours dies
+         else return False))
+   -- we have at least one liberty ourselves
    else return False)
    where
      potDeadColor as color =
@@ -309,33 +307,24 @@ isSuicide g stone@(Stone p c) = do
        as <- adjacentFree g p'
        return $ (length as == 1)
 
-     aliveColor as color =
-         filterM hasSeveralLiberties $
-                 filter (\(Stone _p color') -> color == color') as
 
-     hasSeveralLiberties (Stone p' _c) = do
-       as <- adjacentFree g p'
-       return $ (length as > 1)
-
-
-deadStones2 :: STGoban s -> Stone -> [Stone] -> ST s [Stone]
-deadStones2 _ _ [] = return []
-deadStones2 g stone stones@( (Stone _p color) : _ ) = do
-  initStones <- mapM (neighbourStones g) stones
-  initStones' <- return $ nub ((filter filterF (concat initStones)) \\ [stone])
-  result <- anyInMaxStringAlive initStones' stones
-  return result
-  -- trace ("deadStones2 " ++ show (stone, stones, result)) $ return result
+deadStones3 :: STGoban s -> Stone -> Stone -> ST s [Stone]
+deadStones3 g (Stone initP _) stone@(Stone _ color) =
+    anyInMaxStringAlive [stone] []
     where
       anyInMaxStringAlive [] gs = return gs
-      anyInMaxStringAlive (n@(Stone p _color) : ns) gs = do
-          -- trace ("anyInMaxStringAlive2 " ++ show n) $ return ()
-          frees <- adjacentFree g p
-          (if null frees
-           then do
-               hs <- liftM (filter filterF) $ genF n
-               anyInMaxStringAlive (ns ++ (((hs) \\ gs) \\ ns)) (n : gs)
-           else return [])
+      anyInMaxStringAlive (n@(Stone p _) : ns) gs = do
+        frees <- adjacentFree g p
+        case frees of
+          [] -> do
+            hs <- liftM (filter filterF) $ genF n
+            anyInMaxStringAlive (ns ++ (((hs) \\ gs) \\ ns)) (n : gs)
+          [p'] -> if initP == p'
+                  then (do
+                         hs <- liftM (filter filterF) $ genF n
+                         anyInMaxStringAlive (ns ++ (((hs) \\ gs) \\ ns)) (n : gs))
+                  else return []
+          _ -> return []
       genF = neighbourStones g
       filterF (Stone _p' color') =
           color == color'

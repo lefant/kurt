@@ -120,6 +120,7 @@ isStoneMove (Resign _) = False
 
 
 
+
 allVertices :: Boardsize -> [Vertex]
 allVertices n =
     [(x, y) | y <- reverse [1 .. n], x <- [1 .. n]]

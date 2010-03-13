@@ -134,7 +134,7 @@ policyRaveUCB1 (RaveMap m) parentNode =
 
             (raveVal, raveCount) = case M.lookup move m of
                                      Just p -> p
-                                     Nothing -> (0, 0)
+                                     Nothing -> (0.5, 0)
             uctVal = ucb1 parentVisits node
             uctCount = nodeVisits node
             move = nodeMove node
