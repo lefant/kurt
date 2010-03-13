@@ -39,10 +39,10 @@ import Data.Tree.UCT.GameTree
 
 
 exploratoryC :: Value
-exploratoryC = 0.4
+exploratoryC = 0.1
 
 raveWeight :: Value
-raveWeight = 1.5
+raveWeight = 20
 
 
 -- rootNode :: (UCTMove a) => [a] -> UCTTreeLoc a

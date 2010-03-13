@@ -221,7 +221,7 @@ centerHeuristic state (Move (Stone (x, y) _color)) =
     -- trace ("centerHeuristic " ++ show (s, (h, (l, m, beta, halfBeta), result)))
     result
     where
-      result = (0.5 - halfBeta + beta * h, 10)
+      result = (0.5 - halfBeta + beta * h, 7)
 
       -- must be between 0 and 1
       h = fromIntegral (minimum [ x, n - x + 1, y, n - y + 1, 3]) ^ (2 :: Int)

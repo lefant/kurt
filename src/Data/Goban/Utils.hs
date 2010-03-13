@@ -67,15 +67,15 @@ rateScore score (Move (Stone _p color)) =
         if winningScore color score
         then
             -- trace ("scoreToResult winning" ++ show (color, thisScore))
-            -- 0.9 + bonus
-            1.0
+            0.9 + bonus
+            -- 1.0
         else
             -- trace ("scoreToResult losing" ++ show (color, thisScore))
-            -- 0.1 - bonus
-            0.0
-    -- where
-    --   bonus =
-    --       ((sqrt . (max 99) . abs) (realToFrac thisScore)) / 100
+            0.1 - bonus
+            -- 0.0
+    where
+      bonus =
+          (sqrt $ max 99 $ abs $ realToFrac score) / 100
 rateScore _ _ = error "scoreToResult called with non-stone arg"
 
 
