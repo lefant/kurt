@@ -49,6 +49,7 @@ import Data.Maybe (catMaybes)
 import Data.Word (Word)
 import Data.List ((\\), nub)
 import qualified Data.Vector.Unboxed.Mutable as VM
+import Text.Printf (printf)
 
 -- import Debug.TraceOrId (trace)
 
@@ -70,9 +71,9 @@ showGoban g@(STGoban n _v) = do
                      : (show' (ln + 1) right)
           where
             (left, right) = splitAt n ls'
-            ln' = " " ++ show ln
+            ln' = printf "  %2d " ln
 
-      xLegend = "  " ++ concatMap ((" " ++) . (: []) . xToLetter) [1 .. n]
+      xLegend = "     " ++ concatMap ((" " ++) . (: []) . xToLetter) [1 .. n]
 
 
 newGoban :: Boardsize -> ST s (STGoban s)
