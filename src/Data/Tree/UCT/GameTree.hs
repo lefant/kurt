@@ -18,9 +18,9 @@ UCT tree search using Data.Tree.Zipper for updates in the Tree
 module Data.Tree.UCT.GameTree ( UCTTreeLoc
                               , UCTTree
                               , UCTForest
+                              , UCTMove
                               , MoveNode(..)
                               , newMoveNode
-                              , UCTNode(..)
                               , RaveValue
                               , RaveMap(..)
                               , newRaveMap
@@ -48,9 +48,8 @@ type UCTForest a = Forest (MoveNode a)
 type Value = Double
 type Count = Int
 
--- things the game logic must be able to provide for moves
-class (Eq a, Show a) => UCTNode a where
-    updateBackpropagationValue :: a -> Value -> Value
+
+class (Eq a, Show a) => UCTMove a
 
 
 data MoveNode a = MoveNode { nodeMove   :: a
@@ -58,7 +57,7 @@ data MoveNode a = MoveNode { nodeMove   :: a
                            , nodeVisits :: !Count
                            }
 
-instance (UCTNode a) => Show (MoveNode a) where
+instance (UCTMove a) => Show (MoveNode a) where
     show node =
         "(" ++ show (nodeVisits node) ++ dStr
         ++ printf "/%.2f) " (nodeValue node)
@@ -70,13 +69,13 @@ instance (UCTNode a) => Show (MoveNode a) where
           --          False -> ""
 
 
-instance (UCTNode a) => Eq (MoveNode a) where
+instance (UCTMove a) => Eq (MoveNode a) where
     (==) a b = nodeMove a == nodeMove b
 
 -- instance (Show a) => Show (MoveNode a) where
 --     show node = show $ nodeMove node
 
-newMoveNode :: (UCTNode a) => a -> (Value, Count) -> UCTTree a
+newMoveNode :: (UCTMove a) => a -> (Value, Count) -> UCTTree a
 newMoveNode move (value, visits) =
     -- trace ("newMoveNode: " ++ show (move, value, visits))
     Node { rootLabel = MoveNode { nodeMove = move
@@ -91,7 +90,7 @@ type RaveValue = (Value, Count)
 
 newtype RaveMap a = RaveMap (M.Map a RaveValue)
 
-newRaveMap :: (UCTNode a) => RaveMap a
+newRaveMap :: (UCTMove a) => RaveMap a
 newRaveMap = RaveMap M.empty
 
 

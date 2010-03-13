@@ -16,7 +16,7 @@ Various utility functions for Goban Implementation (without direct dependencies 
 module Data.Goban.Utils ( maxString
                         , maxIntSet
 
-                        , scoreToResult
+                        , rateScore
                         , winningScore
                         ) where
 
@@ -25,7 +25,7 @@ import Data.List ((\\))
 import qualified Data.IntSet as S
 
 import Data.Goban.Types
-import Data.Tree.UCT.GameTree (Value)
+import Data.Tree.UCT (UCTEvaluator)
 
 
 -- import Debug.TraceOrId (trace)
@@ -58,12 +58,13 @@ maxIntSet genF filterF p =
 
 
 
-scoreToResult :: Color -> Score -> Value
-scoreToResult color thisScore =
-    if thisScore == 0
+-- scoreToResult :: Color -> Score -> Value
+rateScore :: Score -> UCTEvaluator Move
+rateScore score (Move (Stone _p color)) =
+    if score == 0
     then 0.5
     else
-        if winningScore color thisScore
+        if winningScore color score
         then
             -- trace ("scoreToResult winning" ++ show (color, thisScore))
             -- 0.9 + bonus
@@ -75,6 +76,8 @@ scoreToResult color thisScore =
     -- where
     --   bonus =
     --       ((sqrt . (max 99) . abs) (realToFrac thisScore)) / 100
+rateScore _ _ = error "scoreToResult called with non-stone arg"
+
 
 
 winningScore :: Color -> Score -> Bool

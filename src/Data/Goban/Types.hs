@@ -41,7 +41,7 @@ module Data.Goban.Types ( Move(..)
 
 import Data.Char (chr, ord, toUpper)
 
-import Data.Tree.UCT.GameTree (UCTNode(..))
+import Data.Tree.UCT.GameTree (UCTMove)
 
 
 
@@ -55,9 +55,7 @@ instance Show Move where
     show (Pass color) = show color ++ " pass"
     show (Resign color) = show color ++ " resign"
 
-instance UCTNode Move where
-    -- we use estimated win rate of move as value for uct nodes
-    updateBackpropagationValue _ v = 1 - v
+instance UCTMove Move
 
 
 

@@ -33,8 +33,8 @@ import Data.List ((\\))
 
 
 import Data.Goban.Types (Move(..), Stone(..), Color(..), Vertex, Score)
-import Data.Goban.Utils (winningScore, scoreToResult)
-import Data.Goban.GameState (GameState(..), newGameState, scoreGameState, updateGameState, getLeafGameState, centerHeuristic, thisMoveColor, nextMoveColor, nextMoves, freeVertices)
+import Data.Goban.Utils (winningScore, rateScore)
+import Data.Goban.GameState (GameState(..), newGameState, scoreGameState, updateGameState, getLeafGameState, centerHeuristic, nextMoveColor, nextMoves, freeVertices)
 import Data.Goban.STVectorGoban (isSaneMove)
 
 
@@ -130,12 +130,11 @@ uctLoop !loc rootGameState raveMap rGen deadline = do
   leafGameState <- stToIO $ getLeafGameState rootGameState path
   -- rGen <- trace ("uctLoop leafGameState \n" ++ (showGoban (goban $ leafGameState))) $ newStdGen
   (score, playedMoves) <- stToIO $ runOneRandom leafGameState rGen
-  value <- return $ scoreToResult (thisMoveColor leafGameState) score
-  raveMap' <- return $ updateRaveMap raveMap value $ drop ((length playedMoves) `div` 3) playedMoves
+  raveMap' <- return $ updateRaveMap raveMap (rateScore score) $ drop ((length playedMoves) `div` 3) playedMoves
   moves <- stToIO $ nextMoves leafGameState $ nextMoveColor leafGameState
   -- loc'' <- return $ expandNode loc' (centerHeuristic (boardsize rootGameState)) moves
   loc'' <- return $ expandNode loc' constantHeuristic moves
-  loc''' <- return $ backpropagate value loc''
+  loc''' <- return $ backpropagate (rateScore score) loc''
   now <- getCurrentTime
   timeIsUp <- return $ (now > deadline)
   (if (done || timeIsUp)
