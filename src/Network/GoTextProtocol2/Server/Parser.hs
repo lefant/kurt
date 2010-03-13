@@ -92,9 +92,7 @@ idCommandline commandList =
 commandId :: Parser Int
 commandId =
     do
-      char '['
       i <- parseInt
-      char ']'
       return i
 
 

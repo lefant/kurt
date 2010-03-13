@@ -141,7 +141,7 @@ newLineFlush =
 
 outputIdOrBlank :: Maybe Id -> String
 outputIdOrBlank Nothing = " "
-outputIdOrBlank (Just lineId) = "[" ++ (show lineId) ++ "] "
+outputIdOrBlank (Just lineId) = (show lineId) ++ " "
 
 
 cmd_known_command :: CommandHandler RealWorld
