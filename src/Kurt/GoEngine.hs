@@ -212,15 +212,17 @@ genMoveRand state rGen =
       pickSane [] =
            return $ Pass color
       pickSane [p] = do
-        sane <- isSaneMove g color p
+        stone <- return $ Stone p color
+        sane <- isSaneMove g stone
         return $ (if sane
-                  then Move (Stone p color)
+                  then Move stone
                   else Pass color)
       pickSane ps = do
         p <- pick ps rGen
-        sane <- isSaneMove g color p
+        stone <- return $ Stone p color
+        sane <- isSaneMove g stone
         (if sane
-         then return $ Move (Stone p color)
+         then return $ Move stone
          else pickSane (ps \\ [p]))
 
       color = nextMoveColor state

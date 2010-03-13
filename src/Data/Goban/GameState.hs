@@ -98,9 +98,10 @@ newGameState n initKomi = do
 
 
 nextMoves :: GameState s -> Color -> ST s [Move]
-nextMoves state color =
-    filterM (isSaneMove (goban state) color) (freeVertices state) >>=
-                (return . (map (\v -> Move (Stone v color))))
+nextMoves state color = do
+  freeStones <- return $ map (((flip Stone) color)) $ freeVertices state
+  sanes <- filterM (isSaneMove (goban state)) freeStones
+  return $ map Move sanes
 
 
 

@@ -222,9 +222,9 @@ intAscAdjacentVertices n vertex =
 
 
 
-isSaneMove :: STGoban s -> Color -> Vertex -> ST s Bool
-isSaneMove g color p =
-    -- trace ("isSaneMove called with " ++ show (color, p)) $ do
+isSaneMove :: STGoban s -> Stone -> ST s Bool
+isSaneMove g (Stone p color) =
+    -- trace ("isSaneMove called with " ++ show s) $ do
     do
       potEye <- isPotentialFullEye g color p
       (if potEye
@@ -292,7 +292,7 @@ isSuicide g stone@(Stone p c) = do
          then return False
          else do
            pdoc <- potDeadColor as (otherColor c)
-           doc <- deadStones2 g stone pdoc
+           doc <- mapM ((deadStones2 g stone) . (:[])) pdoc >>= (return . concat)
            (if null doc
             then return True
             else return False))
@@ -323,7 +323,8 @@ deadStones2 _ _ [] = return []
 deadStones2 g stone stones@( (Stone _p color) : _ ) = do
   initStones <- mapM (neighbourStones g) stones
   initStones' <- return $ nub ((filter filterF (concat initStones)) \\ [stone])
-  anyInMaxStringAlive initStones' stones
+  result <- anyInMaxStringAlive initStones' stones
+  return result
   -- trace ("deadStones2 " ++ show (stone, stones, result)) $ return result
     where
       anyInMaxStringAlive [] gs = return gs
