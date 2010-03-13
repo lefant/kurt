@@ -74,7 +74,7 @@ newEngineState = do
                  , boardSize = defaultBoardSize
                  , getKomi = defaultKomi
                  , simulCount = 1000
-                 , timePerMove = 3000 }
+                 , timePerMove = 10000 }
 
 
 

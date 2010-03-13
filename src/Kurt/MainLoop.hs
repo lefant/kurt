@@ -274,7 +274,10 @@ cmd_time_left [(TimeLeftArgument (seconds, stones))] state =
     return
     $ Right ("", state { timePerMove = milliseconds } )
     where
-      milliseconds = (seconds * 900) `div` stones'
-      stones' = if stones == 0 then 1 else stones
+      milliseconds =
+          if stones == 0
+          then (seconds * 900) `div` estMaxMoves
+          else (seconds * 900) `div` stones
+      estMaxMoves = ((boardSize state) + 1) ^ (2 :: Int)
 cmd_time_left _ _ = error "cmd_time_left called with illegal argument type"
 
