@@ -35,6 +35,7 @@ import qualified Data.IntSet as S
 
 
 import Data.Goban.Types
+import Data.Goban.IntVertex
 import Data.Tree.UCT (UCTHeuristic)
 import Data.Goban.Utils
 import Data.Goban.STVectorGoban

@@ -19,6 +19,7 @@ module Data.Goban.Types ( Move(..)
                         , Stone(..)
                         , Color(..)
                         , Vertex
+                        , Coord1
                         , Boardsize
                         , Score
 
@@ -98,10 +99,12 @@ showColorForBoard White = "o"
 type Vertex = (Coord, Coord)
 
 type Coord = Int
+type Coord1 = Int
 
 type Boardsize = Int
 
 type Score = Float
+
 
 
 -- further accessors and minor helper functions

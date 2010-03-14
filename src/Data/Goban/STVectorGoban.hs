@@ -22,11 +22,6 @@ module Data.Goban.STVectorGoban ( STGoban(..)
                                 , deleteStones
                                 , gobanSize
 
-                                , intToVertex
-                                , vertexToInt
-                                , borderVertices
-                                , maxIntIndex
-
                                 , isSaneMove
                                 , isSuicideVertex
                                 , isPotentialFullEye
@@ -55,7 +50,7 @@ import Text.Printf (printf)
 
 
 import Data.Goban.Types
-
+import Data.Goban.IntVertex
 
 
 data STGoban s = STGoban !Boardsize (VM.STVector s Word)
@@ -78,7 +73,7 @@ showGoban g@(STGoban n _v) = do
 
 newGoban :: Boardsize -> ST s (STGoban s)
 newGoban n = do
-  v <- VM.newWith (size n) (stateToWord Empty)
+  v <- VM.newWith (maxIntIndex n + 1) (stateToWord Empty)
   mapM_ (\i -> VM.write v i (stateToWord Border)) (borderVertices n)
   return $ STGoban n v
 
@@ -134,47 +129,6 @@ gobanSize (STGoban n _) = return n
 
 
 
--- helpers: vertex / integer conversion
-
-borderVertices :: Boardsize -> [Int]
-borderVertices n =
-    map (vertexToInt n) $
-            [(x, y) | x <- [0, n + 1], y <- [0 .. n + 1] ]
-            ++ [(x, y) | x <- [1 .. n], y <- [0, n + 1] ]
-
-{-# INLINE vertexToInt #-}
-vertexToInt :: Boardsize -> Vertex -> Int
-vertexToInt n (x, y)
-    | x > n + 1 = error "vertexToInt: x > n + 1"
-    | x < 0 = error "vertexToInt: x < 0"
-    | y > n + 1 = error "vertexToInt: y > n + 1"
-    | y < 0 = error "vertexToInt: y < 0"
-vertexToInt n (x, y) =
-    y * (n + 2) + x
-
-{-# INLINE intToVertex #-}
-intToVertex :: Boardsize -> Int -> Vertex
-intToVertex n i
-    | i < 0 = error "intToVertex: n < 0"
-    | i > size n =
-        error "intToVertex: i > size n"
-intToVertex n i =
-    (x, y)
-    where
-      y = i `div` (n + 2)
-      x = i `mod` (n + 2)
-
-{-# INLINE size #-}
-size :: Boardsize -> Int
-size n = maxIntIndex n + 1
-
-{-# INLINE maxIntIndex #-}
-maxIntIndex :: Boardsize -> Int
-maxIntIndex n = vertexToInt n (n + 1, n + 1)
-
--- {-# INLINE maxEdge #-}
--- maxEdge :: Boardsize -> Int
--- maxEdge n = n + 1
 
 
 
@@ -199,19 +153,7 @@ wordToState n =
 
 {-# INLINE wordToState #-}
 
--- wordToState 0 = Empty
--- wordToState 1 = Colored Black
--- wordToState 2 = Colored White
--- wordToState 3 = Border
--- wordToState _ = error "intToState parameter out of range"
 
-
-intAscAdjacentVertices :: Boardsize -> Int -> [Int]
-intAscAdjacentVertices n vertex =
-    -- make sure to be in ascending order
-    map (vertexToInt n) [(x,y-1),(x-1,y),(x+1,y),(x,y+1)]
-    where
-      (x, y) = (intToVertex n) vertex
 
 
 

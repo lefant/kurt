@@ -2,21 +2,53 @@
 
 * Roadmap march:
 
-* kgs support
-** final_status_list - we play until all dead are captured, so just return empty
-** kgs-genmove_cleanup, we behave that way in genmove
+* homework:
+** command line options for various constants
+*** UCT exploration
+*** rave weight
+*** heuristic / center heuristic
 
+** wrap UCT in some toplevel object?
+
+** sample playouts
+
+** bring back gogui visualization
+
+* kgs support
 ** time management
 *** time_settings
 *** kgs-time_settings
+*** kgs-game_over support
+
+---------------------------
+
+** systematic testing of game logic like isSuicide
+
+** ---> versus incremental goban?
 
 * cheap heuristic
+** ---> mostly needs incremental goban
 ** cheap stone count
 ** cheap territory estimate
 
+* tune updateGameState speed
+** ---> mostly needs incremental goban
 
-* rave
-** Data.Map keyed with moves caching encountered uct values
+
+
+* refactoring
+** GameState versus Goban and representation still could be improved
+
+** STVectorGoban
+*** toEnum / fromEnum would clearly be better than word(To/From)state
+
+** if copyGoban is used cleverly, maybe runOneRandom could use runST without the RealWorld
+*** it seems this would need something like STUArrays thaw / freeze support
+
+
+
+** STUArray instead of STVector with thaw and freeze before and updateGameState
+
 
 
 * implement zobrist hash of moves / board  / towards transposition tables
@@ -25,15 +57,6 @@
 ** quickcheck testing
 ** http://www.gnu.org/software/gnugo/gnugo_11.html#SEC139
 
-
-
-* refactoring
-** GameState versus Goban and representation still could be improved
-
-** STVector
-*** toEnum / fromEnum would clearly be better than word(To/From)state
-
-** if copyGoban is used cleverly, maybe runOneRandom use runST with the RealWorld
 
 
 
