@@ -33,7 +33,7 @@ import Control.Monad (filterM, foldM)
 import Control.Monad.ST (ST)
 import Data.List ((\\))
 import Data.Array.IArray (Array)
-import Data.Array.MArray (freeze, unsafeThaw)
+import Data.Array.MArray (freeze, thaw)
 import qualified Data.IntSet as S
 
 
@@ -121,7 +121,7 @@ getLeafGameState :: GameState s -> [Move] -> ST s (GameState s)
 getLeafGameState state moves = do
   g' <- copyGoban $ goban state
   fcg :: (Array Vertex Int) <- (freeze $ chainGoban state)
-  cg' <- unsafeThaw fcg
+  cg' <- thaw fcg
   state' <- return $ state { goban = g', chainGoban = cg' }
   foldM updateGameState state' moves
 

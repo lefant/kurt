@@ -30,7 +30,7 @@ import Control.Arrow (second)
 import Control.Monad (foldM)
 import Control.Monad.ST (ST)
 import Data.Maybe (fromMaybe, catMaybes)
-import Data.List (foldl', partition, unfoldr, transpose)
+import Data.List (foldl', partition, unfoldr, transpose, nub)
 import Text.Printf (printf)
 
 
@@ -54,8 +54,15 @@ data Chain = Chain { chainColor           :: !Color
                    }
 
 instance Show Chain where
-    show (Chain c _ls vs _ns) =
-        show c ++ " " ++ show vs ++ "\n"
+    show (Chain c ls vs ns) =
+        show c ++ " vs:" ++ (concatMap ((" " ++) . gtpShowVertex) $ S.elems vs)
+               ++ " ls:" ++ (concatMap ((" " ++) . gtpShowVertex) $ S.elems ls)
+               ++ "\nns: "
+               ++ (concatMap (\(k, v) -> show k ++ " "
+                              ++ (concatMap ((" " ++) . gtpShowVertex)
+                                                $ S.elems v)
+                              ++ "; ") $ M.toList ns)
+               ++ "\n"
 
 type ChainId = Int
 noChainId :: ChainId
@@ -95,7 +102,7 @@ showChainIdGoban cg = do
 
           where
             ys = map (printf " %2d ") [1 .. n]
-            xLegend = "     " ++ concatMap ((" " ++) . (: []) . xToLetter) [1 .. n]
+            xLegend = "    " ++ concatMap ((" " ++) . (: []) . xToLetter) [1 .. n]
 
       maybePrint 0 = " ."
       maybePrint m = printf "%2d" m
@@ -135,29 +142,35 @@ addChainStone cg cm s@(Stone p color) = do
   neighs <- return $ M.fromListWith S.union $ map (second S.singleton) neighIdPs
 
 
-  -- update neighbour chains, removing their liberties lost by current move
-  -- return list of ids that as a consequence are now dead
-  (cm1, deadIds) <- return $ removeNeighbourLiberties cm p neighIds
-
-  -- delete neighbour chains that just died
-  cm2 <- foldM (deleteChain cg) cm1 deadIds
-
   -- add new chain with played stone and
   -- merge chains becoming connected if necessary
-  (cm3, i) <- (let (cm3, i) = mapAddChain cm2 s adjFrees neighs in
+  (cm3, i) <- (let (cm1, i) = mapAddChain cm s adjFrees neighs in
                case ourIds of
                  [] ->
-                     return (cm3, i)
+                     return (cm1, i)
                  is ->
                      do
-                       cm4 <- return $ mapFoldChains cm3 (i : is)
-                       mapM_ (\p' -> A.writeArray cg p' i) $ S.elems $ chainVertices $ idChain "addStone merge" cm4 i
-                       return (cm4, i))
+                       cm2 <- return $ mapFoldChains cm1 (i : is) p
+                       mapM_ (\p' -> A.writeArray cg p' i) $ S.elems $ chainVertices $ idChain "addStone merge" cm2 i
+                       return (cm2, i))
+
+
+  -- update neighbour chains, removing their liberties lost by current move
+  -- return list of ids that as a consequence are now dead
+  (cm4, deadIds) <- return $ removeNeighbourLiberties cm3 p neighIds
+
+
+  -- delete neighbour chains that just died
+  cm5 <- foldM (deleteChain cg) cm4 deadIds
+
 
   -- write new chain id to played vertex
   A.writeArray cg p i
 
-  return cm3
+  -- trace ("after addStone\n"
+  --        ++ (concatMap (\(k, v) -> show k ++ " " ++ show v ++ "\n") $ M.toList cm5)) $ return ()
+
+  return cm5
 
     where
       readPairWithKey ap = do
@@ -173,7 +186,7 @@ deleteChain cg cm i = do
   return $ mapDeleteChain cm i
   where
     resetVertex p = A.writeArray cg p noChainId
-    vs = S.elems $ chainVertices $ idChain "deleteChain" cm i
+    vs = S.elems $ chainVertices $ idChain ("deleteChain " ++ show i) cm i
 
 
 
@@ -205,7 +218,7 @@ removeNeighbourLiberties :: ChainMap -> Vertex -> [ChainId]
 removeNeighbourLiberties initCm p neighIds =
     (cm', dead)
     where
-      dead = filter isDeadChain neighIds
+      dead = nub $ filter isDeadChain neighIds
 
       isDeadChain :: ChainId -> Bool
       isDeadChain i = S.null $ chainLiberties $ idChain "isDeadChain" cm' i
@@ -248,23 +261,24 @@ mapAddChainNeighbours initCm i vs neighs =
           c { chainNeighbours = M.insert i vs $ chainNeighbours c }
 
 
-mapFoldChains :: ChainMap -> [ChainId] -> ChainMap
-mapFoldChains cm ois@(i : is) =
+mapFoldChains :: ChainMap -> [ChainId] -> Vertex -> ChainMap
+mapFoldChains cm ois@(i : is) p =
     cm'''
     where
       cm''' = mapFoldChainsNeighbours cm'' ois neighs
-      cm'' = foldl (flip M.delete) cm' is
+      cm'' = foldl' (flip M.delete) cm' is
       cm' = M.insert i c' cm
-      c' = c { chainLiberties = S.unions $ map chainLiberties cs
+      c' = c { chainLiberties = S.delete p $ S.unions $ map chainLiberties cs
              , chainVertices = S.unions $ map chainVertices cs
              , chainNeighbours = neighs
              }
       neighs = M.unionsWith S.union $ map chainNeighbours cs
       cs = c : (map (idChain "mapFoldChains2" cm) is)
       c = idChain "mapFoldChains1" cm i
-mapFoldChains _ [] = error "mapFoldChains called with empty list"
+mapFoldChains _ [] _ = error "mapFoldChains called with empty list"
 
-mapFoldChainsNeighbours :: ChainMap -> [ChainId] -> ChainNeighbours -> ChainMap
+mapFoldChainsNeighbours :: ChainMap -> [ChainId] -> ChainNeighbours
+                        -> ChainMap
 mapFoldChainsNeighbours initCm (i : is) neighs =
     foldl' updateCM initCm $ M.keys neighs
     where
@@ -273,10 +287,12 @@ mapFoldChainsNeighbours initCm (i : is) neighs =
 
       updateNC :: Chain -> Chain
       updateNC c =
-          c { chainNeighbours = nNeighs' }
+          c { chainNeighbours = nNeighs''' }
           where
-            nNeighs' = M.adjust (l `S.union`) i nNeighs
-            l = S.unions $ catMaybes $ map (\j -> M.lookup j nNeighs) is
+            nNeighs''' = foldl' (flip M.delete) nNeighs'' is
+            nNeighs'' = M.adjust (nvs `S.union`) i nNeighs'
+            nNeighs' = M.insertWith S.union i S.empty nNeighs
+            nvs = S.unions $ catMaybes $ map (\j -> M.lookup j nNeighs) is
             nNeighs = chainNeighbours c
 mapFoldChainsNeighbours _ [] _ = error "mapFoldChainsNeighbours called with empty list"
 
@@ -285,22 +301,22 @@ mapDeleteChain :: ChainMap -> ChainId -> ChainMap
 mapDeleteChain initCm i =
     M.delete i
          $ foldl' updateCM initCm
-               $ M.assocs
-                     $ chainNeighbours
-                           $ idChain "mapDeleteChain" initCm i
+               $ M.keys $ chainNeighbours
+                     $ idChain "mapDeleteChain" initCm i
     where
-      updateCM :: ChainMap -> (ChainId, VertexSet) -> ChainMap
-      updateCM cm (nId, vs) =
-          M.adjust (updateNC vs) nId cm
-      updateNC :: VertexSet -> Chain -> Chain
-      updateNC vs c =
+      updateCM :: ChainMap -> ChainId -> ChainMap
+      updateCM cm nId =
+          M.adjust updateNC nId cm
+      updateNC :: Chain -> Chain
+      updateNC c =
           c { chainLiberties = chainLiberties c `S.union` vs
-            , chainNeighbours = M.delete i $ chainNeighbours c
+            , chainNeighbours = M.delete i neighs
             }
-
-
-
-
+          where
+            vs = fromMaybe (error ("mapDeleteChain vs lookup Nothing"
+                            ++ show (i, neighs)))
+                 $ M.lookup i neighs
+            neighs = chainNeighbours c
 
 
 
