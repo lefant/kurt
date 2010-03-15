@@ -30,7 +30,7 @@ import Control.Arrow (second)
 import Control.Monad (foldM)
 import Control.Monad.ST (ST)
 import Data.Maybe (fromMaybe, catMaybes)
-import Data.List (foldl', partition, unfoldr, transpose, nub)
+import Data.List (foldl', partition, unfoldr, transpose, nub, sort)
 import Text.Printf (printf)
 
 
@@ -136,22 +136,25 @@ addChainStone cg cm s@(Stone p color) = do
   -- VertexSet of adjacent liberties
   adjFrees <- return $ S.fromList $ map snd adjFreePs
   -- list of adjacent same color chain ids
-  ourIds <- return $ map fst ourIdPs
+  ourIds <- return $ nub $ map fst ourIdPs
   -- ChainNeighbour type neighbour id - vertex map
-  neighIds <- return $ map fst neighIdPs
+  neighIds <- return $ nub $ map fst neighIdPs
   neighs <- return $ M.fromListWith S.union $ map (second S.singleton) neighIdPs
 
 
   -- add new chain with played stone and
   -- merge chains becoming connected if necessary
-  (cm3, i) <- (let (cm1, i) = mapAddChain cm s adjFrees neighs in
+  (cm3, i) <- (let (cm1, j) = mapAddChain cm s adjFrees neighs in
                case ourIds of
                  [] ->
-                     return (cm1, i)
-                 is ->
+                     return (cm1, j)
+                 js ->
                      do
-                       cm2 <- return $ mapFoldChains cm1 (i : is) p
-                       mapM_ (\p' -> A.writeArray cg p' i) $ S.elems $ chainVertices $ idChain "addStone merge" cm2 i
+                       is@(i : _) <- return $ sort (j : js)
+                       cm2 <- return $ mapFoldChains cm1 is p
+                       mapM_ (\p' -> A.writeArray cg p' i)
+                        $ S.elems $ chainVertices
+                              $ idChain "addStone merge" cm2 i
                        return (cm2, i))
 
 
@@ -263,11 +266,12 @@ mapAddChainNeighbours initCm i vs neighs =
 
 mapFoldChains :: ChainMap -> [ChainId] -> Vertex -> ChainMap
 mapFoldChains cm ois@(i : is) p =
+    -- trace ("mapFoldChains cm''': " ++ show cm''')
     cm'''
     where
       cm''' = mapFoldChainsNeighbours cm'' ois neighs
-      cm'' = foldl' (flip M.delete) cm' is
-      cm' = M.insert i c' cm
+      cm'' = M.insert i c' cm'
+      cm' = foldl' (flip M.delete) cm is
       c' = c { chainLiberties = S.delete p $ S.unions $ map chainLiberties cs
              , chainVertices = S.unions $ map chainVertices cs
              , chainNeighbours = neighs
