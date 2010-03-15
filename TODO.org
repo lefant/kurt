@@ -29,6 +29,7 @@
 * cheap heuristic
 ** ---> mostly needs incremental goban
 ** cheap stone count
+** cheap liberty count: already have allLibertiesColorCount
 ** cheap territory estimate
 
 * tune updateGameState speed

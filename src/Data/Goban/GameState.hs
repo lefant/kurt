@@ -39,6 +39,7 @@ import Data.Goban.IntVertex
 import Data.Tree.UCT (UCTHeuristic)
 import Data.Goban.Utils
 import Data.Goban.STVectorGoban
+import Data.Goban.Incremental
 
 -- import Debug.TraceOrId (trace)
 
@@ -47,6 +48,8 @@ import Data.Goban.STVectorGoban
 type IntVertexSet = S.IntSet
 
 data GameState s = GameState { goban           :: !(STGoban s)
+                             , chainGoban      :: !(ChainIdGoban s)
+                             , chains          :: !ChainMap
                              , boardsize       :: !Boardsize
                              , freeVerticesSet :: !IntVertexSet
                              , koBlocked       :: !(Maybe Vertex)
@@ -61,7 +64,8 @@ data GameState s = GameState { goban           :: !(STGoban s)
 showGameState :: GameState s -> ST s String
 showGameState state = do
   gobanStr <- showGoban $ goban state
-  return (unlines $ zipWith (++) (lines gobanStr) $ [
+  chainGobanStr <- showChainIdGoban $ chainGoban state
+  return $ (unlines $ zipWith (++) (lines gobanStr) $ [
                        ""
                       ,""
                       ,""
@@ -75,13 +79,16 @@ showGameState state = do
           -- ++ "\n"
           -- ++ "freeVerticesSet: " ++ show (freeVerticesSet state)
           -- ++ "\n"
-         )
+         ) ++ "\n" ++ chainGobanStr
 
 
 newGameState :: Boardsize -> Score -> ST s (GameState s)
 newGameState n initKomi = do
   g <- newGoban n
+  cg <- newChainGoban n
   return GameState { goban = g
+                   , chainGoban = cg
+                   , chains = newChainMap
                    , boardsize = n
                    , freeVerticesSet = initFreeVertices
                    , koBlocked = Nothing
@@ -130,6 +137,9 @@ updateGameState state move =
                      }
       Move stone@(Stone p c) ->
           do
+            -- incremental
+            chains' <- addChainStone (chainGoban state) (chains state) stone
+
             -- str1 <- showGoban g
             -- trace ("updateGameState before" ++ str1) $ return ()
             addStone g stone
@@ -142,6 +152,7 @@ updateGameState state move =
             -- trace ("updateGameState after deleteStones" ++ str4) $ return ()
             return $ state {
                          goban = g
+                       , chains = chains'
                        , moveHistory = (moveHistory state) ++ [move]
                        , blackStones =
                          (if c == Black

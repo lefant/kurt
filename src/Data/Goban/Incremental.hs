@@ -15,10 +15,13 @@ Incrementally updated stone chains including liberty count for goban.
 -}
 
 module Data.Goban.Incremental ( Chain(..)
+                              , ChainMap
+                              , ChainIdGoban
                               , newChainGoban
+                              , newChainMap
                               , showChainIdGoban
                               , vertexChain
-                              , addStone
+                              , addChainStone
                               ) where
 
 
@@ -88,7 +91,7 @@ showChainIdGoban cg = do
             ln' = printf "  %2d " ln
 
       xLegend :: Int -> String
-      xLegend n = "     " ++ concatMap (printf "%2d") [1 .. n]
+      xLegend n = "     " ++ concatMap ((" " ++) . (: []) . xToLetter) [1 .. n]
 
 
 
@@ -103,8 +106,8 @@ vertexChain cg cm p = do
   return $ idChain cm i
 
 
-addStone :: ChainIdGoban s -> ChainMap -> Stone -> ST s (ChainMap)
-addStone cg cm s@(Stone p color) = do
+addChainStone :: ChainIdGoban s -> ChainMap -> Stone -> ST s (ChainMap)
+addChainStone cg cm s@(Stone p color) = do
   -- lookup all adjacent chain ids
   adjPs <- mapM readPairWithKey $ adjacentVertices p
 
@@ -169,7 +172,8 @@ deleteChain cg cm i = do
 
 
 
-
+newChainMap :: ChainMap
+newChainMap = M.empty
 
 idChain :: ChainMap -> ChainId -> Chain
 idChain cm i =

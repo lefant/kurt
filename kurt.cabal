@@ -43,6 +43,7 @@ library
                  ,mwc-random
                  ,containers
                  ,rosezipper
+                 ,array
                  ,vector
                  ,time
   ghc-options: -O1
