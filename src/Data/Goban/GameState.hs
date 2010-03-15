@@ -1,5 +1,6 @@
 {-# OPTIONS -O2 -Wall -Werror -Wwarn #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
+{-# LANGUAGE ScopedTypeVariables #-}
 
 {- |
    Module     : Data.Goban.GameState
@@ -31,6 +32,8 @@ module Data.Goban.GameState ( GameState(..)
 import Control.Monad (filterM, foldM)
 import Control.Monad.ST (ST)
 import Data.List ((\\))
+import Data.Array.IArray (Array)
+import Data.Array.MArray (freeze, unsafeThaw)
 import qualified Data.IntSet as S
 
 
@@ -117,7 +120,9 @@ nextMoves state color = do
 getLeafGameState :: GameState s -> [Move] -> ST s (GameState s)
 getLeafGameState state moves = do
   g' <- copyGoban $ goban state
-  state' <- return $ state { goban = g' }
+  fcg :: (Array Vertex Int) <- (freeze $ chainGoban state)
+  cg' <- unsafeThaw fcg
+  state' <- return $ state { goban = g', chainGoban = cg' }
   foldM updateGameState state' moves
 
 
@@ -137,8 +142,11 @@ updateGameState state move =
                      }
       Move stone@(Stone p c) ->
           do
+            -- str <- showGameState state
+            -- trace ("updateGameState" ++ str) $ return ()
+
             -- incremental
-            chains' <- addChainStone (chainGoban state) (chains state) stone
+            chains' <- addChainStone cg (chains state) stone
 
             -- str1 <- showGoban g
             -- trace ("updateGameState before" ++ str1) $ return ()
@@ -152,6 +160,7 @@ updateGameState state move =
             -- trace ("updateGameState after deleteStones" ++ str4) $ return ()
             return $ state {
                          goban = g
+                       , chainGoban = cg
                        , chains = chains'
                        , moveHistory = (moveHistory state) ++ [move]
                        , blackStones =
@@ -170,6 +179,7 @@ updateGameState state move =
                        }
     where
       g = goban state
+      cg = chainGoban state
 
       freeVerticesSet' p dead =
           S.union

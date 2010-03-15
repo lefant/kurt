@@ -28,6 +28,7 @@ module Data.Goban.Types ( Move(..)
 
                         , allVertices
                         , adjacentVertices
+                        , adjacentVerticesInBounds
                         , diagonalVertices
 
                         , otherColor
@@ -128,9 +129,20 @@ allVertices :: Boardsize -> [Vertex]
 allVertices n =
     [(x, y) | y <- reverse [1 .. n], x <- [1 .. n]]
 
+
 adjacentVertices :: Vertex -> [Vertex]
 adjacentVertices (x, y) =
     [(x,y-1),(x-1,y),(x+1,y),(x,y+1)]
+
+
+adjacentVerticesInBounds :: Boardsize -> Vertex -> [Vertex]
+adjacentVerticesInBounds n (x, y) =
+    filter inBounds [(x,y-1),(x-1,y),(x+1,y),(x,y+1)]
+    where
+      inBounds :: Vertex -> Bool
+      inBounds (x', y') =
+          and [x' > 0, x' <= n, y' > 0, y' <= n]
+
 
 diagonalVertices :: Vertex -> [Vertex]
 diagonalVertices (x, y) =
