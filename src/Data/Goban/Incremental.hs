@@ -78,6 +78,11 @@ type VertexSet = S.Set Vertex
 -- maybe also reconsider Vector for this?
 type ChainMap = M.IntMap Chain
 
+showChainMap :: ChainMap -> String
+showChainMap cm =
+    concatMap (\(k, v) -> show k ++ " " ++ show v ++ "\n") $ M.toList cm
+
+
 -- try this instead of Vector this time
 type ChainIdGoban s = A.STUArray s Vertex ChainId
 
@@ -92,18 +97,9 @@ isSuicide :: ChainIdGoban s -> ChainMap -> Stone -> ST s (Bool)
 isSuicide cg cm s@(Stone p _color) = do
   (adjFrees, ourIds, neighIds, _neighs) <- adjacentStuff cg cm s
 
-  (if not $ S.null adjFrees
-   -- stone has liberties itself
-   then return False
-   else if any (not . S.null . (S.delete p) . chainLiberties . (idChain "isSuicide ourIds" cm)) ourIds
-        -- an adjacent same color chain has a remaining liberty
-        then return False
-        else if any (S.null . (S.delete p) . chainLiberties . (idChain "isSuicide neighIds" cm)) neighIds
-             -- an adjacent other color chain has no remaining liberties
-             then return False
-             -- else: it would be suicide
-             else return True)
-
+  return (S.null adjFrees
+          && (all (S.null . (S.delete p) . chainLiberties . (idChain "isSuicide ourIds" cm)) ourIds)
+          && (all (not . S.null . (S.delete p) . chainLiberties . (idChain "isSuicide neighIds" cm)) neighIds))
 
 
 
@@ -176,8 +172,7 @@ addChainStone cg cm s@(Stone p _color) = do
   -- write new chain id to played vertex
   A.writeArray cg p i
 
-  -- trace ("after addStone\n"
-  --        ++ (concatMap (\(k, v) -> show k ++ " " ++ show v ++ "\n") $ M.toList cm5)) $ return ()
+  -- trace ("after addStone\n" ++ showChainMap cm5) $ return ()
 
   return cm5
 
@@ -199,7 +194,7 @@ adjacentStuff cg cm (Stone p color) = do
   (adjFreePs, adjIdPs) <- return $ partition ((== noChainId) . fst) adjPs
 
   -- partition friend and foe
-  (ourIdPs, neighIdPs) <- return $ partition ((color ==) . chainColor . (idChain "addStone partition" cm) . fst) adjIdPs
+  (ourIdPs, neighIdPs) <- return $ partition ((color ==) . chainColor . (idChain ("adjacentStuff partition " ++ show adjIdPs ++ "\n" ++ showChainMap cm) cm) . fst) adjIdPs
 
   -- VertexSet of adjacent liberties
   adjFrees <- return $ S.fromList $ map snd adjFreePs

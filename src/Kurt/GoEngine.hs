@@ -110,9 +110,9 @@ initUCT eState color = do
   initLoc' <- return $ expandNode initLoc (centerHeuristic gState) moves
 
   uctLoop initLoc' gState initRaveMap rGen $ UTCTime { utctDay = (utctDay now)
-                                                 , utctDayTime =
-                                                     thinkPicosecs
-                                                     + (utctDayTime now) }
+                                                     , utctDayTime =
+                                                         thinkPicosecs
+                                                         + (utctDayTime now) }
     where
       gState = getGameState eState
       thinkPicosecs =
@@ -128,11 +128,11 @@ uctLoop !loc rootGameState raveMap rGen deadline = do
   (loc', path) <- return $ selectLeafPath (policyRaveUCB1 raveMap) loc
   leafGameState <- stToIO $ getLeafGameState rootGameState path
   -- rGen <- trace ("uctLoop leafGameState \n" ++ (showGoban (goban $ leafGameState))) $ newStdGen
+  moves <- stToIO $ nextMoves leafGameState $ nextMoveColor leafGameState
   (score, playedMoves) <- stToIO $ runOneRandom leafGameState rGen
   raveMap' <- return $ updateRaveMap raveMap (rateScore score) $ drop ((length playedMoves) `div` 3) playedMoves
-  moves <- stToIO $ nextMoves leafGameState $ nextMoveColor leafGameState
-  -- loc'' <- return $ expandNode loc' (centerHeuristic (boardsize rootGameState)) moves
   loc'' <- return $ expandNode loc' constantHeuristic moves
+  -- loc'' <- return $ expandNode loc' (centerHeuristic (boardsize rootGameState)) moves
   loc''' <- return $ backpropagate (rateScore score) loc''
   now <- getCurrentTime
   timeIsUp <- return $ (now > deadline)
@@ -224,7 +224,6 @@ genMoveRand state rGen =
          else pickSane (ps \\ [p]))
 
       color = nextMoveColor state
-      g = goban state
 
 pick :: [Vertex] -> Gen s -> ST s Vertex
 pick as rGen = do

@@ -77,14 +77,16 @@ showGameState state = do
                       ,"   whiteStones: " ++ show (whiteStones state)
                       ,"   komi: " ++ show (komi state)
                       ,""
-                      ,"   koBlocked: " ++ show (koBlocked state)
+                      ,"   koBlocked: " ++ showKoBlocked (koBlocked state)
                       ] ++ repeat ""
           -- ++ " moveHistory: " ++ show (moveHistory state)
           -- ++ "\n"
           -- ++ "freeVerticesSet: " ++ show (freeVerticesSet state)
           -- ++ "\n"
          ) ++ "\n" ++ chainGobanStr
-
+  where
+    showKoBlocked (Just p) = gtpShowVertex p
+    showKoBlocked Nothing = ""
 
 newGameState :: Boardsize -> Score -> ST s (GameState s)
 newGameState n initKomi = do
@@ -118,18 +120,18 @@ nextMoves state color = do
 
 isSaneMove :: GameState s -> Stone -> ST s Bool
 isSaneMove state stone = do
-  -- trace ("isSaneMove called with " ++ show s) $ do
+  -- trace ("isSaneMove called with " ++ show stone) $ do
   potEye <- isPotentialFullEye (goban state) stone
   (if potEye
    then
-       -- trace ("isSaneMove potEye " ++ show (color, p)) $
+       -- trace ("isSaneMove potEye " ++ show stone) $
        return False
    else do
      -- suicide <- isSuicideVertex g color p
      suicide <- isSuicide (chainGoban state) (chains state) stone
      (if suicide
       then
-          -- trace ("isSaneMove suicide" ++ show (color, p)) $
+          -- trace ("isSaneMove suicide" ++ show stone) $
           return False
       else return True))
 
@@ -161,9 +163,6 @@ updateGameState state move =
                      }
       Move stone@(Stone p c) ->
           do
-            -- str <- showGameState state
-            -- trace ("updateGameState" ++ str) $ return ()
-
             -- incremental
             chains' <- addChainStone cg (chains state) stone
 
@@ -177,25 +176,31 @@ updateGameState state move =
             deleteStones g dead
             -- str4 <- showGoban g
             -- trace ("updateGameState after deleteStones" ++ str4) $ return ()
-            return $ state {
-                         goban = g
-                       , chainGoban = cg
-                       , chains = chains'
-                       , moveHistory = (moveHistory state) ++ [move]
-                       , blackStones =
-                         (if c == Black
-                          then (blackStones state) + 1
-                          else (blackStones state) - (length dead))
-                       , whiteStones =
-                         (if c == White
-                          then (whiteStones state) + 1
-                          else (whiteStones state) - (length dead))
-                       , koBlocked =
-                         case dead of
-                           [Stone k _] -> Just k
-                           _ -> Nothing
-                       , freeVerticesSet = freeVerticesSet' p dead
-                       }
+
+            state' <- return $ state {
+                        goban = g
+                      , chainGoban = cg
+                      , chains = chains'
+                      , moveHistory = (moveHistory state) ++ [move]
+                      , blackStones =
+                          (if c == Black
+                           then (blackStones state) + 1
+                           else (blackStones state) - (length dead))
+                      , whiteStones =
+                          (if c == White
+                           then (whiteStones state) + 1
+                           else (whiteStones state) - (length dead))
+                      , koBlocked =
+                          case dead of
+                            [Stone k _] -> Just k
+                            _ -> Nothing
+                      , freeVerticesSet = freeVerticesSet' p dead
+                      }
+
+            -- str <- showGameState state'
+            -- trace ("updateGameState" ++ str) $ return ()
+
+            return $ state'
     where
       g = goban state
       cg = chainGoban state
