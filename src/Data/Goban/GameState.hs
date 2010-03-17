@@ -23,6 +23,7 @@ module Data.Goban.GameState ( GameState(..)
                             , updateGameState
                             , centerHeuristic
                             , nextMoves
+                            , isSaneMove
                             , freeVertices
                             , thisMoveColor
                             , nextMoveColor
@@ -111,8 +112,26 @@ newGameState n initKomi = do
 nextMoves :: GameState s -> Color -> ST s [Move]
 nextMoves state color = do
   freeStones <- return $ map (((flip Stone) color)) $ freeVertices state
-  sanes <- filterM (isSaneMove (goban state)) freeStones
+  sanes <- filterM (isSaneMove state) freeStones
   return $ map Move sanes
+
+
+isSaneMove :: GameState s -> Stone -> ST s Bool
+isSaneMove state stone = do
+  -- trace ("isSaneMove called with " ++ show s) $ do
+  potEye <- isPotentialFullEye (goban state) stone
+  (if potEye
+   then
+       -- trace ("isSaneMove potEye " ++ show (color, p)) $
+       return False
+   else do
+     -- suicide <- isSuicideVertex g color p
+     suicide <- isSuicide (chainGoban state) (chains state) stone
+     (if suicide
+      then
+          -- trace ("isSaneMove suicide" ++ show (color, p)) $
+          return False
+      else return True))
 
 
 

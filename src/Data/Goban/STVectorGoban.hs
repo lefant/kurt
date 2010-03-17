@@ -22,8 +22,7 @@ module Data.Goban.STVectorGoban ( STGoban(..)
                                 , deleteStones
                                 , gobanSize
 
-                                , isSaneMove
-                                , isSuicideVertex
+                                -- , isSuicideVertex
                                 , isPotentialFullEye
                                 , killedStones
                                 , neighbourStones
@@ -165,27 +164,8 @@ wordToState n =
 
 
 
-isSaneMove :: STGoban s -> Stone -> ST s Bool
-isSaneMove g (Stone p color) =
-    -- trace ("isSaneMove called with " ++ show s) $ do
-    do
-      potEye <- isPotentialFullEye g color p
-      (if potEye
-       then
-           -- trace ("isSaneMove potEye " ++ show (color, p)) $
-           return False
-       else do
-         suicide <- isSuicideVertex g color p
-         (if suicide
-          then
-              -- trace ("isSaneMove suicide" ++ show (color, p)) $
-              return False
-          else return True))
-
-
-
-isPotentialFullEye :: STGoban s -> Color -> Vertex -> ST s Bool
-isPotentialFullEye g color p = do
+isPotentialFullEye :: STGoban s -> Stone -> ST s Bool
+isPotentialFullEye g (Stone p color) = do
   as <- mapM (readGoban g) $ adjacentVertices p
   (if all isSameColorOrBorder as
    then do
@@ -214,63 +194,58 @@ isPotentialFullEye g color p = do
 --       ns = neighbourStones goban (Stone (v, color))
 
 
-isSuicideVertex :: STGoban s -> Color -> Vertex -> ST s Bool
-isSuicideVertex g color v =
-    isSuicide g (Stone v color)
+-- isSuicide :: STGoban s -> Stone -> ST s Bool
+-- isSuicide g stone@(Stone p c) = do
+--   frees1 <- adjacentFree g p
+--   (if null frees1
+--    -- stone has no liberties remaining itself
+--    then do
+--      as <- adjacentStones g p
+--      dsc <- deadStones3 g stone stone
+--      (if null dsc && any (\(Stone _p color') -> c == color') as
+--       -- same color neighbours reach a liberty
+--       then return False
+--       -- same color neighbours do not reach a liberty
+--       else do
+--         pdoc <- potDeadColor as (otherColor c)
+--         doc <- mapM (deadStones3 g stone) pdoc >>= (return . concat)
+--         (if null doc
+--          -- all other color neighbours alive
+--          then return True
+--          -- at least one other color neighbours dies
+--          else return False))
+--    -- we have at least one liberty ourselves
+--    else return False)
+--    where
+--      potDeadColor as color =
+--          filterM hasOneLiberty $
+--                  filter (\(Stone _p color') -> color == color') as
+
+--      hasOneLiberty (Stone p' _c) = do
+--        as <- adjacentFree g p'
+--        return $ (length as == 1)
 
 
-isSuicide :: STGoban s -> Stone -> ST s Bool
-isSuicide g stone@(Stone p c) = do
-  frees1 <- adjacentFree g p
-  (if null frees1
-   -- stone has no liberties remaining itself
-   then do
-     as <- adjacentStones g p
-     dsc <- deadStones3 g stone stone
-     (if null dsc && any (\(Stone _p color') -> c == color') as
-      -- same color neighbours reach a liberty
-      then return False
-      -- same color neighbours do not reach a liberty
-      else do
-        pdoc <- potDeadColor as (otherColor c)
-        doc <- mapM (deadStones3 g stone) pdoc >>= (return . concat)
-        (if null doc
-         -- all other color neighbours alive
-         then return True
-         -- at least one other color neighbours dies
-         else return False))
-   -- we have at least one liberty ourselves
-   else return False)
-   where
-     potDeadColor as color =
-         filterM hasOneLiberty $
-                 filter (\(Stone _p color') -> color == color') as
-
-     hasOneLiberty (Stone p' _c) = do
-       as <- adjacentFree g p'
-       return $ (length as == 1)
-
-
-deadStones3 :: STGoban s -> Stone -> Stone -> ST s [Stone]
-deadStones3 g (Stone initP _) stone@(Stone _ color) =
-    anyInMaxStringAlive [stone] []
-    where
-      anyInMaxStringAlive [] gs = return gs
-      anyInMaxStringAlive (n@(Stone p _) : ns) gs = do
-        frees <- adjacentFree g p
-        case frees of
-          [] -> do
-            hs <- liftM (filter filterF) $ genF n
-            anyInMaxStringAlive (ns ++ (((hs) \\ gs) \\ ns)) (n : gs)
-          [p'] -> if initP == p'
-                  then (do
-                         hs <- liftM (filter filterF) $ genF n
-                         anyInMaxStringAlive (ns ++ (((hs) \\ gs) \\ ns)) (n : gs))
-                  else return []
-          _ -> return []
-      genF = neighbourStones g
-      filterF (Stone _p' color') =
-          color == color'
+-- deadStones3 :: STGoban s -> Stone -> Stone -> ST s [Stone]
+-- deadStones3 g (Stone initP _) stone@(Stone _ color) =
+--     anyInMaxStringAlive [stone] []
+--     where
+--       anyInMaxStringAlive [] gs = return gs
+--       anyInMaxStringAlive (n@(Stone p _) : ns) gs = do
+--         frees <- adjacentFree g p
+--         case frees of
+--           [] -> do
+--             hs <- liftM (filter filterF) $ genF n
+--             anyInMaxStringAlive (ns ++ (((hs) \\ gs) \\ ns)) (n : gs)
+--           [p'] -> if initP == p'
+--                   then (do
+--                          hs <- liftM (filter filterF) $ genF n
+--                          anyInMaxStringAlive (ns ++ (((hs) \\ gs) \\ ns)) (n : gs))
+--                   else return []
+--           _ -> return []
+--       genF = neighbourStones g
+--       filterF (Stone _p' color') =
+--           color == color'
 
 
 -- isDead :: STGoban s -> Stone -> ST s Bool

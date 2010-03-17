@@ -17,6 +17,9 @@ Incrementally updated stone chains including liberty count for goban.
 module Data.Goban.Incremental ( Chain(..)
                               , ChainMap
                               , ChainIdGoban
+
+                              , isSuicide
+
                               , newChainGoban
                               , newChainMap
                               , showChainIdGoban
@@ -85,6 +88,27 @@ type ChainNeighbours = M.IntMap VertexSet
 
 
 
+isSuicide :: ChainIdGoban s -> ChainMap -> Stone -> ST s (Bool)
+isSuicide cg cm s@(Stone p _color) = do
+  (adjFrees, ourIds, neighIds, _neighs) <- adjacentStuff cg cm s
+
+  (if not $ S.null adjFrees
+   -- stone has liberties itself
+   then return False
+   else if any (not . S.null . (S.delete p) . chainLiberties . (idChain "isSuicide ourIds" cm)) ourIds
+        -- an adjacent same color chain has a remaining liberty
+        then return False
+        else if any (S.null . (S.delete p) . chainLiberties . (idChain "isSuicide neighIds" cm)) neighIds
+             -- an adjacent other color chain has no remaining liberties
+             then return False
+             -- else: it would be suicide
+             else return True)
+
+
+
+
+
+
 showChainIdGoban :: ChainIdGoban s -> ST s String
 showChainIdGoban cg = do
   (_, (n, _)) <- A.getBounds cg
@@ -121,26 +145,8 @@ vertexChain cg cm p = do
 
 
 addChainStone :: ChainIdGoban s -> ChainMap -> Stone -> ST s (ChainMap)
-addChainStone cg cm s@(Stone p color) = do
-  (_, (n, _)) <- A.getBounds cg
-
-  -- lookup all adjacent chain ids
-  adjPs <- mapM readPairWithKey $ adjacentVerticesInBounds n p
-
-  -- partition out free vertices
-  (adjFreePs, adjIdPs) <- return $ partition ((== noChainId) . fst) adjPs
-
-  -- partition friend and foe
-  (ourIdPs, neighIdPs) <- return $ partition ((color ==) . chainColor . (idChain "addStone partition" cm) . fst) adjIdPs
-
-  -- VertexSet of adjacent liberties
-  adjFrees <- return $ S.fromList $ map snd adjFreePs
-  -- list of adjacent same color chain ids
-  ourIds <- return $ nub $ map fst ourIdPs
-  -- ChainNeighbour type neighbour id - vertex map
-  neighIds <- return $ nub $ map fst neighIdPs
-  neighs <- return $ M.fromListWith S.union $ map (second S.singleton) neighIdPs
-
+addChainStone cg cm s@(Stone p _color) = do
+  (adjFrees, ourIds, neighIds, neighs) <- adjacentStuff cg cm s
 
   -- add new chain with played stone and
   -- merge chains becoming connected if necessary
@@ -175,10 +181,42 @@ addChainStone cg cm s@(Stone p color) = do
 
   return cm5
 
+
+
+
+adjacentStuff :: ChainIdGoban s -> ChainMap -> Stone
+              -> ST s (VertexSet,
+                       [ChainId],
+                       [ChainId],
+                       ChainNeighbours)
+adjacentStuff cg cm (Stone p color) = do
+  (_, (n, _)) <- A.getBounds cg
+
+  -- lookup all adjacent chain ids
+  adjPs <- mapM readPairWithKey $ adjacentVerticesInBounds n p
+
+  -- partition out free vertices
+  (adjFreePs, adjIdPs) <- return $ partition ((== noChainId) . fst) adjPs
+
+  -- partition friend and foe
+  (ourIdPs, neighIdPs) <- return $ partition ((color ==) . chainColor . (idChain "addStone partition" cm) . fst) adjIdPs
+
+  -- VertexSet of adjacent liberties
+  adjFrees <- return $ S.fromList $ map snd adjFreePs
+  -- list of adjacent same color chain ids
+  ourIds <- return $ nub $ map fst ourIdPs
+  -- ChainNeighbour type neighbour id - vertex map
+  neighIds <- return $ nub $ map fst neighIdPs
+  neighs <- return $ M.fromListWith S.union $ map (second S.singleton) neighIdPs
+
+
+  return (adjFrees, ourIds, neighIds, neighs)
+
     where
       readPairWithKey ap = do
         v <- A.readArray cg ap
         return (v, ap)
+
 
 
 
@@ -226,7 +264,6 @@ removeNeighbourLiberties initCm p neighIds =
       isDeadChain :: ChainId -> Bool
       isDeadChain i = S.null $ chainLiberties $ idChain "isDeadChain" cm' i
 
-
       cm' = foldl' updateCM initCm neighIds
 
       updateCM :: ChainMap -> ChainId -> ChainMap
@@ -235,6 +272,7 @@ removeNeighbourLiberties initCm p neighIds =
       updateNC :: Chain -> Chain
       updateNC c =
           c { chainLiberties = S.delete p $ chainLiberties c }
+
 
 
 mapAddChain :: ChainMap -> Stone -> VertexSet -> ChainNeighbours

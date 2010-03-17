@@ -34,8 +34,7 @@ import Data.List ((\\))
 
 import Data.Goban.Types (Move(..), Stone(..), Color(..), Vertex, Score)
 import Data.Goban.Utils (winningScore, rateScore)
-import Data.Goban.GameState (GameState(..), newGameState, scoreGameState, updateGameState, getLeafGameState, centerHeuristic, nextMoveColor, nextMoves, freeVertices)
-import Data.Goban.STVectorGoban (isSaneMove)
+import Data.Goban.GameState (GameState(..), newGameState, scoreGameState, updateGameState, getLeafGameState, centerHeuristic, nextMoveColor, nextMoves, isSaneMove, freeVertices)
 
 
 import Data.Tree.UCT.GameTree (UCTTreeLoc, RaveMap, newRaveMap, newMoveNode)
@@ -212,14 +211,14 @@ genMoveRand state rGen =
            return $ Pass color
       pickSane [p] = do
         stone <- return $ Stone p color
-        sane <- isSaneMove g stone
+        sane <- isSaneMove state stone
         return $ (if sane
                   then Move stone
                   else Pass color)
       pickSane ps = do
         p <- pick ps rGen
         stone <- return $ Stone p color
-        sane <- isSaneMove g stone
+        sane <- isSaneMove state stone
         (if sane
          then return $ Move stone
          else pickSane (ps \\ [p]))

@@ -13,15 +13,14 @@ Various utility functions for Goban Implementation (without direct dependencies 
 
 -}
 
-module Data.Goban.Utils ( maxString
-                        , maxIntSet
+module Data.Goban.Utils ( maxIntSet
 
                         , rateScore
                         , winningScore
                         ) where
 
 
-import Data.List ((\\))
+-- import Data.List ((\\))
 import qualified Data.IntSet as S
 
 import Data.Goban.Types
@@ -32,15 +31,15 @@ import Data.Tree.UCT (UCTEvaluator)
 
 
 
-maxString :: (Eq a) => (a -> [a]) -> (a -> Bool) -> a -> [a]
-maxString genF filterF p =
-    maxString' [p] []
-    where
-      maxString' [] gs = gs
-      maxString' (n : ns) gs =
-          maxString' (ns ++ (((fgen n) \\ gs) \\ ns)) (n : gs)
-      fgen n =
-          filter filterF $ genF n
+-- maxString :: (Eq a) => (a -> [a]) -> (a -> Bool) -> a -> [a]
+-- maxString genF filterF p =
+--     maxString' [p] []
+--     where
+--       maxString' [] gs = gs
+--       maxString' (n : ns) gs =
+--           maxString' (ns ++ (((fgen n) \\ gs) \\ ns)) (n : gs)
+--       fgen n =
+--           filter filterF $ genF n
 
 
 maxIntSet :: (Int -> S.IntSet) -> (Int -> Bool) -> Int -> S.IntSet
