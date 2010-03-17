@@ -24,7 +24,7 @@ module Data.Goban.STVectorGoban ( STGoban(..)
 
                                 -- , isSuicideVertex
                                 , isPotentialFullEye
-                                , killedStones
+                                -- , killedStones
                                 , neighbourStones
                                 , adjacentStones
                                 , intAdjacentStones
@@ -37,11 +37,11 @@ module Data.Goban.STVectorGoban ( STGoban(..)
                                 , intAllAdjacentStonesSameColor
                                 ) where
 
-import Control.Monad (liftM, filterM)
+import Control.Monad (filterM)
 import Control.Monad.ST (ST)
 import Data.Maybe (catMaybes)
 import Data.Word (Word)
-import Data.List ((\\), nub)
+import Data.List ((\\))
 import qualified Data.Vector.Unboxed.Mutable as VM
 import Text.Printf (printf)
 
@@ -254,36 +254,36 @@ isPotentialFullEye g (Stone p color) = do
 
 
 
--- FIXME:
--- if several killed neighbouring stones are part of the same
--- group it will be found twice here
--- nub at the end works around for scoring
-killedStones :: STGoban s -> Stone -> ST s [Stone]
-killedStones g stone@(Stone _p color) =
-    neighbourStones g stone >>=
-    filterM (return . hasOtherColor) >>=
-    mapM (deadStones g) >>= (return . nub . concat)
-    where
-      hasOtherColor (Stone _p' color') =
-          (otherColor color) == color'
+-- -- FIXME:
+-- -- if several killed neighbouring stones are part of the same
+-- -- group it will be found twice here
+-- -- nub at the end works around for scoring
+-- killedStones :: STGoban s -> Stone -> ST s [Stone]
+-- killedStones g stone@(Stone _p color) =
+--     neighbourStones g stone >>=
+--     filterM (return . hasOtherColor) >>=
+--     mapM (deadStones g) >>= (return . nub . concat)
+--     where
+--       hasOtherColor (Stone _p' color') =
+--           (otherColor color) == color'
 
 
-deadStones :: STGoban s -> Stone -> ST s [Stone]
-deadStones g stone@(Stone _p color) =
-    anyInMaxStringAlive [stone] []
-    where
-      anyInMaxStringAlive [] gs = return gs
-      anyInMaxStringAlive (n@(Stone p _color) : ns) gs = do
-          frees <- adjacentFree g p
-          (if null frees
-           then do
-               hs <- liftM (filter filterF) $ genF n
-               anyInMaxStringAlive (ns ++ (((hs) \\ gs) \\ ns)) (n : gs)
-           else return [])
+-- deadStones :: STGoban s -> Stone -> ST s [Stone]
+-- deadStones g stone@(Stone _p color) =
+--     anyInMaxStringAlive [stone] []
+--     where
+--       anyInMaxStringAlive [] gs = return gs
+--       anyInMaxStringAlive (n@(Stone p _color) : ns) gs = do
+--           frees <- adjacentFree g p
+--           (if null frees
+--            then do
+--                hs <- liftM (filter filterF) $ genF n
+--                anyInMaxStringAlive (ns ++ (((hs) \\ gs) \\ ns)) (n : gs)
+--            else return [])
 
-      genF = neighbourStones g
-      filterF (Stone _p' color') =
-          color == color'
+--       genF = neighbourStones g
+--       filterF (Stone _p' color') =
+--           color == color'
 
 
 

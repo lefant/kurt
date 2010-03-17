@@ -164,18 +164,10 @@ updateGameState state move =
       Move stone@(Stone p c) ->
           do
             -- incremental
-            chains' <- addChainStone cg (chains state) stone
+            (chains', dead) <- addChainStone cg (chains state) stone
 
-            -- str1 <- showGoban g
-            -- trace ("updateGameState before" ++ str1) $ return ()
             addStone g stone
-            -- str2 <- showGoban g
-            -- trace ("updateGameState after addStone" ++ str2) $ return ()
-            dead <- killedStones g stone
-            -- trace ("updateGameState dead" ++ show dead) $ return ()
             deleteStones g dead
-            -- str4 <- showGoban g
-            -- trace ("updateGameState after deleteStones" ++ str4) $ return ()
 
             state' <- return $ state {
                         goban = g

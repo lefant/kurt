@@ -140,7 +140,7 @@ vertexChain cg cm p = do
   return $ idChain "vertexChain" cm i
 
 
-addChainStone :: ChainIdGoban s -> ChainMap -> Stone -> ST s (ChainMap)
+addChainStone :: ChainIdGoban s -> ChainMap -> Stone -> ST s (ChainMap, [Stone])
 addChainStone cg cm s@(Stone p _color) = do
   (adjFrees, ourIds, neighIds, neighs) <- adjacentStuff cg cm s
 
@@ -164,6 +164,7 @@ addChainStone cg cm s@(Stone p _color) = do
   -- return list of ids that as a consequence are now dead
   (cm4, deadIds) <- return $ removeNeighbourLiberties cm3 p neighIds
 
+  dead <- return $ deadStones deadIds
 
   -- delete neighbour chains that just died
   cm5 <- foldM (deleteChain cg) cm4 deadIds
@@ -174,8 +175,16 @@ addChainStone cg cm s@(Stone p _color) = do
 
   -- trace ("after addStone\n" ++ showChainMap cm5) $ return ()
 
-  return cm5
+  return (cm5, dead)
 
+    where
+      deadStones :: [ChainId] -> [Stone]
+      deadStones is =
+          concatMap (chainStones . (idChain "deadStones" cm)) is
+
+      chainStones :: Chain -> [Stone]
+      chainStones c =
+          map (\dp -> Stone dp (chainColor c)) $ S.toList $ chainVertices c
 
 
 
@@ -211,8 +220,6 @@ adjacentStuff cg cm (Stone p color) = do
       readPairWithKey ap = do
         v <- A.readArray cg ap
         return (v, ap)
-
-
 
 
 
