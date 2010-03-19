@@ -287,7 +287,7 @@ makeStonesAndLibertyHeuristic state = do
   where
     stonesAndLibertiesHeu :: ChainIdGobanFrozen -> ChainMap
                           -> UCTHeuristic Move
-    stonesAndLibertiesHeu cg cm (Move stone) =
+    stonesAndLibertiesHeu cg cm (Move stone@(Stone (x, y) _color)) =
         -- trace ("stonesAndLibertiesHeu " ++ show (stone, (h, (stoneH, libertyMinH, libertyAvgH)), result))
         result
         where
@@ -298,12 +298,16 @@ makeStonesAndLibertyHeuristic state = do
           h :: Value
           h = (stoneH * stoneWeight
                + libertyMinH * libertyMinWeight
-               + libertyAvgH * libertyAvgWeight)
-              / (stoneWeight + libertyMinWeight + libertyAvgWeight)
-          stoneWeight = 3
-          libertyMinWeight = 1
+               + libertyAvgH * libertyAvgWeight
+               + centerH * centerWeight)
+              / (stoneWeight
+                 + libertyMinWeight
+                 + libertyAvgWeight
+                 + centerWeight)
+          stoneWeight = 12
+          libertyMinWeight = 3
           libertyAvgWeight = 1
-
+          centerWeight = 1
 
           -- must be between -0.5 and 0.5
           stoneH :: Value
@@ -321,6 +325,18 @@ makeStonesAndLibertyHeuristic state = do
 
           (ourSc, otherSc, ourLMin, otherLMin, ourLAvg, otherLAvg) =
               stonesAndLiberties cg cm stone
+
+
+          -- must be between -0.5 and 0.5
+          centerH = - halfBeta + beta * (minDist ^ (2 :: Int) / 9)
+          minDist = fromIntegral (minimum [ x, n - x + 1, y, n - y + 1, 3])
+
+          -- scaling factor between 1 at the beginning and 0 when l gets big
+          beta = fromIntegral n / fromIntegral (l + n)
+          halfBeta = beta / 2
+          l = length $ moveHistory state
+
+
     stonesAndLibertiesHeu _ _ _ = error "stonesAndLibertiesHeu received non StoneMove arg"
 
     n = boardsize state
