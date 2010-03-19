@@ -34,7 +34,7 @@ module Data.Goban.Incremental ( Chain(..)
 import Control.Arrow (second)
 import Control.Monad (foldM)
 import Control.Monad.ST (ST)
-import Data.Maybe (fromMaybe, catMaybes)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.List (foldl', partition, unfoldr, transpose, nub, sort)
 import Text.Printf (printf)
 
@@ -61,13 +61,13 @@ data Chain = Chain { chainColor           :: !Color
 
 instance Show Chain where
     show (Chain c ls vs ns) =
-        show c ++ " vs:" ++ (concatMap ((" " ++) . gtpShowVertex) $ S.elems vs)
-               ++ " ls:" ++ (concatMap ((" " ++) . gtpShowVertex) $ S.elems ls)
+        show c ++ " vs:" ++ concatMap ((" " ++) . gtpShowVertex) (S.elems vs)
+               ++ " ls:" ++ concatMap ((" " ++) . gtpShowVertex) (S.elems ls)
                ++ "\nns: "
-               ++ (concatMap (\(k, v) -> show k ++ " "
-                              ++ (concatMap ((" " ++) . gtpShowVertex)
-                                                $ S.elems v)
-                              ++ "; ") $ M.toList ns)
+               ++ concatMap (\(k, v) -> show k ++ " "
+                              ++ concatMap ((" " ++) . gtpShowVertex)
+                                                (S.elems v)
+                              ++ "; ") (M.toList ns)
                ++ "\n"
 
 type ChainId = Int
@@ -98,13 +98,13 @@ type ChainNeighbours = M.IntMap VertexSet
 
 
 
-isSuicide :: ChainIdGoban s -> ChainMap -> Stone -> ST s (Bool)
+isSuicide :: ChainIdGoban s -> ChainMap -> Stone -> ST s Bool
 isSuicide cg cm s@(Stone p _color) = do
   (adjFrees, ourIds, neighIds, _neighs) <- adjacentStuff cg cm s
 
   return (S.null adjFrees
-          && (all (S.null . (S.delete p) . chainLiberties . (idChain "isSuicide ourIds" cm)) ourIds)
-          && (all (not . S.null . (S.delete p) . chainLiberties . (idChain "isSuicide neighIds" cm)) neighIds))
+          && all (S.null . S.delete p . chainLiberties . idChain "isSuicide ourIds" cm) ourIds
+          && all (not . S.null . S.delete p . chainLiberties . idChain "isSuicide neighIds" cm) neighIds)
 
 
 
@@ -126,13 +126,13 @@ stonesAndLiberties cg cm s@(Stone p color) =
       (allOurChains, allOtherChains) =
           partition ((color ==) . chainColor) $ M.elems cm4
 
-      stoneCount = sum . (map (S.size . chainVertices))
+      stoneCount = sum . map (S.size . chainVertices)
 
-      libertyMin cs = minimum $ (4 : (map (S.size . chainLiberties)) cs)
+      libertyMin cs = minimum (4 : map (S.size . chainLiberties) cs)
 
       libertyAvg cs =
           fromIntegral (sum $
-                        (map (S.size . chainLiberties)) cs)
+                        map (S.size . chainLiberties) cs)
           / fromIntegral (length cs + 1)
 
 
@@ -156,7 +156,7 @@ stonesAndLiberties cg cm s@(Stone p color) =
       neighs = M.fromListWith S.union $ map (second S.singleton) neighIdPs
 
       -- partition friend and foe
-      (ourIdPs, neighIdPs) = partition ((color ==) . chainColor . (idChain "stonesAndLiberties partition " cm) . fst) adjIdPs
+      (ourIdPs, neighIdPs) = partition ((color ==) . chainColor . idChain "stonesAndLiberties partition " cm . fst) adjIdPs
 
       -- partition out free vertices
       (adjFreePs, adjIdPs) = partition ((== noChainId) . fst) adjPs
@@ -185,15 +185,15 @@ showChainIdGoban :: ChainIdGoban s -> ST s String
 showChainIdGoban cg = do
   (_, (n, _)) <- STUA.getBounds cg
   chainIds <- STUA.getElems cg
-  ls <- return $ transpose $ unfoldr (nLines n) chainIds
+  let ls = transpose $ unfoldr (nLines n) chainIds
   return $ board n ls
     where
       board n ls =
           unlines
           $ reverse
           ([xLegend]
-           ++ (zipWith (++) ys
-              $ zipWith (++) (map (concatMap maybePrint) ls) ys)
+           ++ zipWith (++) ys
+              (zipWith (++) (map (concatMap maybePrint) ls) ys)
            ++ [xLegend])
 
           where
@@ -229,7 +229,7 @@ addChainStone cg cm s@(Stone p _color) = do
                  js ->
                      do
                        is@(i : _) <- return $ sort (j : js)
-                       cm2 <- return $ mapFoldChains cm1 is p
+                       let cm2 = mapFoldChains cm1 is p
                        mapM_ (\p' -> STUA.writeArray cg p' i)
                         $ S.elems $ chainVertices
                               $ idChain "addStone merge" cm2 i
@@ -240,7 +240,7 @@ addChainStone cg cm s@(Stone p _color) = do
   -- return list of ids that as a consequence are now dead
   (cm4, deadIds) <- return $ removeNeighbourLiberties cm3 p neighIds
 
-  dead <- return $ deadStones deadIds
+  let dead = deadStones deadIds
 
   -- delete neighbour chains that just died
   cm5 <- foldM (deleteChain cg) cm4 deadIds
@@ -255,12 +255,12 @@ addChainStone cg cm s@(Stone p _color) = do
 
     where
       deadStones :: [ChainId] -> [Stone]
-      deadStones is =
-          concatMap (chainStones . (idChain "deadStones" cm)) is
+      deadStones =
+          concatMap (chainStones . idChain "deadStones" cm)
 
       chainStones :: Chain -> [Stone]
       chainStones c =
-          map (\dp -> Stone dp (chainColor c)) $ S.toList $ chainVertices c
+          map (flip Stone (chainColor c)) $ S.toList $ chainVertices c
 
 
 
@@ -279,15 +279,15 @@ adjacentStuff cg cm (Stone p color) = do
   (adjFreePs, adjIdPs) <- return $ partition ((== noChainId) . fst) adjPs
 
   -- partition friend and foe
-  (ourIdPs, neighIdPs) <- return $ partition ((color ==) . chainColor . (idChain ("adjacentStuff partition " ++ show adjIdPs ++ "\n" ++ showChainMap cm) cm) . fst) adjIdPs
+  (ourIdPs, neighIdPs) <- return $ partition ((color ==) . chainColor . idChain ("adjacentStuff partition " ++ show adjIdPs ++ "\n" ++ showChainMap cm) cm . fst) adjIdPs
 
   -- VertexSet of adjacent liberties
-  adjFrees <- return $ S.fromList $ map snd adjFreePs
+  let adjFrees = S.fromList $ map snd adjFreePs
   -- list of adjacent same color chain ids
-  ourIds <- return $ nub $ map fst ourIdPs
+  let ourIds = nub $ map fst ourIdPs
   -- ChainNeighbour type neighbour id - vertex map
-  neighIds <- return $ nub $ map fst neighIdPs
-  neighs <- return $ M.fromListWith S.union $ map (second S.singleton) neighIdPs
+  let neighIds = nub $ map fst neighIdPs
+  let neighs = M.fromListWith S.union $ map (second S.singleton) neighIdPs
 
 
   return (adjFrees, ourIds, neighIds, neighs)
@@ -299,7 +299,7 @@ adjacentStuff cg cm (Stone p color) = do
 
 
 
-deleteChain :: ChainIdGoban s -> ChainMap -> ChainId -> ST s (ChainMap)
+deleteChain :: ChainIdGoban s -> ChainMap -> ChainId -> ST s ChainMap
 deleteChain cg cm i = do
   mapM_ resetVertex vs
   return $ mapDeleteChain cm i
@@ -393,7 +393,7 @@ mapFoldChains cm ois@(i : is) p =
              , chainNeighbours = neighs
              }
       neighs = M.unionsWith S.union $ map chainNeighbours cs
-      cs = c : (map (idChain "mapFoldChains2" cm) is)
+      cs = c : map (idChain "mapFoldChains2" cm) is
       c = idChain "mapFoldChains1" cm i
 mapFoldChains _ [] _ = error "mapFoldChains called with empty list"
 
@@ -412,7 +412,7 @@ mapFoldChainsNeighbours initCm (i : is) neighs =
             nNeighs''' = foldl' (flip M.delete) nNeighs'' is
             nNeighs'' = M.adjust (nvs `S.union`) i nNeighs'
             nNeighs' = M.insertWith S.union i S.empty nNeighs
-            nvs = S.unions $ catMaybes $ map (\j -> M.lookup j nNeighs) is
+            nvs = S.unions $ mapMaybe (`M.lookup` nNeighs) is
             nNeighs = chainNeighbours c
 mapFoldChainsNeighbours _ [] _ = error "mapFoldChainsNeighbours called with empty list"
 
