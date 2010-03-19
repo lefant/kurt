@@ -22,6 +22,7 @@ module Data.Goban.GameState ( GameState(..)
                             , getLeafGameState
                             , updateGameState
                             , centerHeuristic
+                            , makeStonesAndLibertyHeuristic
                             , nextMoves
                             , isSaneMove
                             , freeVertices
@@ -33,7 +34,7 @@ module Data.Goban.GameState ( GameState(..)
 import Control.Monad (filterM, foldM)
 import Control.Monad.ST (ST)
 import Data.List ((\\))
-import Data.Array.IArray (Array)
+-- import Data.Array.IArray (Array)
 import Data.Array.MArray (freeze, thaw)
 import qualified Data.IntSet as S
 
@@ -41,6 +42,7 @@ import qualified Data.IntSet as S
 import Data.Goban.Types
 import Data.Goban.IntVertex
 import Data.Tree.UCT (UCTHeuristic)
+import Data.Tree.UCT.GameTree (Value)
 import Data.Goban.Utils
 import Data.Goban.STVectorGoban
 import Data.Goban.Incremental
@@ -141,7 +143,8 @@ isSaneMove state stone = do
 getLeafGameState :: GameState s -> [Move] -> ST s (GameState s)
 getLeafGameState state moves = do
   g' <- copyGoban $ goban state
-  fcg :: (Array Vertex Int) <- (freeze $ chainGoban state)
+  fcg :: ChainIdGobanFrozen <- (freeze $ chainGoban state)
+  -- fcg :: (Array Vertex Int) <- (freeze $ chainGoban state)
   cg' <- thaw fcg
   state' <- return $ state { goban = g', chainGoban = cg' }
   foldM updateGameState state' moves
@@ -276,8 +279,51 @@ centerHeuristic _ _ = error "centerHeuristic received non StoneMove arg"
 
 
 
+makeStonesAndLibertyHeuristic :: GameState s -> ST s (UCTHeuristic Move)
+makeStonesAndLibertyHeuristic state = do
+  fcg :: ChainIdGobanFrozen <- (freeze $ chainGoban state)
+  return $ stonesAndLibertiesHeu fcg (chains state)
+
+  where
+    stonesAndLibertiesHeu :: ChainIdGobanFrozen -> ChainMap
+                          -> UCTHeuristic Move
+    stonesAndLibertiesHeu cg cm (Move stone) =
+        -- trace ("stonesAndLibertiesHeu " ++ show (stone, (h, (stoneH, libertyMinH, libertyAvgH)), result))
+        result
+        where
+          -- must be between 0 and 1
+          result = ((0.5 + h), 1)
+
+          -- must be between -0.5 and 0.5
+          h :: Value
+          h = (stoneH * stoneWeight
+               + libertyMinH * libertyMinWeight
+               + libertyAvgH * libertyAvgWeight)
+              / (stoneWeight + libertyMinWeight + libertyAvgWeight)
+          stoneWeight = 3
+          libertyMinWeight = 1
+          libertyAvgWeight = 1
 
 
+          -- must be between -0.5 and 0.5
+          stoneH :: Value
+          stoneH = (fromIntegral $ signum stoneDiff) * (sqrt $ fromIntegral $ abs $ stoneDiff) / fromIntegral (n * 2)
+          stoneDiff = ourSc - otherSc
+
+          -- must be between -0.5 and 0.5
+          libertyMinH :: Value
+          libertyMinH = ((sqrtMin ourLMin) - (sqrtMin otherLMin)) / 2
+          sqrtMin m = sqrt $ fromIntegral $ min m 4
+
+          -- must be between -0.5 and 0.5
+          libertyAvgH :: Value
+          libertyAvgH = (ourLAvg - otherLAvg) / fromIntegral (n ^ (2 :: Int))
+
+          (ourSc, otherSc, ourLMin, otherLMin, ourLAvg, otherLAvg) =
+              stonesAndLiberties cg cm stone
+    stonesAndLibertiesHeu _ _ _ = error "stonesAndLibertiesHeu received non StoneMove arg"
+
+    n = boardsize state
 
 
 thisMoveColor :: GameState s -> Color

@@ -135,6 +135,7 @@ adjacentVertices (x, y) =
     [(x,y-1),(x-1,y),(x+1,y),(x,y+1)]
 
 
+{-# INLINE adjacentVerticesInBounds #-}
 adjacentVerticesInBounds :: Boardsize -> Vertex -> [Vertex]
 adjacentVerticesInBounds n (x, y) =
     filter inBounds [(x,y-1),(x-1,y),(x+1,y),(x,y+1)]
@@ -142,6 +143,7 @@ adjacentVerticesInBounds n (x, y) =
       inBounds :: Vertex -> Bool
       inBounds (x', y') =
           and [x' > 0, x' <= n, y' > 0, y' <= n]
+
 
 
 diagonalVertices :: Vertex -> [Vertex]

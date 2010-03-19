@@ -17,8 +17,10 @@ Incrementally updated stone chains including liberty count for goban.
 module Data.Goban.Incremental ( Chain(..)
                               , ChainMap
                               , ChainIdGoban
+                              , ChainIdGobanFrozen
 
                               , isSuicide
+                              , stonesAndLiberties
 
                               , newChainGoban
                               , newChainMap
@@ -39,14 +41,15 @@ import Text.Printf (printf)
 
 import qualified Data.IntMap as M
 import qualified Data.Set as S
-import qualified Data.Array.ST as A
-
+import qualified Data.Array.ST as STUA
+import qualified Data.Array.Unboxed as UA
 
 
 -- import Debug.TraceOrId (trace)
 
 
 import Data.Goban.Types
+import Data.Tree.UCT.GameTree (Value)
 -- import Data.Goban.IntVertex
 
 
@@ -84,7 +87,9 @@ showChainMap cm =
 
 
 -- try this instead of Vector this time
-type ChainIdGoban s = A.STUArray s Vertex ChainId
+type ChainIdGoban s = STUA.STUArray s Vertex ChainId
+
+type ChainIdGobanFrozen = UA.UArray Vertex ChainId
 
 type ChainNeighbours = M.IntMap VertexSet
 
@@ -104,11 +109,82 @@ isSuicide cg cm s@(Stone p _color) = do
 
 
 
+stonesAndLiberties :: ChainIdGobanFrozen -> ChainMap -> Stone
+                   -> (Int, Int, Int, Int, Value, Value)
+stonesAndLiberties cg cm s@(Stone p color) =
+    (ourSc, otherSc, ourLMin, otherLMin, ourLAvg, otherLAvg)
+
+    where
+      ourSc = stoneCount allOurChains
+      otherSc = stoneCount allOtherChains
+      ourLMin = libertyMin allOurChains
+      otherLMin = libertyMin allOtherChains
+      ourLAvg = libertyAvg allOurChains
+      otherLAvg = libertyAvg allOtherChains
+
+
+      (allOurChains, allOtherChains) =
+          partition ((color ==) . chainColor) $ M.elems cm4
+
+      stoneCount = sum . (map (S.size . chainVertices))
+
+      libertyMin cs = minimum $ (4 : (map (S.size . chainLiberties)) cs)
+
+      libertyAvg cs =
+          fromIntegral (sum $
+                        (map (S.size . chainLiberties)) cs)
+          / fromIntegral (length cs + 1)
+
+
+      cm4 = foldl' mapDeleteChain cm3 deadIds
+
+      (cm3, deadIds) = removeNeighbourLiberties cm2 p neighIds
+
+      cm2 = case ourIds of
+              [] -> cm1
+              js ->
+                  mapFoldChains cm1 (sort (j : js)) p
+              where
+                (cm1, j) = mapAddChain cm s adjFrees neighs
+
+
+      adjFrees = S.fromList $ map snd adjFreePs
+      -- list of adjacent same color chain ids
+      ourIds = nub $ map fst ourIdPs
+      -- ChainNeighbour type neighbour id - vertex map
+      neighIds = nub $ map fst neighIdPs
+      neighs = M.fromListWith S.union $ map (second S.singleton) neighIdPs
+
+      -- partition friend and foe
+      (ourIdPs, neighIdPs) = partition ((color ==) . chainColor . (idChain "stonesAndLiberties partition " cm) . fst) adjIdPs
+
+      -- partition out free vertices
+      (adjFreePs, adjIdPs) = partition ((== noChainId) . fst) adjPs
+
+      -- lookup all adjacent chain ids
+      adjPs = map readPairWithKey $ adjacentVerticesInBounds n p
+
+      readPairWithKey ap =
+          (v, ap)
+          where
+            v = cg UA.! ap
+
+      (_, (n, _)) = UA.bounds cg
+
+
+
+
+
+
+
+
+
+
 
 showChainIdGoban :: ChainIdGoban s -> ST s String
 showChainIdGoban cg = do
-  (_, (n, _)) <- A.getBounds cg
-  chainIds <- A.getElems cg
+  (_, (n, _)) <- STUA.getBounds cg
+  chainIds <- STUA.getElems cg
   ls <- return $ transpose $ unfoldr (nLines n) chainIds
   return $ board n ls
     where
@@ -131,12 +207,12 @@ showChainIdGoban cg = do
 
 newChainGoban :: Boardsize -> ST s (ChainIdGoban s)
 newChainGoban n =
-    A.newArray ((1, 1), (n, n)) noChainId
+    STUA.newArray ((1, 1), (n, n)) noChainId
 
 
 vertexChain :: ChainIdGoban s -> ChainMap -> Vertex -> ST s Chain
 vertexChain cg cm p = do
-  i <- A.readArray cg p
+  i <- STUA.readArray cg p
   return $ idChain "vertexChain" cm i
 
 
@@ -154,7 +230,7 @@ addChainStone cg cm s@(Stone p _color) = do
                      do
                        is@(i : _) <- return $ sort (j : js)
                        cm2 <- return $ mapFoldChains cm1 is p
-                       mapM_ (\p' -> A.writeArray cg p' i)
+                       mapM_ (\p' -> STUA.writeArray cg p' i)
                         $ S.elems $ chainVertices
                               $ idChain "addStone merge" cm2 i
                        return (cm2, i))
@@ -171,7 +247,7 @@ addChainStone cg cm s@(Stone p _color) = do
 
 
   -- write new chain id to played vertex
-  A.writeArray cg p i
+  STUA.writeArray cg p i
 
   -- trace ("after addStone\n" ++ showChainMap cm5) $ return ()
 
@@ -194,7 +270,7 @@ adjacentStuff :: ChainIdGoban s -> ChainMap -> Stone
                        [ChainId],
                        ChainNeighbours)
 adjacentStuff cg cm (Stone p color) = do
-  (_, (n, _)) <- A.getBounds cg
+  (_, (n, _)) <- STUA.getBounds cg
 
   -- lookup all adjacent chain ids
   adjPs <- mapM readPairWithKey $ adjacentVerticesInBounds n p
@@ -218,7 +294,7 @@ adjacentStuff cg cm (Stone p color) = do
 
     where
       readPairWithKey ap = do
-        v <- A.readArray cg ap
+        v <- STUA.readArray cg ap
         return (v, ap)
 
 
@@ -228,7 +304,7 @@ deleteChain cg cm i = do
   mapM_ resetVertex vs
   return $ mapDeleteChain cm i
   where
-    resetVertex p = A.writeArray cg p noChainId
+    resetVertex p = STUA.writeArray cg p noChainId
     vs = S.elems $ chainVertices $ idChain ("deleteChain " ++ show i) cm i
 
 

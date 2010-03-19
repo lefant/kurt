@@ -34,7 +34,7 @@ import Data.List ((\\))
 
 import Data.Goban.Types (Move(..), Stone(..), Color(..), Vertex, Score)
 import Data.Goban.Utils (winningScore, rateScore)
-import Data.Goban.GameState (GameState(..), newGameState, scoreGameState, updateGameState, getLeafGameState, centerHeuristic, nextMoveColor, nextMoves, isSaneMove, freeVertices)
+import Data.Goban.GameState (GameState(..), newGameState, scoreGameState, updateGameState, getLeafGameState, makeStonesAndLibertyHeuristic, nextMoveColor, nextMoves, isSaneMove, freeVertices)
 
 
 import Data.Tree.UCT.GameTree (UCTTreeLoc, RaveMap, newRaveMap, newMoveNode)
@@ -106,8 +106,11 @@ initUCT eState color = do
   rGen <- stToIO $ restore seed
 
   initLoc <- return $ fromTree $ newMoveNode (trace "something weird is accessing the move at the root UCT tree" (Move (Stone (25,25) Black))) (0.5, 1)
+
+  slHeu <- stToIO $ makeStonesAndLibertyHeuristic gState
   moves <- stToIO $ nextMoves gState color
-  initLoc' <- return $ expandNode initLoc (centerHeuristic gState) moves
+
+  initLoc' <- return $ expandNode initLoc slHeu moves
 
   uctLoop initLoc' gState initRaveMap rGen $ UTCTime { utctDay = (utctDay now)
                                                      , utctDayTime =
@@ -128,10 +131,12 @@ uctLoop !loc rootGameState raveMap rGen deadline = do
   (loc', path) <- return $ selectLeafPath (policyRaveUCB1 raveMap) loc
   leafGameState <- stToIO $ getLeafGameState rootGameState path
   -- rGen <- trace ("uctLoop leafGameState \n" ++ (showGoban (goban $ leafGameState))) $ newStdGen
+  slHeu <- stToIO $ makeStonesAndLibertyHeuristic leafGameState
   moves <- stToIO $ nextMoves leafGameState $ nextMoveColor leafGameState
+  loc'' <- return $ expandNode loc' slHeu moves
+  -- loc'' <- return $ expandNode loc' constantHeuristic moves
   (score, playedMoves) <- stToIO $ runOneRandom leafGameState rGen
   raveMap' <- return $ updateRaveMap raveMap (rateScore score) $ drop ((length playedMoves) `div` 3) playedMoves
-  loc'' <- return $ expandNode loc' constantHeuristic moves
   -- loc'' <- return $ expandNode loc' (centerHeuristic (boardsize rootGameState)) moves
   loc''' <- return $ backpropagate (rateScore score) loc''
   now <- getCurrentTime

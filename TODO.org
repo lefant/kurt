@@ -2,17 +2,14 @@
 
 * Roadmap march:
 
+* cheap heuristic
+** cheap territory estimate - maybe bouzy?
+
 * homework:
 ** command line options for various constants
 *** UCT exploration
 *** rave weight
 *** heuristic / center heuristic
-
-** wrap UCT in some toplevel object?
-
-** sample playouts
-
-** bring back gogui visualization
 
 * kgs support
 ** time management
@@ -20,21 +17,22 @@
 *** kgs-time_settings
 *** kgs-game_over support
 
+* nice to have
+
+** wrap UCT in some toplevel object?
+
+** sample playouts
+
+** bring back gogui visualization
+
+
 ---------------------------
 
 ** systematic testing of game logic like isSuicide
 
-** ---> versus incremental goban?
-
-* cheap heuristic
-** ---> mostly needs incremental goban
-** cheap stone count
-** cheap liberty count: already have allLibertiesColorCount
-** cheap territory estimate
-
 * tune updateGameState speed
-** ---> mostly needs incremental goban
-
+** adjacentStuff is called very often
+** policyRaveUCB1 could maybe do less computation
 
 
 * refactoring
