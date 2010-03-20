@@ -5,11 +5,20 @@
 * cheap heuristic
 ** cheap territory estimate - maybe bouzy?
 
+* tune heuristic
+** bring back gogui visualization
+
+
+---------------------------
+
+
 * homework:
 ** command line options for various constants
 *** UCT exploration
 *** rave weight
 *** heuristic / center heuristic
+*** heuristic player
+*** random player
 
 * kgs support
 ** time management
@@ -23,12 +32,8 @@
 
 ** sample playouts
 
-** bring back gogui visualization
-
-
----------------------------
-
 ** systematic testing of game logic like isSuicide
+
 
 * tune updateGameState speed
 ** adjacentStuff is called very often

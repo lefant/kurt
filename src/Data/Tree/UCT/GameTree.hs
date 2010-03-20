@@ -1,6 +1,6 @@
-{-# OPTIONS -O2 -Wall -Werror -Wwarn -XFlexibleInstances #-}
+{-# OPTIONS -O2 -Wall -Werror -Wwarn #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
-{-# LANGUAGE BangPatterns #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 {- |
    Module     : Data.Tree.UCT

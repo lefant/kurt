@@ -71,7 +71,7 @@ showGameState :: GameState s -> ST s String
 showGameState state = do
   gobanStr <- showGoban $ goban state
   chainGobanStr <- showChainIdGoban $ chainGoban state
-  return $ (unlines $ zipWith (++) (lines gobanStr) $ [
+  return $ unlines (zipWith (++) (lines gobanStr) $ [
                        ""
                       ,""
                       ,""
@@ -108,14 +108,14 @@ newGameState n initKomi = do
                    -- , whitePrisoners = 0
                    }
   where
-    initFreeVertices = S.fromList $ [0 .. (maxIntIndex n)] \\ (borderVertices n)
+    initFreeVertices = S.fromList $ [0 .. (maxIntIndex n)] \\ borderVertices n
 
 
 
 
 nextMoves :: GameState s -> Color -> ST s [Move]
 nextMoves state color = do
-  freeStones <- return $ map (((flip Stone) color)) $ freeVertices state
+  let freeStones = map (flip Stone color) $ freeVertices state
   sanes <- filterM (isSaneMove state) freeStones
   return $ map Move sanes
 
@@ -146,7 +146,7 @@ getLeafGameState state moves = do
   fcg :: ChainIdGobanFrozen <- (freeze $ chainGoban state)
   -- fcg :: (Array Vertex Int) <- (freeze $ chainGoban state)
   cg' <- thaw fcg
-  state' <- return $ state { goban = g', chainGoban = cg' }
+  let state' = state { goban = g', chainGoban = cg' }
   foldM updateGameState state' moves
 
 
@@ -156,12 +156,12 @@ updateGameState state move =
     case move of
       Pass _color ->
           return $ state {
-                       moveHistory = (moveHistory state) ++ [move]
+                       moveHistory = moveHistory state ++ [move]
                      , koBlocked = Nothing
                      }
       Resign _color ->
           return $ state {
-                       moveHistory = (moveHistory state) ++ [move]
+                       moveHistory = moveHistory state ++ [move]
                      , koBlocked = Nothing
                      }
       Move stone@(Stone p c) ->
@@ -172,19 +172,19 @@ updateGameState state move =
             addStone g stone
             deleteStones g dead
 
-            state' <- return $ state {
+            let state' = state {
                         goban = g
                       , chainGoban = cg
                       , chains = chains'
-                      , moveHistory = (moveHistory state) ++ [move]
+                      , moveHistory = moveHistory state ++ [move]
                       , blackStones =
-                          (if c == Black
-                           then (blackStones state) + 1
-                           else (blackStones state) - (length dead))
+                          if c == Black
+                          then blackStones state + 1
+                          else blackStones state - length dead
                       , whiteStones =
-                          (if c == White
-                           then (whiteStones state) + 1
-                           else (whiteStones state) - (length dead))
+                          if c == White
+                          then whiteStones state + 1
+                          else whiteStones state - length dead
                       , koBlocked =
                           case dead of
                             [Stone k _] -> Just k
@@ -195,33 +195,33 @@ updateGameState state move =
             -- str <- showGameState state'
             -- trace ("updateGameState" ++ str) $ return ()
 
-            return $ state'
+            return state'
     where
       g = goban state
       cg = chainGoban state
 
       freeVerticesSet' p dead =
-          S.union
-               (S.fromList $
-                 map ((vertexToInt (boardsize state)) . stoneVertex) dead)
-               (S.delete
-                     (vertexToInt (boardsize state) p)
-                     (freeVerticesSet state))
+          S.fromList
+               (map (vertexToInt (boardsize state) . stoneVertex) dead)
+          `S.union`
+          S.delete
+               (vertexToInt (boardsize state) p)
+               (freeVerticesSet state)
 
 
 scoreGameState :: GameState s -> ST s Score
 scoreGameState state = do
-  empties <- return $ emptyStrings state
+  let empties = emptyStrings state
   colorTs <- mapM (colorTerritories (goban state)) empties
-  blackTerritory <- return $ countTerritory Black colorTs
-  whiteTerritory <- return $ countTerritory White colorTs
-  b <- return $ fromIntegral $ (blackStones state) + blackTerritory
-  w <- return $ fromIntegral $ (whiteStones state) + whiteTerritory
+  let blackTerritory = countTerritory Black colorTs
+  let whiteTerritory = countTerritory White colorTs
+  let b = fromIntegral $ blackStones state + blackTerritory
+  let w = fromIntegral $ whiteStones state + whiteTerritory
   -- trace ("scoreGameState empties " ++ show empties) $ return ()
   -- trace ("scoreGameState colorTs " ++ show colorTs) $ return ()
   -- trace ("scoreGameState stones " ++ show (blackStones state, whiteStones state)) $ return ()
   -- trace ("scoreGameState " ++ show ((blackTerritory, b), (whiteTerritory, w))) $ return ()
-  return $ b - w - (komi state)
+  return $ b - w - komi state
 
   where
     countTerritory color ts =
@@ -237,7 +237,7 @@ emptyStrings state =
       emptyStrings' frees xs 
           | S.null frees = xs
           | otherwise =
-              emptyStrings' frees'' ((S.toList iMax) : xs)
+              emptyStrings' frees'' (S.toList iMax : xs)
           where
             frees'' = frees' `S.difference` iMax
             iMax = maxIntSet myAdjacentVertices isFree i
@@ -292,7 +292,7 @@ makeStonesAndLibertyHeuristic state = do
         result
         where
           -- must be between 0 and 1
-          result = ((0.5 + h), 1)
+          result = (0.5 + h, 1)
 
           -- must be between -0.5 and 0.5
           h :: Value
@@ -311,12 +311,12 @@ makeStonesAndLibertyHeuristic state = do
 
           -- must be between -0.5 and 0.5
           stoneH :: Value
-          stoneH = (fromIntegral $ signum stoneDiff) * (sqrt $ fromIntegral $ abs $ stoneDiff) / fromIntegral (n * 2)
+          stoneH = fromIntegral (signum stoneDiff) * sqrt (fromIntegral $ abs stoneDiff) / fromIntegral (n * 2)
           stoneDiff = ourSc - otherSc
 
           -- must be between -0.5 and 0.5
           libertyMinH :: Value
-          libertyMinH = ((sqrtMin ourLMin) - (sqrtMin otherLMin)) / 2
+          libertyMinH = (sqrtMin ourLMin - sqrtMin otherLMin) / 2
           sqrtMin m = sqrt $ fromIntegral $ min m 4
 
           -- must be between -0.5 and 0.5

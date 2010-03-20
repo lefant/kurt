@@ -1,4 +1,5 @@
-{-# OPTIONS -O2 -Wall -Werror -Wwarn -XFlexibleInstances #-}
+{-# OPTIONS -O2 -Wall -Werror -Wwarn #-}
+{-# LANGUAGE FlexibleInstances #-}
 
 {- |
    Module     : Data.Tree.UCT
@@ -26,7 +27,7 @@ module Data.Tree.UCT ( selectLeafPath
                      ) where
 
 
-import Data.Maybe (fromJust)
+import Data.Maybe (fromMaybe, fromJust)
 import Data.List (unfoldr, maximumBy, foldl')
 import qualified Data.Map as M
 import Data.Ord (comparing)
@@ -39,7 +40,7 @@ import Data.Tree.UCT.GameTree
 
 
 exploratoryC :: Value
-exploratoryC = 0.1
+exploratoryC = 0.4
 
 raveWeight :: Value
 raveWeight = 20
@@ -77,7 +78,7 @@ selectLeaf policy initLoc =
       selectNode loc =
           if hasChildren loc
           then
-              selectNode $ fromJust $ findChild ((==) selectedTree) loc
+              selectNode $ fromJust $ findChild (selectedTree ==) loc
           else
               loc
           where
@@ -86,7 +87,7 @@ selectLeaf policy initLoc =
 policyUCB1 :: UCTMove a => UCTPolicy a
 policyUCB1 node =
     maximumBy
-    (comparing ((ucb1 parentVisits) . rootLabel))
+    (comparing (ucb1 parentVisits . rootLabel))
     $ subForest node
     where
       parentVisits = nodeVisits $ rootLabel node
@@ -104,19 +105,26 @@ ucb1 parentVisits node =
 
       ucb1part =
           exploratoryC
-             * (sqrt
-                ((log (fromIntegral parentVisits))
-                 / ((fromIntegral (nodeVisits node) + 1))))
+             * sqrt
+                   (log (fromIntegral parentVisits)
+                    / (fromIntegral (nodeVisits node) + 1))
 
-policyMaxRobust :: UCTMove a => UCTPolicy a
-policyMaxRobust node =
+policyMaxUCTValue :: UCTMove a => UCTPolicy a
+policyMaxUCTValue node =
     maximumBy
-    (comparing (nodeVisits . rootLabel))
+    (comparing (nodeValue . rootLabel))
     $ subForest node
+
+-- policyMaxRobust :: UCTMove a => UCTPolicy a
+-- policyMaxRobust node =
+--     maximumBy
+--     (comparing (nodeVisits . rootLabel))
+--     $ subForest node
 
 principalVariation :: (UCTMove a) => UCTTreeLoc a -> [MoveNode a]
 principalVariation loc =
-    pathToLeaf $ selectLeaf policyMaxRobust loc
+    pathToLeaf $ selectLeaf policyMaxUCTValue loc
+    -- pathToLeaf $ selectLeaf policyMaxRobust loc
 
 
 policyRaveUCB1 :: (UCTMove a, Ord a) => RaveMap a -> UCTPolicy a
@@ -132,9 +140,7 @@ policyRaveUCB1 (RaveMap m) parentNode =
                    / (intSum + intSum / raveWeight)
             intSum = fromIntegral $ raveCount + uctCount
 
-            (raveVal, raveCount) = case M.lookup move m of
-                                     Just p -> p
-                                     Nothing -> (0.5, 0)
+            (raveVal, raveCount) = fromMaybe (0.5, 0) (M.lookup move m)
             uctVal = ucb1 parentVisits node
             uctCount = nodeVisits node
             move = nodeMove node
@@ -145,7 +151,7 @@ policyRaveUCB1 (RaveMap m) parentNode =
 
 
 -- computes list of moves needed to reach the passed leaf loc from the root
-pathToLeaf :: UCTMove a => UCTTreeLoc a -> [(MoveNode a)]
+pathToLeaf :: UCTMove a => UCTTreeLoc a -> [MoveNode a]
 pathToLeaf initLoc =
     -- trace ("pathToLeaf " ++ show path)
     path
@@ -175,8 +181,8 @@ expandNode loc h children =
           where
             n = node { subForest = subForestFromMoves children }
 
-      subForestFromMoves moves =
-          map (\m -> newMoveNode m (h m)) moves
+      subForestFromMoves =
+          map (\m -> newMoveNode m (h m))
 
 constantHeuristic :: UCTMove a => UCTHeuristic a
 constantHeuristic _move = (0.5, 1)
@@ -208,7 +214,7 @@ updateNodeValue value node =
           node { nodeVisits = newVisits
                , nodeValue = newValue
                }
-      newValue = ((oldValue * (fromIntegral oldVisits)) + value)
+      newValue = ((oldValue * fromIntegral oldVisits) + value)
                        / fromIntegral newVisits
       oldValue = nodeValue node
       newVisits = succ oldVisits
@@ -229,7 +235,7 @@ backpropagate evaluator loc =
           backpropagate evaluator parentLoc
     where
       loc' = modifyLabel (updateNodeValue value) loc
-      value = evaluator (nodeMove $ rootLabel $ tree $ loc)
+      value = evaluator (nodeMove $ rootLabel $ tree loc)
 
 
 updateRaveMap :: (UCTMove a, Ord a) => RaveMap a -> UCTEvaluator a -> [a] -> RaveMap a
@@ -243,7 +249,7 @@ updateRaveMap initMap evaluator moves =
                 RaveMap $ M.insert move (newValue, newVisits) m
                 where
                   newValue =
-                      ((oldValue * (fromIntegral oldVisits)) + value)
+                      ((oldValue * fromIntegral oldVisits) + value)
                       / fromIntegral newVisits
                   newVisits = succ oldVisits
             Nothing ->
