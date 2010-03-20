@@ -109,22 +109,22 @@ ucb1 parentVisits node =
                    (log (fromIntegral parentVisits)
                     / (fromIntegral (nodeVisits node) + 1))
 
-policyMaxUCTValue :: UCTMove a => UCTPolicy a
-policyMaxUCTValue node =
-    maximumBy
-    (comparing (nodeValue . rootLabel))
-    $ subForest node
-
--- policyMaxRobust :: UCTMove a => UCTPolicy a
--- policyMaxRobust node =
+-- policyMaxUCTValue :: UCTMove a => UCTPolicy a
+-- policyMaxUCTValue node =
 --     maximumBy
---     (comparing (nodeVisits . rootLabel))
+--     (comparing (nodeValue . rootLabel))
 --     $ subForest node
+
+policyMaxRobust :: UCTMove a => UCTPolicy a
+policyMaxRobust node =
+    maximumBy
+    (comparing (nodeVisits . rootLabel))
+    $ subForest node
 
 principalVariation :: (UCTMove a) => UCTTreeLoc a -> [MoveNode a]
 principalVariation loc =
-    pathToLeaf $ selectLeaf policyMaxUCTValue loc
-    -- pathToLeaf $ selectLeaf policyMaxRobust loc
+    -- pathToLeaf $ selectLeaf policyMaxUCTValue loc
+    pathToLeaf $ selectLeaf policyMaxRobust loc
 
 
 policyRaveUCB1 :: (UCTMove a, Ord a) => RaveMap a -> UCTPolicy a
