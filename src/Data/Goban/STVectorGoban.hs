@@ -57,12 +57,12 @@ data STGoban s = STGoban !Boardsize (VM.STVector s Word)
 
 showGoban :: STGoban s -> ST s String
 showGoban g@(STGoban n _v) = do
-  vertexStates <- mapM (intReadGoban g) $ [0 .. (maxIntIndex n)] \\ (borderVertices n)
-  return $ (++) "\n\n" $ unlines $ reverse $ (xLegend : (show' (1 :: Int) vertexStates))
+  vertexStates <- mapM (intReadGoban g) $ [0 .. (maxIntIndex n)] \\ borderVertices n
+  return $ (++) "\n\n" $ unlines $ reverse (xLegend : show' (1 :: Int) vertexStates)
     where
       show' _ [] = [xLegend]
       show' ln ls' = (ln' ++ concatMap ((" " ++) . show) left ++ ln')
-                     : (show' (ln + 1) right)
+                     : show' (ln + 1) right
           where
             (left, right) = splitAt n ls'
             ln' = printf "  %2d " ln
@@ -88,8 +88,8 @@ addStone g (Stone vertex color) =
     writeGoban g vertex (Colored color)
 
 deleteStones :: STGoban s -> [Stone] -> ST s ()
-deleteStones g stones =
-    mapM_ (\p -> writeGoban g p Empty) $ map stoneVertex stones
+deleteStones g =
+    mapM_ ((\p -> writeGoban g p Empty) . stoneVertex)
 
 vertexToStone :: STGoban s -> Vertex -> ST s (Maybe Stone)
 vertexToStone g vertex = do
@@ -114,11 +114,12 @@ writeGoban (STGoban n v) vertex state =
 
 readGoban :: STGoban s -> Vertex -> ST s VertexState
 readGoban (STGoban n v) vertex =
-    VM.read v (vertexToInt n vertex) >>= (return . wordToState)
+    fmap wordToState (VM.read v (vertexToInt n vertex))
+
 
 intReadGoban :: STGoban s -> Int -> ST s VertexState
 intReadGoban (STGoban _n v) i =
-    VM.read v i >>= (return . wordToState)
+    fmap wordToState (VM.read v i)
 
 
 gobanSize :: STGoban s -> ST s Boardsize
@@ -143,7 +144,7 @@ stateToWord Border = 3
 
 wordToState :: Word -> VertexState
 wordToState n =
-    case (fromIntegral n) :: Int of
+    case fromIntegral n :: Int of
       0 -> Empty
       1 -> Colored Black
       2 -> Colored White
@@ -170,15 +171,15 @@ isPotentialFullEye g (Stone p color) = do
   (if all isSameColorOrBorder as
    then do
      ds <- mapM (readGoban g) $ diagonalVertices p
-     opponentDiagonalCount <- return $ length $ filter isOtherColor ds
-     borderDiagonalCount <- return $ length $ filter isBorder ds
-     return $ ((opponentDiagonalCount == 0)
-               || ((opponentDiagonalCount == 1)
-                   && (borderDiagonalCount == 0)))
+     let opponentDiagonalCount = length $ filter isOtherColor ds
+     let borderDiagonalCount = length $ filter isBorder ds
+     return ((opponentDiagonalCount == 0)
+             || ((opponentDiagonalCount == 1)
+                 && (borderDiagonalCount == 0)))
    else return False)
 
    where
-     isSameColorOrBorder c = c == Border || c == Colored color
+     isSameColorOrBorder c = c `elem` [Border, Colored color]
      isBorder c = c == Border
      isOtherColor c = c == Colored (otherColor color)
 
@@ -303,18 +304,18 @@ intAdjacentStones g@(STGoban n _v) p =
 
 verticesToStones :: STGoban s -> [Vertex] -> ST s [Stone]
 verticesToStones g ps =
-    mapM (vertexToStone g) ps >>= (return . catMaybes)
+    fmap catMaybes (mapM (vertexToStone g) ps)
 
 intVerticesToStones :: STGoban s -> [Int] -> ST s [Stone]
 intVerticesToStones g ps =
-    mapM (intVertexToStone g) ps >>= (return . catMaybes)
+    fmap catMaybes (mapM (intVertexToStone g) ps)
   
 
 adjacentFree :: STGoban s -> Vertex -> ST s [Vertex]
-adjacentFree g initP = do
-  filterM isFree $ adjacentVertices initP
-  where
-    isFree p = readGoban g p >>= (return . ((==) Empty))
+adjacentFree g initP =
+    filterM isFree $ adjacentVertices initP
+    where
+      isFree p = fmap (Empty ==) (readGoban g p)
 
 
 
@@ -323,14 +324,16 @@ adjacentFree g initP = do
 
 
 allStones :: STGoban s -> ST s [Vertex]
-allStones g@(STGoban n _v) = do
-  mapM (intVertexToStone g) ([0 .. (maxIntIndex n)] \\ (borderVertices n)) >>= (return . (map stoneVertex) . catMaybes)
+allStones g@(STGoban n _v) =
+    fmap (map stoneVertex . catMaybes)
+             (mapM (intVertexToStone g)
+              ([0 .. maxIntIndex n] \\ borderVertices n))
 
 
 allLibertiesColorCount :: STGoban s -> Color -> ST s Int
 allLibertiesColorCount g@(STGoban n _v) color = do
-  stones <- mapM (intVertexToStone g) ([0 .. (maxIntIndex n)] \\ (borderVertices n))
-  liberties <- mapM (adjacentFree g) $ map stoneVertex $ filter sameColor $ catMaybes stones
+  stones <- mapM (intVertexToStone g) ([0 .. maxIntIndex n] \\ borderVertices n)
+  liberties <- mapM (adjacentFree g . stoneVertex) $ filter sameColor $ catMaybes stones
   return $ length $ concat liberties
 
     where
@@ -339,7 +342,7 @@ allLibertiesColorCount g@(STGoban n _v) color = do
 
 
 
-colorTerritories :: STGoban s -> [Int] -> ST s ([(Color, [Int])])
+colorTerritories :: STGoban s -> [Int] -> ST s [(Color, [Int])]
 colorTerritories g t = do
   maybeColor <- intAllAdjacentStonesSameColor g t
   return $ case maybeColor of

@@ -37,13 +37,12 @@ import Data.Goban.Utils (winningScore, rateScore)
 import Data.Goban.GameState (GameState(..), newGameState, scoreGameState, updateGameState, getLeafGameState, makeStonesAndLibertyHeuristic, nextMoveColor, nextMoves, isSaneMove, freeVertices)
 
 
-import Data.Tree.UCT.GameTree (UCTTreeLoc, RaveMap, newRaveMap, newMoveNode)
+import Data.Tree.UCT.GameTree (MoveNode(..), UCTTreeLoc, RaveMap, newRaveMap, newMoveNode)
 import Data.Tree.UCT
 
 import Debug.TraceOrId (trace)
 import Data.Tree (rootLabel)
 import Data.Tree.Zipper (tree, fromTree)
-import Data.Tree.UCT.GameTree (MoveNode(..))
 -- import Data.Tree (drawTree)
 -- import Data.Tree.Zipper (tree)
 -- import Data.Goban.STVector (showGoban)
@@ -68,7 +67,7 @@ newEngineState = do
   gs <- newGameState defaultBoardSize defaultKomi
   -- boardStr <- showGoban $ goban gs
   -- trace ("newEngineState" ++ boardStr) $ return ()
-  return $ EngineState {
+  return EngineState {
                    getGameState = gs
                  , boardSize = defaultBoardSize
                  , getKomi = defaultKomi
@@ -105,17 +104,17 @@ initUCT eState color = do
   seed <- withSystemRandom save
   rGen <- stToIO $ restore seed
 
-  initLoc <- return $ fromTree $ newMoveNode (trace "something weird is accessing the move at the root UCT tree" (Move (Stone (25,25) Black))) (0.5, 1)
+  let initLoc = fromTree $ newMoveNode (trace "something weird is accessing the move at the root UCT tree" (Move (Stone (25,25) Black))) (0.5, 1)
 
   slHeu <- stToIO $ makeStonesAndLibertyHeuristic gState
   moves <- stToIO $ nextMoves gState color
 
-  initLoc' <- return $ expandNode initLoc slHeu moves
+  let initLoc' = expandNode initLoc slHeu moves
 
-  uctLoop initLoc' gState initRaveMap rGen $ UTCTime { utctDay = (utctDay now)
-                                                     , utctDayTime =
-                                                         thinkPicosecs
-                                                         + (utctDayTime now) }
+  uctLoop initLoc' gState initRaveMap rGen UTCTime { utctDay = utctDay now
+                                                   , utctDayTime =
+                                                       thinkPicosecs
+                                                       + utctDayTime now }
     where
       gState = getGameState eState
       thinkPicosecs =
@@ -127,21 +126,21 @@ uctLoop :: UCTTreeLoc Move -> GameState RealWorld -> RaveMap Move -> Gen RealWor
 uctLoop !loc rootGameState raveMap rGen deadline = do
   -- done <- return $ trace ("uctLoop debug tree\n\n\n" ++
   --       (drawTree $ fmap show $ tree loc)) False
-  done <- return False
+  let done = False
   (loc', path) <- return $ selectLeafPath (policyRaveUCB1 raveMap) loc
   leafGameState <- stToIO $ getLeafGameState rootGameState path
   -- rGen <- trace ("uctLoop leafGameState \n" ++ (showGoban (goban $ leafGameState))) $ newStdGen
   slHeu <- stToIO $ makeStonesAndLibertyHeuristic leafGameState
   moves <- stToIO $ nextMoves leafGameState $ nextMoveColor leafGameState
-  loc'' <- return $ expandNode loc' slHeu moves
+  let loc'' = expandNode loc' slHeu moves
   -- loc'' <- return $ expandNode loc' constantHeuristic moves
   (score, playedMoves) <- stToIO $ runOneRandom leafGameState rGen
-  raveMap' <- return $ updateRaveMap raveMap (rateScore score) $ drop ((length playedMoves) `div` 3) playedMoves
+  let raveMap' = updateRaveMap raveMap (rateScore score) $ drop (length playedMoves `div` 3) playedMoves
   -- loc'' <- return $ expandNode loc' (centerHeuristic (boardsize rootGameState)) moves
-  loc''' <- return $ backpropagate (rateScore score) loc''
+  let loc''' = backpropagate (rateScore score) loc''
   now <- getCurrentTime
-  timeIsUp <- return $ (now > deadline)
-  (if (done || timeIsUp)
+  let timeIsUp = (now > deadline)
+  (if done || timeIsUp
    then do
      rootScore <- stToIO $ scoreGameState rootGameState
      return $ bestMoveFromLoc loc''' rootGameState rootScore
@@ -215,14 +214,14 @@ genMoveRand state rGen =
       pickSane [] =
            return $ Pass color
       pickSane [p] = do
-        stone <- return $ Stone p color
+        let stone = Stone p color
         sane <- isSaneMove state stone
-        return $ (if sane
-                  then Move stone
-                  else Pass color)
+        return (if sane
+                then Move stone
+                else Pass color)
       pickSane ps = do
         p <- pick ps rGen
-        stone <- return $ Stone p color
+        let stone = Stone p color
         sane <- isSaneMove state stone
         (if sane
          then return $ Move stone
@@ -232,7 +231,7 @@ genMoveRand state rGen =
 
 pick :: [Vertex] -> Gen s -> ST s Vertex
 pick as rGen = do
-  i <- liftM (`mod` ((length as) - 1)) $ uniform rGen
+  i <- liftM (`mod` (length as - 1)) $ uniform rGen
   -- i <- getRandomR (0, ((length as) - 1))
   return $ as !! i
 

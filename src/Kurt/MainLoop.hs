@@ -40,10 +40,10 @@ import Debug.TraceOrId (trace)
 type CommandHandler s = [Argument] -> EngineState s -> IO (Either String (String, EngineState s))
 
 lookupC :: String -> [(String, CommandHandler RealWorld)] -> Maybe (String, CommandHandler RealWorld)
-lookupC cmd cl = find (\(x, _) -> x == cmd) cl
+lookupC cmd = find (\(x, _) -> x == cmd)
 
 
-commandargparserlist :: [([Char], Text.Parsec.String.Parser [Argument])]
+commandargparserlist :: [(String, Text.Parsec.String.Parser [Argument])]
 commandargparserlist =
     [
      ("boardsize", intArgParser)
@@ -97,25 +97,24 @@ startLoop =
     do
       hSetBuffering stdin LineBuffering
       hSetBuffering stdout LineBuffering
-      (stToIO $ newEngineState) >>= loop
+      stToIO newEngineState >>= loop
 
 loop :: EngineState RealWorld -> IO ()
 loop oldState =
     do
       input <- getLine
-      parseResult <- return $ pureParseCommand input commandargparserlist
+      let parseResult = pureParseCommand input commandargparserlist
       case parseResult of
         Left err ->
             do
-              putStrLn $ "? Couldn't parse command: " ++ (show err)
+              putStrLn $ "? Couldn't parse command: " ++ show err
               putStrLn ""
               loop oldState
         Right (maybeId, Command cmd args) ->
-            do
               case lookupC cmd commandHandlers of
                 Nothing ->
                     do
-                      putStrLn $ "?" ++ (outputIdOrBlank maybeId) ++ "Unrecognized command " ++ cmd
+                      putStrLn $ "?" ++ outputIdOrBlank maybeId ++ "Unrecognized command " ++ cmd
                       newLineFlush
                       loop oldState
                 Just (_, handler) ->
@@ -124,28 +123,27 @@ loop oldState =
                       case result of
                         Left err ->
                             do
-                              putStrLn $ "?" ++ (outputIdOrBlank maybeId) ++ " error: " ++ err
+                              putStrLn $ "?" ++ outputIdOrBlank maybeId ++ " error: " ++ err
                               newLineFlush
                               loop oldState
                         Right (msg, newState) ->
                             do
-                              putStrLn $ "=" ++ (outputIdOrBlank maybeId) ++ msg
+                              putStrLn $ "=" ++ outputIdOrBlank maybeId ++ msg
                               newLineFlush
                               loop newState
 
 newLineFlush :: IO ()
 newLineFlush =
-    do
-      putStrLn ""
+    putStrLn ""
 
 
 outputIdOrBlank :: Maybe Id -> String
 outputIdOrBlank Nothing = " "
-outputIdOrBlank (Just lineId) = (show lineId) ++ " "
+outputIdOrBlank (Just lineId) = show lineId ++ " "
 
 
 cmd_known_command :: CommandHandler RealWorld
-cmd_known_command [(StringArgument cmd)] state =
+cmd_known_command [StringArgument cmd] state =
     return $ case lookupC cmd commandHandlers of
       Nothing -> Right ("false", state)
       Just (_, _) -> Right ("true", state)
@@ -153,7 +151,7 @@ cmd_known_command _ _ = error "cmd_known_command called with illegal argument ty
 
 cmd_list_commands :: CommandHandler RealWorld
 cmd_list_commands _ state =
-    return $ Right ((reverse $ drop 1 $ reverse $ unlines $ map fst commandHandlers), state)
+    return $ Right (reverse $ drop 1 $ reverse $ unlines $ map fst commandHandlers, state)
 
 cmd_name :: CommandHandler RealWorld
 cmd_name _ state =
@@ -179,7 +177,7 @@ cmd_clear_board [] state = do
 cmd_clear_board _ _ = error "cmd_clear_board called with illegal argument type"
 
 cmd_komi :: CommandHandler RealWorld
-cmd_komi [(FloatArgument f)] state =
+cmd_komi [FloatArgument f] state =
     return $ Right ("",
                     state {
                       getKomi = f
@@ -189,7 +187,7 @@ cmd_komi [(FloatArgument f)] state =
 cmd_komi _ _ = error "cmd_komi called with illegal argument type"
 
 cmd_boardsize :: CommandHandler RealWorld
-cmd_boardsize [(IntArgument n)] state =
+cmd_boardsize [IntArgument n] state =
     return $ Right ("",
                     state {
                       getGameState =
@@ -204,7 +202,7 @@ cmd_showboard [] state = do
 cmd_showboard _ _ = error "cmd_showboard called with illegal argument type"
 
 cmd_play :: CommandHandler RealWorld
-cmd_play [(MoveArgument move)] state = do
+cmd_play [MoveArgument move] state = do
   gState' <- stToIO $ updateGameState (getGameState state) move
   str <- stToIO $ showGameState $ getGameState state
   trace ("cmd_play board: " ++ str) $ return ()
@@ -214,7 +212,7 @@ cmd_play [(MoveArgument move)] state = do
 cmd_play _ _ = error "cmd_play called with illegal argument type"
 
 cmd_genmove :: CommandHandler RealWorld
-cmd_genmove [(ColorArgument color)] state = do
+cmd_genmove [ColorArgument color] state = do
   move <- genMove state color
   gState' <- stToIO $ updateGameState (getGameState state) move
   str <- stToIO $ showGameState gState'
@@ -230,8 +228,8 @@ cmd_final_score [] state = do
   return $ Right (scoreString scoreFloat, state)
     where
       scoreString s
-          | s < 0 = "W+" ++ (show (-1 * s))
-          | s > 0 = "B+" ++ (show s)
+          | s < 0 = "W+" ++ show (-1 * s)
+          | s > 0 = "B+" ++ show s
           | otherwise = "0"
 cmd_final_score _ _ = error "cmd_final_score called with illegal argument type"
 
@@ -249,7 +247,7 @@ cmd_final_status_list _ _ = error "cmd_final_status_list called with illegal arg
 
 
 cmd_kurt_simuls :: CommandHandler RealWorld
-cmd_kurt_simuls [(IntArgument n)] state =
+cmd_kurt_simuls [IntArgument n] state =
     return $ Right ("", state { simulCount = n })
 cmd_kurt_simuls _ _ = error "cmd_kurt_simuls called with illegal argument type"
 
@@ -270,7 +268,7 @@ cmd_kurt_uct_debug _ _ = error "cmd_kurt_uct_debug called with illegal argument 
 
 
 cmd_time_left :: CommandHandler RealWorld
-cmd_time_left [(TimeLeftArgument (seconds, stones))] state =
+cmd_time_left [TimeLeftArgument (seconds, stones)] state =
     return
     $ Right ("", state { timePerMove = milliseconds } )
     where
@@ -278,6 +276,6 @@ cmd_time_left [(TimeLeftArgument (seconds, stones))] state =
           if stones == 0
           then (seconds * 900) `div` estMaxMoves
           else (seconds * 900) `div` stones
-      estMaxMoves = ((boardSize state) + 1) ^ (2 :: Int)
+      estMaxMoves = (boardSize state + 1) ^ (2 :: Int)
 cmd_time_left _ _ = error "cmd_time_left called with illegal argument type"
 
