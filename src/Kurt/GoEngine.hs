@@ -19,6 +19,7 @@ Move generator logic
 module Kurt.GoEngine ( genMove
                      , EngineState(..)
                      , newEngineState
+                     , heuristicWeights
                      ) where
 
 
@@ -74,6 +75,13 @@ newEngineState = do
                  , simulCount = 1000
                  , timePerMove = 10000 }
 
+heuristicWeights :: (Int, Int, Int, Int)
+heuristicWeights = ( 12  -- stoneWeight
+                   , 3   -- libertyMinWeight
+                   , 1   -- libertyAvgWeight
+                   , 1   -- centerWeight
+                   )
+
 
 
 
@@ -97,7 +105,7 @@ genMove eState color = do
        then return $ Pass color
        else return $ Resign color
    else (do
-          slHeu <- stToIO $ makeStonesAndLibertyHeuristic gState
+          slHeu <- stToIO $ makeStonesAndLibertyHeuristic gState heuristicWeights
 
           let loc' = expandNode loc slHeu moves
 
@@ -173,7 +181,7 @@ runUCT initLoc rootGameState initRaveMap rGen deadline maxRuns =
 
         leafGameState <- stToIO $ getLeafGameState rootGameState path
 
-        slHeu <- stToIO $ makeStonesAndLibertyHeuristic leafGameState
+        slHeu <- stToIO $ makeStonesAndLibertyHeuristic leafGameState heuristicWeights
 
         moves <- stToIO $ nextMoves leafGameState $ nextMoveColor leafGameState
 

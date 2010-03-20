@@ -279,8 +279,13 @@ centerHeuristic _ _ = error "centerHeuristic received non StoneMove arg"
 
 
 
-makeStonesAndLibertyHeuristic :: GameState s -> ST s (UCTHeuristic Move)
-makeStonesAndLibertyHeuristic state = do
+
+makeStonesAndLibertyHeuristic :: GameState s -> (Int, Int, Int, Int)
+                              -> ST s (UCTHeuristic Move)
+makeStonesAndLibertyHeuristic state ( stoneWeight
+                                    , libertyMinWeight
+                                    , libertyAvgWeight
+                                    , centerWeight ) = do
   fcg :: ChainIdGobanFrozen <- (freeze $ chainGoban state)
   return $ stonesAndLibertiesHeu fcg (chains state)
 
@@ -296,18 +301,14 @@ makeStonesAndLibertyHeuristic state = do
 
           -- must be between -0.5 and 0.5
           h :: Value
-          h = (stoneH * stoneWeight
-               + libertyMinH * libertyMinWeight
-               + libertyAvgH * libertyAvgWeight
-               + centerH * centerWeight)
-              / (stoneWeight
-                 + libertyMinWeight
-                 + libertyAvgWeight
-                 + centerWeight)
-          stoneWeight = 12
-          libertyMinWeight = 3
-          libertyAvgWeight = 1
-          centerWeight = 1
+          h = (stoneH * fromIntegral stoneWeight
+               + libertyMinH * fromIntegral libertyMinWeight
+               + libertyAvgH * fromIntegral libertyAvgWeight
+               + centerH * fromIntegral centerWeight)
+              / fromIntegral (stoneWeight
+                              + libertyMinWeight
+                              + libertyAvgWeight
+                              + centerWeight)
 
           -- must be between -0.5 and 0.5
           stoneH :: Value
