@@ -32,7 +32,7 @@ import Data.Goban.GameState (GameState(..), newGameState, showGameState, updateG
 import Data.Goban.Types (gtpShowMove, gtpShowVertex, Move(..), Stone(..), Color(..))
 import Data.Goban.STVectorGoban (allStones)
 
-import Kurt.GoEngine (EngineState(..), newEngineState, genMove, heuristicWeights)
+import Kurt.GoEngine (EngineState(..), newEngineState, genMove, debugUCT, heuristicWeights)
 
 
 -- import Debug.TraceOrId (trace)
@@ -63,8 +63,11 @@ commandargparserlist =
     ,("showboard", noArgumentParser)
     ,("time_left", timeleftArgParser)
     ,("version", noArgumentParser)
-    ,("kurt_simuls", intArgParser)
+
     ,("gogui-analyze_commands", noArgumentParser)
+
+    ,("kurt_configure", maybeKeyValueArgParser)
+
     ,("kurt_uct_tree", noArgumentParser)
     ,("kurt_ravemap", noArgumentParser)
     ,("kurt_heuristic_total", noArgumentParser)
@@ -94,15 +97,18 @@ commandHandlers =
     ,("showboard", cmd_showboard)
     ,("time_left", cmd_time_left)
     ,("version", cmd_version)
-    ,("kurt_simuls", cmd_kurt_simuls)
+
     ,("gogui-analyze_commands", cmd_gogui_analyze_commands)
+
+    ,("kurt_configure", cmd_kurt_configure)
+
     ,("kurt_heuristic_total", make_cmd_kurt_heuristic heuristicWeights)
     ,("kurt_heuristic_stone", make_cmd_kurt_heuristic (1,0,0,0))
     ,("kurt_heuristic_liberty_min", make_cmd_kurt_heuristic (0,1,0,0))
     ,("kurt_heuristic_liberty_avg", make_cmd_kurt_heuristic (0,0,1,0))
     ,("kurt_heuristic_center", make_cmd_kurt_heuristic (0,0,0,1))
-    -- ,("kurt_uct_tree", cmd_kurt_uct_tree)
-    -- ,("kurt_ravemap", cmd_kurt_ravemap)
+    ,("kurt_uct_tree", cmd_kurt_uct_tree)
+    ,("kurt_ravemap", cmd_kurt_ravemap)
     ]
 
 
@@ -257,7 +263,7 @@ cmd_final_status_list _ _ = error "cmd_final_status_list called with illegal arg
 
 
 cmd_time_left :: CommandHandler RealWorld
-cmd_time_left [TimeLeftArgument (seconds, stones)] state =
+cmd_time_left [TimeLeftArgument seconds stones] state =
     return
     $ Right ("", state { timePerMove = milliseconds } )
     where
@@ -277,7 +283,8 @@ cmd_time_left _ _ = error "cmd_time_left called with illegal argument type"
 cmd_gogui_analyze_commands :: CommandHandler RealWorld
 cmd_gogui_analyze_commands [] state =
     return $ Right (
-           "gfx/kurt_uct_tree/kurt_uct_tree\n"
+           "param/kurt_configure/kurt_configure\n"
+           ++ "gfx/kurt_uct_tree/kurt_uct_tree\n"
            ++ "gfx/kurt_ravemap/kurt_ravemap\n"
            ++ "gfx/kurt_heuristic_total/kurt_heuristic_total\n"
            ++ "gfx/kurt_heuristic_stone/kurt_heuristic_stone\n"
@@ -305,13 +312,38 @@ make_cmd_kurt_heuristic hWeights [] state = do
       gState = getGameState state
 make_cmd_kurt_heuristic _ _ _ = error "cmd_kurt_heuristic called with illegal argument type"
 
+cmd_kurt_uct_tree :: CommandHandler RealWorld
+cmd_kurt_uct_tree [] state = do
+  (_raves, ucts) <- debugUCT state color
+  let str = concatMap
+            (\(Move (Stone p _c), v)
+                 -> " " ++ gtpShowVertex p
+                    ++ printf " %.2f" ((v - 0.5) * 2 * flipSig))
+                    -- ++ printf " %.2f" (fst $ slHeu move))
+            ucts
+  return $ Right ("INFLUENCE" ++ str, state)
+    where
+      flipSig = if color == Black then 1 else -1
+      color = nextMoveColor $ getGameState state
 
--- cmd_kurt_uct_debug :: CommandHandler RealWorld
--- cmd_kurt_uct_debug [] state =
---     return $ Right ("uctDebug disabled", state)
---     -- where
---     --   gfxString = uctDebug state
--- cmd_kurt_uct_debug _ _ = error "cmd_kurt_uct_debug called with illegal argument type"
+cmd_kurt_uct_tree _ _ = error "cmd_kurt_heuristic called with illegal argument type"
+
+cmd_kurt_ravemap :: CommandHandler RealWorld
+cmd_kurt_ravemap [] state = do
+  (raves, _ucts) <- debugUCT state color
+  let str = concatMap
+            (\(Move (Stone p _c), v)
+                 -> " " ++ gtpShowVertex p
+                    ++ printf " %.2f" ((v - 0.5) * 2 * flipSig))
+                    -- ++ printf " %.2f" (fst $ slHeu move))
+            raves
+  return $ Right ("INFLUENCE" ++ str, state)
+    where
+      flipSig = if color == Black then 1 else -1
+      color = nextMoveColor $ getGameState state
+
+cmd_kurt_ravemap _ _ = error "cmd_kurt_heuristic called with illegal argument type"
+
 
 
 
@@ -319,8 +351,17 @@ make_cmd_kurt_heuristic _ _ _ = error "cmd_kurt_heuristic called with illegal ar
 -- purely kurt specific gtp extensions
 --------------------------------------
 
-cmd_kurt_simuls :: CommandHandler RealWorld
-cmd_kurt_simuls [IntArgument n] state =
-    return $ Right ("", state { simulCount = n })
-cmd_kurt_simuls _ _ = error "cmd_kurt_simuls called with illegal argument type"
-
+cmd_kurt_configure :: CommandHandler RealWorld
+cmd_kurt_configure [MaybeKeyValueArgument Nothing] state =
+    return $ Right (
+                    unlines $ [
+                     "maxruns " ++ show (maxRuns state)
+                    ,"maxtime " ++ show (timePerMove state)
+                    ]
+          , state)
+cmd_kurt_configure [MaybeKeyValueArgument (Just (str, n))] state =
+    return $ case str of
+               "maxruns" -> Right ("maxRuns set to " ++ show n, state { maxRuns = n })
+               "maxtime" -> Right ("timePerMove set to " ++ show n, state { timePerMove = n })
+               other -> Left ("unknown configuration key " ++ show other)
+cmd_kurt_configure _ _ = error "cmd_kurt_configure called with illegal argument type"

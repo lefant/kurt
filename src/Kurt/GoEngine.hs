@@ -17,12 +17,14 @@ Move generator logic
 -}
 
 module Kurt.GoEngine ( genMove
+                     , debugUCT
                      , EngineState(..)
                      , newEngineState
                      , heuristicWeights
                      ) where
 
 
+import Control.Arrow (second)
 import Control.Monad (liftM)
 import Control.Monad.ST (ST, RealWorld, stToIO)
 import System.Random.MWC (Gen, uniform, withSystemRandom, save, restore)
@@ -38,21 +40,19 @@ import Data.Goban.Utils (winningScore, rateScore)
 import Data.Goban.GameState (GameState(..), newGameState, scoreGameState, updateGameState, getLeafGameState, makeStonesAndLibertyHeuristic, nextMoveColor, nextMoves, isSaneMove, freeVertices)
 
 
-import Data.Tree.UCT.GameTree (MoveNode(..), UCTTreeLoc, RaveMap, newRaveMap, newMoveNode)
+import Data.Tree.UCT.GameTree (MoveNode(..), UCTTreeLoc, RaveMap(..), Value, newRaveMap, newMoveNode)
 import Data.Tree.UCT
 
 import Debug.TraceOrId (trace)
-import Data.Tree (rootLabel)
+import qualified Data.Map as M (assocs)
+import Data.Tree (rootLabel, subForest)
 import Data.Tree.Zipper (tree, fromTree)
--- import Data.Tree (drawTree)
--- import Data.Tree.Zipper (tree)
--- import Data.Goban.STVector (showGoban)
 
 data EngineState s = EngineState {
       getGameState    :: GameState s
     , boardSize       :: !Int
     , getKomi         :: !Score
-    , simulCount      :: !Int
+    , maxRuns         :: !Int
     , timePerMove     :: !Int
      -- maybe this could have colorToMove?
     }
@@ -72,7 +72,7 @@ newEngineState = do
                    getGameState = gs
                  , boardSize = defaultBoardSize
                  , getKomi = defaultKomi
-                 , simulCount = 1000
+                 , maxRuns = 100000
                  , timePerMove = 10000 }
 
 heuristicWeights :: (Int, Int, Int, Int)
@@ -112,7 +112,7 @@ genMove eState color = do
           seed <- withSystemRandom save
           rGen <- stToIO $ restore seed
 
-          loc'' <- runUCT loc' gState initRaveMap rGen deadline 100000
+          (loc'', _) <- runUCT loc' gState initRaveMap rGen deadline (maxRuns eState)
 
           return $ bestMoveFromLoc loc'' gState score))
 
@@ -127,6 +127,45 @@ genMove eState color = do
       thinkPicosecs =
           picosecondsToDiffTime
           $ fromIntegral (timePerMove eState) * 1000000000
+
+
+debugUCT :: EngineState RealWorld -> Color -> IO ([(Move, Value)], [(Move, Value)])
+debugUCT eState color = do
+  now <- getCurrentTime
+  let deadline = UTCTime { utctDay = utctDay now
+                         , utctDayTime = thinkPicosecs + utctDayTime now }
+
+  moves <- stToIO $ nextMoves gState color
+  (if null moves
+   then return ([], [])
+   else (do
+          slHeu <- stToIO $ makeStonesAndLibertyHeuristic gState heuristicWeights
+
+          let loc' = expandNode loc slHeu moves
+
+          seed <- withSystemRandom save
+          rGen <- stToIO $ restore seed
+
+          (loc'', RaveMap raveMap) <- runUCT loc' gState initRaveMap rGen deadline (maxRuns eState)
+
+          let raves = map (second fst) $ M.assocs raveMap
+          let ucts = map (\l -> (nodeMove l, nodeValue l))
+                     $ map rootLabel $ subForest $ tree loc''
+
+          return $ (raves, ucts)))
+
+
+    where
+      gState = getGameState eState
+      initRaveMap = newRaveMap
+      loc = fromTree $ newMoveNode
+                       (trace "UCT tree root move accessed"
+                                  (Move (Stone (25,25) Black)))
+                       (0.5, 1)
+      thinkPicosecs =
+          picosecondsToDiffTime
+          $ fromIntegral (timePerMove eState) * 1000000000
+
 
 
 
@@ -165,15 +204,15 @@ runUCT :: UCTTreeLoc Move
        -> Gen RealWorld
        -> UTCTime
        -> Int
-       -> IO (UCTTreeLoc Move)
-runUCT initLoc rootGameState initRaveMap rGen deadline maxRuns =
+       -> IO (UCTTreeLoc Move, RaveMap Move)
+runUCT initLoc rootGameState initRaveMap rGen deadline runs =
     uctLoop initLoc initRaveMap 0
 
     where
       uctLoop            :: UCTTreeLoc Move -> RaveMap Move -> Int
-                         -> IO (UCTTreeLoc Move)
+                         -> IO (UCTTreeLoc Move, RaveMap Move)
       uctLoop !loc !raveMap n
-          | n >= maxRuns = return loc
+          | n >= runs = return (loc, raveMap)
           | otherwise    = do
         let done = False
 
@@ -197,7 +236,7 @@ runUCT initLoc rootGameState initRaveMap rGen deadline maxRuns =
         now <- getCurrentTime
         let timeIsUp = (now > deadline)
         (if done || timeIsUp
-         then return loc'''
+         then return (loc''', raveMap')
          else uctLoop loc''' raveMap' (n + 1))
 
 

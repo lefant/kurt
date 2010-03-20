@@ -21,6 +21,7 @@ module Network.GoTextProtocol2.Server.Parser ( pureParseCommand
                                              , moveArgParser
                                              , timeleftArgParser
                                              , stringArgParser
+                                             , maybeKeyValueArgParser
                                              ) where
 
 import Text.ParserCombinators.Parsec
@@ -177,7 +178,7 @@ timeleftArgParser =
       space
       spaces
       stones <- parseInt
-      return [TimeLeftArgument (time, stones)]
+      return [TimeLeftArgument time stones]
 
 
 
@@ -218,3 +219,17 @@ intArgParser =
 
 parseInt :: Parser Int
 parseInt = liftM read $ many1 digit
+
+
+maybeKeyValueArgParser :: Parser [Argument]
+maybeKeyValueArgParser =
+    (do
+      space
+      spaces
+      str <- many1 (letter <|> char '-' <|> char '_')
+      space
+      spaces
+      n <- parseInt
+      return [MaybeKeyValueArgument $ Just ((map toLower str), n)])
+     <|> return [MaybeKeyValueArgument Nothing]
+

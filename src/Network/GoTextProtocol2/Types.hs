@@ -30,5 +30,6 @@ data Argument = IntArgument Int
               | MoveArgument Move
               | ColorArgument Color
               | FloatArgument Float
-              | TimeLeftArgument (Int, Int)
+              | TimeLeftArgument Int Int
+              | MaybeKeyValueArgument (Maybe (String, Int))
                 deriving (Show, Eq)
