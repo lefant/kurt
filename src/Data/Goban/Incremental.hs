@@ -110,13 +110,15 @@ isSuicide cg cm s@(Stone p _color) = do
 
 
 stonesAndLiberties :: ChainIdGobanFrozen -> ChainMap -> Stone
-                   -> (Int, Int, Int, Int, Value, Value)
+                   -> (Int, Int, Int, Value, Value)
 stonesAndLiberties cg cm s@(Stone p color) =
-    (ourSc, otherSc, ourLMin, otherLMin, ourLAvg, otherLAvg)
+    (captureC, ourLMin, otherLMin, ourLAvg, otherLAvg)
+    -- (ourSc, otherSc, ourLMin, otherLMin, ourLAvg, otherLAvg)
 
     where
-      ourSc = stoneCount allOurChains
-      otherSc = stoneCount allOtherChains
+      -- ourSc = stoneCount allOurChains
+      -- otherSc = stoneCount allOtherChains
+      captureC = length deadIds
       ourLMin = libertyMin allOurChains
       otherLMin = libertyMin allOtherChains
       ourLAvg = libertyAvg allOurChains
@@ -126,7 +128,7 @@ stonesAndLiberties cg cm s@(Stone p color) =
       (allOurChains, allOtherChains) =
           partition ((color ==) . chainColor) $ M.elems cm4
 
-      stoneCount = sum . map (S.size . chainVertices)
+      -- stoneCount = sum . map (S.size . chainVertices)
 
       libertyMin cs = minimum (4 : map (S.size . chainLiberties) cs)
 

@@ -283,7 +283,8 @@ centerHeuristic _ _ = error "centerHeuristic received non StoneMove arg"
 
 makeStonesAndLibertyHeuristic :: GameState s -> (Int, Int, Int, Int)
                               -> ST s (UCTHeuristic Move)
-makeStonesAndLibertyHeuristic state ( stoneWeight
+makeStonesAndLibertyHeuristic state ( captureWeight
+                                    -- , stoneWeight
                                     , libertyMinWeight
                                     , libertyAvgWeight
                                     , centerWeight ) = do
@@ -302,19 +303,23 @@ makeStonesAndLibertyHeuristic state ( stoneWeight
 
           -- must be between -0.5 and 0.5
           h :: Value
-          h = (stoneH * fromIntegral stoneWeight
+          h = (captureH * fromIntegral captureWeight
+               -- + stoneH * fromIntegral stoneWeight
                + libertyMinH * fromIntegral libertyMinWeight
                + libertyAvgH * fromIntegral libertyAvgWeight
                + centerH * fromIntegral centerWeight)
-              / fromIntegral (stoneWeight
+              / fromIntegral (captureWeight
+                              -- + stoneWeight
                               + libertyMinWeight
                               + libertyAvgWeight
                               + centerWeight)
 
           -- must be between -0.5 and 0.5
-          stoneH :: Value
-          stoneH = fromIntegral (signum stoneDiff) * sqrt (fromIntegral $ abs stoneDiff) / fromIntegral (n * 2)
-          stoneDiff = ourSc - otherSc
+          captureH :: Value
+          captureH = min 0.5 $ sqrt (fromIntegral captureC) / fromIntegral (n * 2)
+          -- stoneH :: Value
+          -- stoneH = fromIntegral (signum stoneDiff) * sqrt (fromIntegral $ abs stoneDiff) / fromIntegral (n * 2)
+          -- stoneDiff = ourSc - otherSc
 
           -- must be between -0.5 and 0.5
           libertyMinH :: Value
@@ -325,7 +330,7 @@ makeStonesAndLibertyHeuristic state ( stoneWeight
           libertyAvgH :: Value
           libertyAvgH = (ourLAvg - otherLAvg) / fromIntegral (n ^ (2 :: Int))
 
-          (ourSc, otherSc, ourLMin, otherLMin, ourLAvg, otherLAvg) =
+          (captureC, ourLMin, otherLMin, ourLAvg, otherLAvg) =
               stonesAndLiberties cg cm stone
 
 

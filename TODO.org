@@ -6,26 +6,22 @@
 ** cheap territory estimate - maybe bouzy?
 
 * tune heuristic
-** bring back gogui visualization
+** also include total liberty count
 
 ** analyze commands:
-
-*** heuristic influence map
-*** also for each heuristic component
-
-*** uct tree toplevel map of winrate / exploration count
-*** rave map of winrate / exploration count
 
 *** random playout variant
 
 
 ** config record
-** changeable via gtp extension
+*** basically there via EngineState
 ** changeable via command line options
 *** max uct iterations
 *** max time spent
 *** rave weight
 *** uct exploratory constant
+** changeable via gtp extension
+*** kurt_configure is there, just add more options
 
 ---------------------------
 
