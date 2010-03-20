@@ -71,21 +71,22 @@ showGameState :: GameState s -> ST s String
 showGameState state = do
   gobanStr <- showGoban $ goban state
   chainGobanStr <- showChainIdGoban $ chainGoban state
-  return $ unlines (zipWith (++) (lines gobanStr) $ [
+  score <- scoreGameState state
+  return $ chainGobanStr ++ "\n"
+             ++
+             (unlines (zipWith (++) (lines gobanStr) $ [
                        ""
-                      ,""
-                      ,""
                       ,"   blackStones: " ++ show (blackStones state)
                       ,"   whiteStones: " ++ show (whiteStones state)
                       ,"   komi: " ++ show (komi state)
-                      ,""
                       ,"   koBlocked: " ++ showKoBlocked (koBlocked state)
+                      ,"   score: " ++ show score
                       ] ++ repeat ""
           -- ++ " moveHistory: " ++ show (moveHistory state)
           -- ++ "\n"
           -- ++ "freeVerticesSet: " ++ show (freeVerticesSet state)
           -- ++ "\n"
-         ) ++ "\n" ++ chainGobanStr
+         ))
   where
     showKoBlocked (Just p) = gtpShowVertex p
     showKoBlocked Nothing = ""

@@ -29,13 +29,13 @@ import Text.Printf (printf)
 import Network.GoTextProtocol2.Server.Parser
 import Network.GoTextProtocol2.Types
 import Data.Goban.GameState (GameState(..), newGameState, showGameState, updateGameState, scoreGameState, makeStonesAndLibertyHeuristic, nextMoves, nextMoveColor)
-import Data.Goban.Types (gtpShowMove, gtpShowVertex, Move(..), Stone(..))
+import Data.Goban.Types (gtpShowMove, gtpShowVertex, Move(..), Stone(..), Color(..))
 import Data.Goban.STVectorGoban (allStones)
 
 import Kurt.GoEngine (EngineState(..), newEngineState, genMove, heuristicWeights)
 
 
-import Debug.TraceOrId (trace)
+-- import Debug.TraceOrId (trace)
 
 
 type CommandHandler s = [Argument] -> EngineState s -> IO (Either String (String, EngineState s))
@@ -67,10 +67,10 @@ commandargparserlist =
     ,("gogui-analyze_commands", noArgumentParser)
     ,("kurt_uct_tree", noArgumentParser)
     ,("kurt_ravemap", noArgumentParser)
-    ,("kurt_heuristic", noArgumentParser)
+    ,("kurt_heuristic_total", noArgumentParser)
     ,("kurt_heuristic_stone", noArgumentParser)
-    ,("kurt_heuristic_libertyMin", noArgumentParser)
-    ,("kurt_heuristic_libertyAvg", noArgumentParser)
+    ,("kurt_heuristic_liberty_min", noArgumentParser)
+    ,("kurt_heuristic_liberty_avg", noArgumentParser)
     ,("kurt_heuristic_center", noArgumentParser)
     ]
 
@@ -96,11 +96,11 @@ commandHandlers =
     ,("version", cmd_version)
     ,("kurt_simuls", cmd_kurt_simuls)
     ,("gogui-analyze_commands", cmd_gogui_analyze_commands)
-    ,("kurt_heuristic", cmd_kurt_heuristic)
-    -- ,("kurt_heuristic_stone", cmd_kurt_heuristic_stone)
-    -- ,("kurt_heuristic_libertyMin", cmd_kurt_heuristic_libertyMin)
-    -- ,("kurt_heuristic_libertyAvg", cmd_kurt_heuristic_libertyAvg)
-    -- ,("kurt_heuristic_center", cmd_kurt_heuristic_center)
+    ,("kurt_heuristic_total", make_cmd_kurt_heuristic heuristicWeights)
+    ,("kurt_heuristic_stone", make_cmd_kurt_heuristic (1,0,0,0))
+    ,("kurt_heuristic_liberty_min", make_cmd_kurt_heuristic (0,1,0,0))
+    ,("kurt_heuristic_liberty_avg", make_cmd_kurt_heuristic (0,0,1,0))
+    ,("kurt_heuristic_center", make_cmd_kurt_heuristic (0,0,0,1))
     -- ,("kurt_uct_tree", cmd_kurt_uct_tree)
     -- ,("kurt_ravemap", cmd_kurt_ravemap)
     ]
@@ -211,17 +211,15 @@ cmd_boardsize _ _ = error "cmd_boardsize called with illegal argument type"
 
 cmd_showboard :: CommandHandler RealWorld
 cmd_showboard [] state = do
-    str <- stToIO $ showGameState $ getGameState state
-    return $ Right ("showboard" ++ str, state)
+  str <- stToIO $ showGameState $ getGameState state
+  return $ Right ("showboard\n" ++ str, state)
 cmd_showboard _ _ = error "cmd_showboard called with illegal argument type"
 
 cmd_play :: CommandHandler RealWorld
 cmd_play [MoveArgument move] state = do
   gState' <- stToIO $ updateGameState (getGameState state) move
-  str <- stToIO $ showGameState $ getGameState state
-  trace ("cmd_play board: " ++ str) $ return ()
-  score <- stToIO $ scoreGameState gState'
-  trace ("cmd_play score: " ++ show score) $ return ()
+  -- str <- stToIO $ showGameState gState'
+  -- trace ("cmd_play board: " ++ str) $ return ()
   return $ Right ("", state { getGameState = gState' })
 cmd_play _ _ = error "cmd_play called with illegal argument type"
 
@@ -229,10 +227,8 @@ cmd_genmove :: CommandHandler RealWorld
 cmd_genmove [ColorArgument color] state = do
   move <- genMove state color
   gState' <- stToIO $ updateGameState (getGameState state) move
-  str <- stToIO $ showGameState gState'
-  trace ("cmd_genmove board:" ++ str) $ return ()
-  score <- stToIO $ scoreGameState gState'
-  trace ("cmd_genmove score: " ++ show score) $ return ()
+  -- str <- stToIO $ showGameState gState'
+  -- trace ("cmd_genmove board:" ++ str) $ return ()
   return $ Right (gtpShowMove move, state { getGameState = gState' })
 cmd_genmove _ _ = error "cmd_genmove called with illegal argument type"
 
@@ -283,30 +279,31 @@ cmd_gogui_analyze_commands [] state =
     return $ Right (
            "gfx/kurt_uct_tree/kurt_uct_tree\n"
            ++ "gfx/kurt_ravemap/kurt_ravemap\n"
-           ++ "gfx/kurt_heuristic/kurt_heuristic\n"
+           ++ "gfx/kurt_heuristic_total/kurt_heuristic_total\n"
            ++ "gfx/kurt_heuristic_stone/kurt_heuristic_stone\n"
-           ++ "gfx/kurt_heuristic_libertyMin/kurt_heuristic_libertyMin\n"
-           ++ "gfx/kurt_heuristic_libertyAvg/kurt_heuristic_libertyAvg\n"
+           ++ "gfx/kurt_heuristic_liberty_min/kurt_heuristic_liberty_min\n"
+           ++ "gfx/kurt_heuristic_liberty_avg/kurt_heuristic_liberty_avg\n"
            ++ "gfx/kurt_heuristic_center/kurt_heuristic_center"
           , state)
 cmd_gogui_analyze_commands _ _ = error "cmd_gogui_analyze_commands called with illegal argument type"
 
 
--- INFLUENCE a7 -1 b7 -0.75 c7 -0.5 d7 -0.25 e7 0 f7 0.25 g7 0.5 h7 0.75 j7 1
-cmd_kurt_heuristic :: CommandHandler RealWorld
-cmd_kurt_heuristic [] state = do
+make_cmd_kurt_heuristic :: (Int, Int, Int, Int) -> CommandHandler RealWorld
+make_cmd_kurt_heuristic hWeights [] state = do
   moves <- stToIO $ nextMoves gState color
-  slHeu <- stToIO $ makeStonesAndLibertyHeuristic gState heuristicWeights
+  slHeu <- stToIO $ makeStonesAndLibertyHeuristic gState hWeights
   let str = concatMap
             (\move@(Move (Stone p _c))
                  -> " " ++ gtpShowVertex p
-                    ++ printf " %.2f" (((fst $ slHeu move) - 0.5) * 2))
+                    ++ printf " %.2f" (((fst $ slHeu move) - 0.5) * 2 * flipSig))
+                    -- ++ printf " %.2f" (fst $ slHeu move))
             moves
   return $ Right ("INFLUENCE" ++ str, state)
     where
+      flipSig = if color == Black then 1 else -1
       color = nextMoveColor gState
       gState = getGameState state
-cmd_kurt_heuristic _ _ = error "cmd_kurt_uct_debug called with illegal argument type"
+make_cmd_kurt_heuristic _ _ _ = error "cmd_kurt_heuristic called with illegal argument type"
 
 
 -- cmd_kurt_uct_debug :: CommandHandler RealWorld

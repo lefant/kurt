@@ -41,7 +41,7 @@ import Control.Monad (filterM)
 import Control.Monad.ST (ST)
 import Data.Maybe (catMaybes)
 import Data.Word (Word)
-import Data.List ((\\))
+import Data.List ((\\), unfoldr)
 import qualified Data.Vector.Unboxed.Mutable as VM
 import Text.Printf (printf)
 
@@ -58,16 +58,34 @@ data STGoban s = STGoban !Boardsize (VM.STVector s Word)
 showGoban :: STGoban s -> ST s String
 showGoban g@(STGoban n _v) = do
   vertexStates <- mapM (intReadGoban g) $ [0 .. (maxIntIndex n)] \\ borderVertices n
-  return $ (++) "\n\n" $ unlines $ reverse (xLegend : show' (1 :: Int) vertexStates)
+  let ls = unfoldr nLines vertexStates
+  return $ board ls
     where
-      show' _ [] = [xLegend]
-      show' ln ls' = (ln' ++ concatMap ((" " ++) . show) left ++ ln')
-                     : show' (ln + 1) right
-          where
-            (left, right) = splitAt n ls'
-            ln' = printf "  %2d " ln
+      board ls =
+          unlines
+          $ reverse
+          ([xLegend]
+           ++ zipWith (++) ys
+              (zipWith (++) (map (concatMap ((" " ++) . show)) ls) ys)
+           ++ [xLegend])
 
-      xLegend = "     " ++ concatMap ((" " ++) . (: []) . xToLetter) [1 .. n]
+          where
+            ys = map (printf " %2d ") [1 .. n]
+            xLegend = "    " ++ concatMap ((" " ++) . (: []) . xToLetter) [1 .. n]
+      nLines xs = if null xs then Nothing else Just $ splitAt n xs
+
+
+  -- return $ (++) "\n\n" $ unlines $ reverse (xLegend : show' (1 :: Int) vertexStates)
+  --   where
+  --     show' _ [] = [xLegend]
+  --     show' ln ls' = (ln' ++ concatMap ((" " ++) . show) left ++ ln')
+  --                    : show' (ln + 1) right
+  --         where
+  --           (left, right) = splitAt n ls'
+  --           ln' = printf "  %2d " ln
+
+  --     xLegend = "     " ++ concatMap ((" " ++) . (: []) . xToLetter) [1 .. n]
+
 
 
 newGoban :: Boardsize -> ST s (STGoban s)
