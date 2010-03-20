@@ -80,6 +80,10 @@ newEngineState = do
 
 genMove :: EngineState RealWorld -> Color -> IO Move
 genMove eState color = do
+  now <- getCurrentTime
+  let deadline = UTCTime { utctDay = utctDay now
+                         , utctDayTime = thinkPicosecs + utctDayTime now }
+
   moves <- stToIO $ nextMoves gState color
   score <- stToIO $ scoreGameState gState
   -- boardStr <- stToIO $ showGoban $ goban gState
@@ -92,60 +96,29 @@ genMove eState color = do
        if winningScore color score
        then return $ Pass color
        else return $ Resign color
-   else
-       initUCT eState color)
+   else (do
+          slHeu <- stToIO $ makeStonesAndLibertyHeuristic gState
+
+          let loc' = expandNode loc slHeu moves
+
+          seed <- withSystemRandom save
+          rGen <- stToIO $ restore seed
+
+          loc'' <- runUCT loc' gState initRaveMap rGen deadline 100000
+
+          return $ bestMoveFromLoc loc'' gState score))
+
+
     where
       gState = getGameState eState
-
-initUCT :: EngineState RealWorld -> Color -> IO Move
-initUCT eState color = do
-  now <- getCurrentTime
-
-  seed <- withSystemRandom save
-  rGen <- stToIO $ restore seed
-
-  let initLoc = fromTree $ newMoveNode (trace "something weird is accessing the move at the root UCT tree" (Move (Stone (25,25) Black))) (0.5, 1)
-
-  slHeu <- stToIO $ makeStonesAndLibertyHeuristic gState
-  moves <- stToIO $ nextMoves gState color
-
-  let initLoc' = expandNode initLoc slHeu moves
-
-  uctLoop initLoc' gState initRaveMap rGen UTCTime { utctDay = utctDay now
-                                                   , utctDayTime =
-                                                       thinkPicosecs
-                                                       + utctDayTime now }
-    where
-      gState = getGameState eState
+      initRaveMap = newRaveMap
+      loc = fromTree $ newMoveNode
+                       (trace "UCT tree root move accessed"
+                                  (Move (Stone (25,25) Black)))
+                       (0.5, 1)
       thinkPicosecs =
           picosecondsToDiffTime
           $ fromIntegral (timePerMove eState) * 1000000000
-      initRaveMap = newRaveMap
-
-uctLoop :: UCTTreeLoc Move -> GameState RealWorld -> RaveMap Move -> Gen RealWorld -> UTCTime -> IO Move
-uctLoop !loc rootGameState raveMap rGen deadline = do
-  -- done <- return $ trace ("uctLoop debug tree\n\n\n" ++
-  --       (drawTree $ fmap show $ tree loc)) False
-  let done = False
-  (loc', path) <- return $ selectLeafPath (policyRaveUCB1 raveMap) loc
-  leafGameState <- stToIO $ getLeafGameState rootGameState path
-  -- rGen <- trace ("uctLoop leafGameState \n" ++ (showGoban (goban $ leafGameState))) $ newStdGen
-  slHeu <- stToIO $ makeStonesAndLibertyHeuristic leafGameState
-  moves <- stToIO $ nextMoves leafGameState $ nextMoveColor leafGameState
-  let loc'' = expandNode loc' slHeu moves
-  -- loc'' <- return $ expandNode loc' constantHeuristic moves
-  (score, playedMoves) <- stToIO $ runOneRandom leafGameState rGen
-  let raveMap' = updateRaveMap raveMap (rateScore score) $ drop (length playedMoves `div` 3) playedMoves
-  -- loc'' <- return $ expandNode loc' (centerHeuristic (boardsize rootGameState)) moves
-  let loc''' = backpropagate (rateScore score) loc''
-  now <- getCurrentTime
-  let timeIsUp = (now > deadline)
-  (if done || timeIsUp
-   then do
-     rootScore <- stToIO $ scoreGameState rootGameState
-     return $ bestMoveFromLoc loc''' rootGameState rootScore
-   else uctLoop loc''' rootGameState raveMap' rGen deadline)
-
 
 
 
@@ -178,8 +151,55 @@ bestMoveFromLoc loc state score =
 
 
 
+runUCT :: UCTTreeLoc Move
+       -> GameState RealWorld
+       -> RaveMap Move
+       -> Gen RealWorld
+       -> UTCTime
+       -> Int
+       -> IO (UCTTreeLoc Move)
+runUCT initLoc rootGameState initRaveMap rGen deadline maxRuns =
+    uctLoop initLoc initRaveMap 0
+
+    where
+      uctLoop            :: UCTTreeLoc Move -> RaveMap Move -> Int
+                         -> IO (UCTTreeLoc Move)
+      uctLoop !loc !raveMap n
+          | n >= maxRuns = return loc
+          | otherwise    = do
+        let done = False
+
+        (loc', path) <- return $ selectLeafPath (policyRaveUCB1 raveMap) loc
+
+        leafGameState <- stToIO $ getLeafGameState rootGameState path
+
+        slHeu <- stToIO $ makeStonesAndLibertyHeuristic leafGameState
+
+        moves <- stToIO $ nextMoves leafGameState $ nextMoveColor leafGameState
+
+        let loc'' = expandNode loc' slHeu moves
+        -- let loc'' = expandNode loc' constantHeuristic moves
+
+        (score, playedMoves) <- stToIO $ runOneRandom leafGameState rGen
+
+        let raveMap' = updateRaveMap raveMap (rateScore score) $ drop (length playedMoves `div` 3) playedMoves
+
+        let loc''' = backpropagate (rateScore score) loc''
+
+        now <- getCurrentTime
+        let timeIsUp = (now > deadline)
+        (if done || timeIsUp
+         then return loc'''
+         else uctLoop loc''' raveMap' (n + 1))
+
+
+
+
+
+
+
+
 runOneRandom :: GameState s -> Gen s -> ST s (Score, [Move])
--- runOneRandom :: GameState RealWorld -> Gen RealWorld -> ST RealWorld Score
 runOneRandom initState rGenInit =
     run initState 0 rGenInit []
     where
@@ -229,47 +249,11 @@ genMoveRand state rGen =
 
       color = nextMoveColor state
 
+
 pick :: [Vertex] -> Gen s -> ST s Vertex
 pick as rGen = do
   i <- liftM (`mod` (length as - 1)) $ uniform rGen
-  -- i <- getRandomR (0, ((length as) - 1))
   return $ as !! i
-
-
-
-
--- saneNeighMoves :: GameState -> [Vertex]
--- saneNeighMoves state =
---     case moveHistory state of
---       [] ->
---           error "saneNeighbourMoves called with empty moveHistory"
---       moves ->
---           case last moves of
---             (StoneMove (Stone (p, _color))) ->
---                 filter (not . (isSuicideVertex g color)) $
---                        filter (not . (isEyeLike g color)) $
---                               moveCandidates \\ (koBlocked state)
---                 where
---                   moveCandidates =
---                       if null freeNs
---                       then frees
---                       else freeNs
---                   frees = freeVertices g
---                   freeNs = adjacentFree g p
---             (Pass _color) -> []
---             (Resign _color) -> []
---     where
---       g = goban state
---       color = nextMoveColor state
-
-
--- insaneMoves :: GameState -> [Vertex]
--- insaneMoves state =
---     filter (not . (isEyeLike g color)) $
---                (freeVertices g) \\ (koBlocked state)
---     where
---       g = goban state
---       color = nextMoveColor state
 
 
 

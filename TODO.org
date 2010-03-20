@@ -8,6 +8,24 @@
 * tune heuristic
 ** bring back gogui visualization
 
+** analyze commands:
+
+*** heuristic influence map
+*** also for each heuristic component
+
+*** uct tree toplevel map of winrate / exploration count
+*** rave map of winrate / exploration count
+
+*** random playout variant
+
+
+** config record
+** changeable via gtp extension
+** changeable via command line options
+*** max uct iterations
+*** max time spent
+*** rave weight
+*** uct exploratory constant
 
 ---------------------------
 
