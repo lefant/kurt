@@ -38,7 +38,7 @@ import Data.List ((\\))
 import Data.Array.MArray (freeze, thaw)
 import qualified Data.IntSet as S
 
-
+import Kurt.Config
 import Data.Goban.Types
 import Data.Goban.IntVertex
 import Data.Tree.UCT (UCTHeuristic)
@@ -281,17 +281,19 @@ centerHeuristic _ _ = error "centerHeuristic received non StoneMove arg"
 
 
 
-makeStonesAndLibertyHeuristic :: GameState s -> (Int, Int, Int, Int)
+makeStonesAndLibertyHeuristic :: GameState s -> KurtConfig
                               -> ST s (UCTHeuristic Move)
-makeStonesAndLibertyHeuristic state ( captureWeight
-                                    -- , stoneWeight
-                                    , libertyMinWeight
-                                    , libertyAvgWeight
-                                    , centerWeight ) = do
+makeStonesAndLibertyHeuristic state config = do
   fcg :: ChainIdGobanFrozen <- (freeze $ chainGoban state)
   return $ stonesAndLibertiesHeu fcg (chains state)
 
   where
+    captureWeight = hCaptureWeight config
+    minLibertiesWeight = hMinLibertiesWeight config
+    totalLibertiesWeight = hLibertiesWeight config
+    chainCountWeight = hChainCountWeight config
+    centerWeight = hCenterWeight config
+
     stonesAndLibertiesHeu :: ChainIdGobanFrozen -> ChainMap
                           -> UCTHeuristic Move
     stonesAndLibertiesHeu cg cm (Move stone@(Stone (x, y) _color)) =
@@ -304,33 +306,43 @@ makeStonesAndLibertyHeuristic state ( captureWeight
           -- must be between -0.5 and 0.5
           h :: Value
           h = (captureH * fromIntegral captureWeight
-               -- + stoneH * fromIntegral stoneWeight
-               + libertyMinH * fromIntegral libertyMinWeight
-               + libertyAvgH * fromIntegral libertyAvgWeight
+               + chainCountH * fromIntegral chainCountWeight
+               + minLibertiesH * fromIntegral minLibertiesWeight
+               + totalLibertiesH * fromIntegral totalLibertiesWeight
                + centerH * fromIntegral centerWeight)
               / fromIntegral (captureWeight
-                              -- + stoneWeight
-                              + libertyMinWeight
-                              + libertyAvgWeight
+                              + chainCountWeight
+                              + minLibertiesWeight
+                              + totalLibertiesWeight
                               + centerWeight)
 
           -- must be between -0.5 and 0.5
           captureH :: Value
           captureH = min 0.5 $ sqrt (fromIntegral captureC) / fromIntegral (n * 2)
+          -- must be between -0.5 and 0.5
+          chainCountH :: Value
+          chainCountH = 0.5 / (fromIntegral chainC)
+
           -- stoneH :: Value
           -- stoneH = fromIntegral (signum stoneDiff) * sqrt (fromIntegral $ abs stoneDiff) / fromIntegral (n * 2)
           -- stoneDiff = ourSc - otherSc
 
           -- must be between -0.5 and 0.5
-          libertyMinH :: Value
-          libertyMinH = (sqrtMin ourLMin - sqrtMin otherLMin) / 2
+          minLibertiesH :: Value
+          minLibertiesH = (sqrtMin ourMinL - sqrtMin otherMinL) / 2
           sqrtMin m = sqrt $ fromIntegral $ min m 4
 
           -- must be between -0.5 and 0.5
-          libertyAvgH :: Value
-          libertyAvgH = (ourLAvg - otherLAvg) / fromIntegral (n ^ (2 :: Int))
+          totalLibertiesH :: Value
+          totalLibertiesH = (fromIntegral ourTotalL - fromIntegral otherTotalL)
+                            / fromIntegral (n ^ (2 :: Int))
 
-          (captureC, ourLMin, otherLMin, ourLAvg, otherLAvg) =
+
+          -- must be between -0.5 and 0.5
+          -- libertyAvgH :: Value
+          -- libertyAvgH = (ourLAvg - otherLAvg) / fromIntegral (n ^ (2 :: Int))
+
+          (captureC, chainC, ourMinL, otherMinL, ourTotalL, otherTotalL) =
               stonesAndLiberties cg cm stone
 
 

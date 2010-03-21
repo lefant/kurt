@@ -1,7 +1,6 @@
 {-# OPTIONS -O2 -Wall -Werror -Wwarn #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
-{-# LANGUAGE BangPatterns #-}
-
+{-# LANGUAGE BangPatterns, DeriveDataTypeable #-}
 
 {- |
    Module     : Kurt.GoEngine
@@ -10,7 +9,6 @@
 
    Maintainer : Fabian Linzberger <e@lefant.net>
    Stability  : experimental
-   Portability: probably
 
 Move generator logic
 
@@ -32,12 +30,13 @@ import Data.Time.Clock ( UTCTime(..)
 import Data.List ((\\))
 
 
+import Kurt.Config
 import Data.Goban.Types (Move(..), Stone(..), Color(..), Vertex, Score)
 import Data.Goban.Utils (winningScore, rateScore)
 import Data.Goban.GameState (GameState(..), newGameState, scoreGameState, updateGameState, getLeafGameState, makeStonesAndLibertyHeuristic, nextMoveColor, nextMoves, isSaneMove, freeVertices)
 
 
-import Data.Tree.UCT.GameTree (MoveNode(..), UCTTreeLoc, RaveMap, Value, newRaveMap, newMoveNode)
+import Data.Tree.UCT.GameTree (MoveNode(..), UCTTreeLoc, RaveMap, newRaveMap, newMoveNode)
 import Data.Tree.UCT
 
 import Debug.TraceOrId (trace)
@@ -50,23 +49,15 @@ data EngineState s = EngineState {
     , getRaveMap      :: !(RaveMap Move)
     , boardSize       :: !Int
     , getKomi         :: !Score
-    , maxRuns         :: !Int
-    , timePerMove     :: !Int
-    , getUctC         :: !Value
-    , getRaveWeight   :: !Value
-    , getHeuWeights   :: !(Int, Int, Int, Int)
-     -- maybe this could have colorToMove?
+    , getConfig       :: !KurtConfig
     }
 
-defaultKomi :: Score
-defaultKomi = 7.5
 
-defaultBoardSize :: Int
-defaultBoardSize = 9
 
-newEngineState :: ST s (EngineState s)
-newEngineState = do
-  gs <- newGameState defaultBoardSize defaultKomi
+
+newEngineState :: KurtConfig -> ST s (EngineState s)
+newEngineState config = do
+  gs <- newGameState (initialBoardsize config) (initialKomi config)
   -- boardStr <- showGoban $ goban gs
   -- trace ("newEngineState" ++ boardStr) $ return ()
   return EngineState {
@@ -76,17 +67,9 @@ newEngineState = do
                                            (Move (Stone (25,25) Black)))
                                 (0.5, 1)
                  , getRaveMap = newRaveMap
-                 , boardSize = defaultBoardSize
-                 , getKomi = defaultKomi
-                 , maxRuns = 100000
-                 , timePerMove = 10000
-                 , getUctC = 0.4
-                 , getRaveWeight = 20
-                 , getHeuWeights = ( 12  -- stoneWeight
-                                   , 3   -- libertyMinWeight
-                                   , 1   -- libertyAvgWeight
-                                   , 1   -- centerWeight
-                                   )
+                 , boardSize = initialBoardsize config
+                 , getKomi = initialKomi config
+                 , getConfig = config
                  }
 
 
@@ -111,20 +94,23 @@ genMove eState color = do
        then return $ (Pass color, eState)
        else return $ (Resign color, eState)
    else (do
-          slHeu <- stToIO $ makeStonesAndLibertyHeuristic gState (getHeuWeights eState)
+          slHeu <- stToIO $ makeStonesAndLibertyHeuristic gState config
 
           let loc' = expandNode loc slHeu moves
 
           seed <- withSystemRandom save
           rGen <- stToIO $ restore seed
 
-          (loc'', raveMap) <- runUCT loc' gState initRaveMap (getUctC eState) (getRaveWeight eState) (getHeuWeights eState) rGen deadline (maxRuns eState)
+          (loc'', raveMap) <- runUCT loc' gState initRaveMap config rGen deadline
+          -- (getUctC eState) (getRaveWeight eState) (getHeuWeights eState) rGen deadline (maxRuns eState)
           let eState' = eState { getUctTree = loc'', getRaveMap = raveMap }
 
           return $ (bestMoveFromLoc loc'' gState score, eState')))
 
 
     where
+      config = getConfig eState
+
       gState = getGameState eState
       initRaveMap = newRaveMap
       loc = fromTree $ newMoveNode
@@ -133,7 +119,7 @@ genMove eState color = do
                        (0.5, 1)
       thinkPicosecs =
           picosecondsToDiffTime
-          $ fromIntegral (timePerMove eState) * 1000000000
+          $ fromIntegral (maxTime config) * 1000000000
 
 
 
@@ -171,30 +157,27 @@ bestMoveFromLoc loc state score =
 runUCT :: UCTTreeLoc Move
        -> GameState RealWorld
        -> RaveMap Move
-       -> Value
-       -> Value
-       -> (Int, Int, Int, Int)
+       -> KurtConfig
        -> Gen RealWorld
        -> UTCTime
-       -> Int
        -> IO (UCTTreeLoc Move, RaveMap Move)
-runUCT initLoc rootGameState initRaveMap uctC raveWeight hWeights rGen deadline runs =
+runUCT initLoc rootGameState initRaveMap config rGen deadline  =
     uctLoop initLoc initRaveMap 0
 
     where
       uctLoop            :: UCTTreeLoc Move -> RaveMap Move -> Int
                          -> IO (UCTTreeLoc Move, RaveMap Move)
       uctLoop !loc !raveMap n
-          | n >= runs = return (loc, raveMap)
+          | n >= (maxPlayouts config) = return (loc, raveMap)
           | otherwise    = do
         let done = False
 
         (loc', path) <- return $ selectLeafPath
-                        (policyRaveUCB1 uctC raveWeight raveMap) loc
+                        (policyRaveUCB1 (uctExploration config) (raveWeight config) raveMap) loc
 
         leafGameState <- stToIO $ getLeafGameState rootGameState path
 
-        slHeu <- stToIO $ makeStonesAndLibertyHeuristic leafGameState hWeights
+        slHeu <- stToIO $ makeStonesAndLibertyHeuristic leafGameState config
 
         moves <- stToIO $ nextMoves leafGameState $ nextMoveColor leafGameState
 
@@ -212,6 +195,7 @@ runUCT initLoc rootGameState initRaveMap uctC raveWeight hWeights rGen deadline 
         (if done || timeIsUp
          then return (loc''', raveMap')
          else uctLoop loc''' raveMap' (n + 1))
+
 
 
 

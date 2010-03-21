@@ -46,6 +46,7 @@ library
                  ,array
                  ,vector
                  ,time
+                 ,cmdargs
   ghc-options: -O1
   ghc-prof-options: -auto-all
 
@@ -65,6 +66,7 @@ executable kurt
                  ,rosezipper
                  ,vector
                  ,time
+                 ,cmdargs
   ghc-options: -O1
   ghc-prof-options: -auto-all
 

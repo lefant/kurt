@@ -49,7 +49,6 @@ import qualified Data.Array.Unboxed as UA
 
 
 import Data.Goban.Types
-import Data.Tree.UCT.GameTree (Value)
 -- import Data.Goban.IntVertex
 
 
@@ -110,32 +109,28 @@ isSuicide cg cm s@(Stone p _color) = do
 
 
 stonesAndLiberties :: ChainIdGobanFrozen -> ChainMap -> Stone
-                   -> (Int, Int, Int, Value, Value)
+                   -> (Int, Int, Int, Int, Int, Int)
 stonesAndLiberties cg cm s@(Stone p color) =
-    (captureC, ourLMin, otherLMin, ourLAvg, otherLAvg)
-    -- (ourSc, otherSc, ourLMin, otherLMin, ourLAvg, otherLAvg)
+    (captureC, chainC, ourMinL, otherMinL, ourTotalL, otherTotalL)
 
     where
       -- ourSc = stoneCount allOurChains
       -- otherSc = stoneCount allOtherChains
       captureC = length deadIds
-      ourLMin = libertyMin allOurChains
-      otherLMin = libertyMin allOtherChains
-      ourLAvg = libertyAvg allOurChains
-      otherLAvg = libertyAvg allOtherChains
+      chainC = length allOurChains
+      ourMinL = minLiberties allOurChains
+      otherMinL = minLiberties allOtherChains
+      ourTotalL = totalLiberties allOurChains
+      otherTotalL = totalLiberties allOtherChains
 
 
       (allOurChains, allOtherChains) =
           partition ((color ==) . chainColor) $ M.elems cm4
 
-      -- stoneCount = sum . map (S.size . chainVertices)
+      minLiberties cs = minimum (4 : map (S.size . chainLiberties) cs)
 
-      libertyMin cs = minimum (4 : map (S.size . chainLiberties) cs)
-
-      libertyAvg cs =
-          fromIntegral (sum $
-                        map (S.size . chainLiberties) cs)
-          / fromIntegral (length cs + 1)
+      totalLiberties cs =
+          fromIntegral (sum $ map (S.size . chainLiberties) cs)
 
 
       cm4 = foldl' mapDeleteChain cm3 deadIds

@@ -2,40 +2,16 @@
 
 * Roadmap march:
 
-* cheap heuristic
-** cheap territory estimate - maybe bouzy?
-
 * tune heuristic
-** include total liberty count and group count instead of average liberty count
-
 ** analyze commands:
-
 *** random playout variant
-
-
-** config record
-*** basically there via EngineState
-** changeable via command line options
-*** max uct iterations
-*** max time spent
-*** rave weight
-*** uct exploratory constant
-*** heuristic weights
-** changeable via gtp extension
-*** kurt_configure is there, just add more options
 
 ---------------------------
 
 
 * homework:
-** command line options for various constants
-*** UCT exploration
-*** rave weight
-*** heuristic / center heuristic
-*** heuristic player
-*** random player
 
-* kgs support
+* better kgs support
 ** time management
 *** time_settings
 *** kgs-time_settings
@@ -88,6 +64,9 @@
 * towards heuristic
 ** prior: even game more likely
 ** patterns
+** cheap territory estimate - maybe bouzy?
+
+
 
 * Data.Tree.UCT
 ** come back for "negamax if done"?
