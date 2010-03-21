@@ -20,6 +20,7 @@
 *** max time spent
 *** rave weight
 *** uct exploratory constant
+*** heuristic weights
 ** changeable via gtp extension
 *** kurt_configure is there, just add more options
 
@@ -50,7 +51,12 @@
 
 ** sample playouts
 
-** systematic testing of game logic like isSuicide
+** STUArray instead of STVector with thaw and freeze before and updateGameState
+*** would need to support all of STVector in Incremental
+*** first shift chain ids to signed (so we can tell from array which color the stone is)
+*** add border
+
+
 
 
 * tune updateGameState speed
@@ -67,9 +73,6 @@
 ** if copyGoban is used cleverly, maybe runOneRandom could use runST without the RealWorld
 *** it seems this would need something like STUArrays thaw / freeze support
 
-
-
-** STUArray instead of STVector with thaw and freeze before and updateGameState
 
 
 

@@ -39,12 +39,6 @@ import Data.Tree.Zipper (TreeLoc, tree, hasChildren, parent, findChild, modifyTr
 import Data.Tree.UCT.GameTree
 
 
-exploratoryC :: Value
-exploratoryC = 0.4
-
-raveWeight :: Value
-raveWeight = 20
-
 
 -- rootNode :: (UCTMove a) => [a] -> UCTTreeLoc a
 -- rootNode moves =
@@ -84,16 +78,16 @@ selectLeaf policy initLoc =
           where
             selectedTree = policy $ tree loc
 
-policyUCB1 :: UCTMove a => UCTPolicy a
-policyUCB1 node =
+policyUCB1 :: UCTMove a => Value -> UCTPolicy a
+policyUCB1 exploratoryC node =
     maximumBy
-    (comparing (ucb1 parentVisits . rootLabel))
+    (comparing (ucb1 exploratoryC parentVisits . rootLabel))
     $ subForest node
     where
       parentVisits = nodeVisits $ rootLabel node
 
-ucb1 :: UCTMove a => Count -> MoveNode a -> Value
-ucb1 parentVisits node =
+ucb1 :: UCTMove a => Value -> Count -> MoveNode a -> Value
+ucb1 exploratoryC parentVisits node =
     -- trace ("ucb1: "
     --        ++ show (nodeMove node, oldValue, ucb1part, value))
     value
@@ -127,8 +121,8 @@ principalVariation loc =
     pathToLeaf $ selectLeaf policyMaxRobust loc
 
 
-policyRaveUCB1 :: (UCTMove a, Ord a) => RaveMap a -> UCTPolicy a
-policyRaveUCB1 m parentNode =
+policyRaveUCB1 :: (UCTMove a, Ord a) => Value -> Value -> RaveMap a -> UCTPolicy a
+policyRaveUCB1 exploratoryC raveWeight m parentNode =
     maximumBy
     (comparing (combinedVal . rootLabel))
     $ subForest parentNode
@@ -141,7 +135,7 @@ policyRaveUCB1 m parentNode =
             intSum = fromIntegral $ raveCount + uctCount
 
             (raveVal, raveCount) = fromMaybe (0.5, 0) (M.lookup move m)
-            uctVal = ucb1 parentVisits node
+            uctVal = ucb1 exploratoryC parentVisits node
             uctCount = nodeVisits node
             move = nodeMove node
 

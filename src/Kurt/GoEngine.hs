@@ -38,7 +38,7 @@ import Data.Goban.Utils (winningScore, rateScore)
 import Data.Goban.GameState (GameState(..), newGameState, scoreGameState, updateGameState, getLeafGameState, makeStonesAndLibertyHeuristic, nextMoveColor, nextMoves, isSaneMove, freeVertices)
 
 
-import Data.Tree.UCT.GameTree (MoveNode(..), UCTTreeLoc, RaveMap, newRaveMap, newMoveNode)
+import Data.Tree.UCT.GameTree (MoveNode(..), UCTTreeLoc, RaveMap, Value, newRaveMap, newMoveNode)
 import Data.Tree.UCT
 
 import Debug.TraceOrId (trace)
@@ -53,6 +53,8 @@ data EngineState s = EngineState {
     , getKomi         :: !Score
     , maxRuns         :: !Int
     , timePerMove     :: !Int
+    , getUctC         :: !Value
+    , getRaveWeight   :: !Value
      -- maybe this could have colorToMove?
     }
 
@@ -78,6 +80,8 @@ newEngineState = do
                  , getKomi = defaultKomi
                  , maxRuns = 100000
                  , timePerMove = 10000
+                 , getUctC = 0.4
+                 , getRaveWeight = 20
                  }
 
 heuristicWeights :: (Int, Int, Int, Int)
@@ -117,7 +121,7 @@ genMove eState color = do
           seed <- withSystemRandom save
           rGen <- stToIO $ restore seed
 
-          (loc'', raveMap) <- runUCT loc' gState initRaveMap rGen deadline (maxRuns eState)
+          (loc'', raveMap) <- runUCT loc' gState initRaveMap (getUctC eState) (getRaveWeight eState) rGen deadline (maxRuns eState)
           let eState' = eState { getUctTree = loc'', getRaveMap = raveMap }
 
           return $ (bestMoveFromLoc loc'' gState score, eState')))
@@ -170,11 +174,13 @@ bestMoveFromLoc loc state score =
 runUCT :: UCTTreeLoc Move
        -> GameState RealWorld
        -> RaveMap Move
+       -> Value
+       -> Value
        -> Gen RealWorld
        -> UTCTime
        -> Int
        -> IO (UCTTreeLoc Move, RaveMap Move)
-runUCT initLoc rootGameState initRaveMap rGen deadline runs =
+runUCT initLoc rootGameState initRaveMap uctC raveWeight rGen deadline runs =
     uctLoop initLoc initRaveMap 0
 
     where
@@ -185,7 +191,8 @@ runUCT initLoc rootGameState initRaveMap rGen deadline runs =
           | otherwise    = do
         let done = False
 
-        (loc', path) <- return $ selectLeafPath (policyRaveUCB1 raveMap) loc
+        (loc', path) <- return $ selectLeafPath
+                        (policyRaveUCB1 uctC raveWeight raveMap) loc
 
         leafGameState <- stToIO $ getLeafGameState rootGameState path
 
