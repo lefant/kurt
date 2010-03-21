@@ -58,7 +58,7 @@ kurtDefaultConfig = mode $ KurtConfig {
                                 & text "Weight used for liberties in heuristic"
              , hChainCountWeight = 1 &= typ "INT"
                                 & text "Weight used for group count in heuristic"
-             , hCenterWeight = 1 &= typ "INT"
+             , hCenterWeight = 3 &= typ "INT"
                                 & text "Weight used for center moves in heuristic"
              , initialKomi = 7.5 &= typ "FLOAT"
                              & text "Initial komi value (usually overridden via GTP)"

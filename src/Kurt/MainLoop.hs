@@ -31,7 +31,7 @@ import Text.Printf (printf)
 
 import Network.GoTextProtocol2.Server.Parser
 import Network.GoTextProtocol2.Types
-import Data.Goban.GameState (GameState(..), newGameState, showGameState, updateGameState, scoreGameState, makeStonesAndLibertyHeuristic, nextMoves, nextMoveColor)
+import Data.Goban.GameState (GameState(..), newGameState, showGameState, updateGameState, scoreGameState, makeStonesAndLibertyHeuristic, nextMoves, nextMoveColor, thisMoveColor)
 import Data.Goban.Types (gtpShowMove, gtpShowVertex, Move(..), Stone(..), Color(..))
 import Data.Goban.STVectorGoban (allStones)
 
@@ -40,7 +40,7 @@ import Kurt.GoEngine (EngineState(..), newEngineState, genMove)
 import Data.Tree.UCT.GameTree (MoveNode(..))
 
 
--- import Debug.TraceOrId (trace)
+import Debug.TraceOrId (trace)
 
 
 type CommandHandler s = [Argument] -> EngineState s -> IO (Either String (String, EngineState s))
@@ -337,15 +337,17 @@ cmd_kurt_uct_tree [] state = do
   let str = concatMap
             (\(Move (Stone p _c), v)
                  -> " " ++ gtpShowVertex p
-                    ++ printf " %.2f" ((v - 0.5) * 2 * flipSig))
-                    -- ++ printf " %.2f" (fst $ slHeu move))
+                    ++ printf " %.2f" (((fromIntegral v / fromIntegral m) :: Float) * flipSig))
+                    -- ++ printf " %.2f" ((v - 0.5) * 2 * flipSig))
             ucts
   return $ Right ("INFLUENCE" ++ str, state)
     where
-      ucts = map (\l -> (nodeMove l, nodeValue l))
+      ucts = map (\l -> (nodeMove l, nodeVisits l))
                      $ map rootLabel $ subForest $ tree $ getUctTree state
-      flipSig = if color == Black then 1 else -1
-      color = nextMoveColor $ getGameState state
+      m = maximum $ map snd ucts
+
+      flipSig = if color == Black then trace "flipSig black" 1 else trace "flipSig white" (- 1)
+      color = thisMoveColor $ getGameState state
 
 cmd_kurt_uct_tree _ _ = error "cmd_kurt_uct_tree called with illegal argument type"
 
@@ -361,8 +363,8 @@ cmd_kurt_ravemap [] state = do
     where
       raves = map (second fst) $ M.assocs $ getRaveMap state
 
-      flipSig = if color == Black then 1 else -1
-      color = nextMoveColor $ getGameState state
+      flipSig = if color == Black then trace "flipSig black" 1 else trace "flipSig white" (- 1)
+      color = thisMoveColor $ getGameState state
 
 cmd_kurt_ravemap _ _ = error "cmd_kurt_ravemap called with illegal argument type"
 
@@ -379,6 +381,8 @@ cmd_kurt_configure [MaybeKeyValueArgument Nothing] state =
                     unlines $ [
                      "maxPlayouts " ++ show (maxPlayouts config)
                     ,"maxTime " ++ show (maxTime config)
+                    ,"uctExploration " ++ show (uctExploration config)
+                    ,"raveWeight " ++ show (raveWeight config)
                     ,"hCaptureWeight " ++ show (hCaptureWeight config)
                     ,"hMinLibertiesWeight " ++ show (hMinLibertiesWeight config)
                     ,"hLibertiesWeight " ++ show (hLibertiesWeight config)
@@ -392,6 +396,8 @@ cmd_kurt_configure [MaybeKeyValueArgument (Just (str, n))] state =
     return $ case str of
                "maxplayouts" -> Right ("maxPlayouts set to " ++ show n, state { getConfig = (getConfig state) { maxPlayouts = n } } )
                "maxtime" -> Right ("maxTime set to " ++ show n, state { getConfig = (getConfig state) { maxTime = n } })
+               "uctexploration" -> Right ("uctExploration set to " ++ show n, state { getConfig = (getConfig state) { uctExploration = fromIntegral n / 100} })
+               "raveWeight" -> Right ("raveWeight set to " ++ show n, state { getConfig = (getConfig state) { raveWeight = fromIntegral n} })
                "hcaptureweight" -> Right ("hCaptureWeight set to " ++ show n, state { getConfig = (getConfig state) { hCaptureWeight = n} })
                "hminlibertiesweight" -> Right ("hMinLibertiesWeight set to " ++ show n, state { getConfig = (getConfig state) { hMinLibertiesWeight = n} })
                "hlibertiesweight" -> Right ("hLibertiesWeight set to " ++ show n, state { getConfig = (getConfig state) { hLibertiesWeight = n} })
