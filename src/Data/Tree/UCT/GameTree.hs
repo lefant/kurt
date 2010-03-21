@@ -22,7 +22,7 @@ module Data.Tree.UCT.GameTree ( UCTTreeLoc
                               , MoveNode(..)
                               , newMoveNode
                               , RaveValue
-                              , RaveMap(..)
+                              , RaveMap
                               , newRaveMap
                               , Count
                               , Value
@@ -88,10 +88,10 @@ newMoveNode move (value, visits) =
 
 type RaveValue = (Value, Count)
 
-newtype RaveMap a = RaveMap (M.Map a RaveValue)
+type RaveMap a = M.Map a RaveValue
 
 newRaveMap :: (UCTMove a) => RaveMap a
-newRaveMap = RaveMap M.empty
+newRaveMap = M.empty
 
 
 

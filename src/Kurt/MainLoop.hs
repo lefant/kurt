@@ -18,11 +18,15 @@ module Kurt.MainLoop ( startLoop
                      ) where
     
 
+import Control.Arrow (second)
 import Control.Monad.ST (stToIO, RealWorld)
 import System.IO
 import Text.Parsec.String (Parser)
 import Data.Char
 import Data.List
+import qualified Data.Map as M (assocs)
+import Data.Tree (rootLabel, subForest)
+import Data.Tree.Zipper (tree)
 import Text.Printf (printf)
 
 
@@ -32,7 +36,8 @@ import Data.Goban.GameState (GameState(..), newGameState, showGameState, updateG
 import Data.Goban.Types (gtpShowMove, gtpShowVertex, Move(..), Stone(..), Color(..))
 import Data.Goban.STVectorGoban (allStones)
 
-import Kurt.GoEngine (EngineState(..), newEngineState, genMove, debugUCT, heuristicWeights)
+import Kurt.GoEngine (EngineState(..), newEngineState, genMove, heuristicWeights)
+import Data.Tree.UCT.GameTree (MoveNode(..))
 
 
 -- import Debug.TraceOrId (trace)
@@ -231,11 +236,11 @@ cmd_play _ _ = error "cmd_play called with illegal argument type"
 
 cmd_genmove :: CommandHandler RealWorld
 cmd_genmove [ColorArgument color] state = do
-  move <- genMove state color
+  (move, state') <- genMove state color
   gState' <- stToIO $ updateGameState (getGameState state) move
   -- str <- stToIO $ showGameState gState'
   -- trace ("cmd_genmove board:" ++ str) $ return ()
-  return $ Right (gtpShowMove move, state { getGameState = gState' })
+  return $ Right (gtpShowMove move, state' { getGameState = gState' })
 cmd_genmove _ _ = error "cmd_genmove called with illegal argument type"
 
 cmd_final_score :: CommandHandler RealWorld
@@ -314,7 +319,6 @@ make_cmd_kurt_heuristic _ _ _ = error "cmd_kurt_heuristic called with illegal ar
 
 cmd_kurt_uct_tree :: CommandHandler RealWorld
 cmd_kurt_uct_tree [] state = do
-  (_raves, ucts) <- debugUCT state color
   let str = concatMap
             (\(Move (Stone p _c), v)
                  -> " " ++ gtpShowVertex p
@@ -323,6 +327,8 @@ cmd_kurt_uct_tree [] state = do
             ucts
   return $ Right ("INFLUENCE" ++ str, state)
     where
+      ucts = map (\l -> (nodeMove l, nodeValue l))
+                     $ map rootLabel $ subForest $ tree $ getUctTree state
       flipSig = if color == Black then 1 else -1
       color = nextMoveColor $ getGameState state
 
@@ -330,7 +336,6 @@ cmd_kurt_uct_tree _ _ = error "cmd_kurt_heuristic called with illegal argument t
 
 cmd_kurt_ravemap :: CommandHandler RealWorld
 cmd_kurt_ravemap [] state = do
-  (raves, _ucts) <- debugUCT state color
   let str = concatMap
             (\(Move (Stone p _c), v)
                  -> " " ++ gtpShowVertex p
@@ -339,6 +344,8 @@ cmd_kurt_ravemap [] state = do
             raves
   return $ Right ("INFLUENCE" ++ str, state)
     where
+      raves = map (second fst) $ M.assocs $ getRaveMap state
+
       flipSig = if color == Black then 1 else -1
       color = nextMoveColor $ getGameState state
 

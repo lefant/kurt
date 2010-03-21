@@ -6,7 +6,7 @@
 ** cheap territory estimate - maybe bouzy?
 
 * tune heuristic
-** also include total liberty count
+** include total liberty count and group count instead of average liberty count
 
 ** analyze commands:
 
@@ -41,6 +41,10 @@
 *** kgs-game_over support
 
 * nice to have
+
+** could restore previous uct tree / rave map from engine state, age a little and reuse
+
+** could ponder on previous uct tree / rave map in engine state while waiting for opponent
 
 ** wrap UCT in some toplevel object?
 

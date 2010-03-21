@@ -17,14 +17,12 @@ Move generator logic
 -}
 
 module Kurt.GoEngine ( genMove
-                     , debugUCT
                      , EngineState(..)
                      , newEngineState
                      , heuristicWeights
                      ) where
 
 
-import Control.Arrow (second)
 import Control.Monad (liftM)
 import Control.Monad.ST (ST, RealWorld, stToIO)
 import System.Random.MWC (Gen, uniform, withSystemRandom, save, restore)
@@ -40,16 +38,17 @@ import Data.Goban.Utils (winningScore, rateScore)
 import Data.Goban.GameState (GameState(..), newGameState, scoreGameState, updateGameState, getLeafGameState, makeStonesAndLibertyHeuristic, nextMoveColor, nextMoves, isSaneMove, freeVertices)
 
 
-import Data.Tree.UCT.GameTree (MoveNode(..), UCTTreeLoc, RaveMap(..), Value, newRaveMap, newMoveNode)
+import Data.Tree.UCT.GameTree (MoveNode(..), UCTTreeLoc, RaveMap, newRaveMap, newMoveNode)
 import Data.Tree.UCT
 
 import Debug.TraceOrId (trace)
-import qualified Data.Map as M (assocs)
-import Data.Tree (rootLabel, subForest)
+import Data.Tree (rootLabel)
 import Data.Tree.Zipper (tree, fromTree)
 
 data EngineState s = EngineState {
       getGameState    :: GameState s
+    , getUctTree      :: !(UCTTreeLoc Move)
+    , getRaveMap      :: !(RaveMap Move)
     , boardSize       :: !Int
     , getKomi         :: !Score
     , maxRuns         :: !Int
@@ -70,10 +69,16 @@ newEngineState = do
   -- trace ("newEngineState" ++ boardStr) $ return ()
   return EngineState {
                    getGameState = gs
+                 , getUctTree = fromTree $ newMoveNode
+                                (trace "UCT tree root move accessed"
+                                           (Move (Stone (25,25) Black)))
+                                (0.5, 1)
+                 , getRaveMap = newRaveMap
                  , boardSize = defaultBoardSize
                  , getKomi = defaultKomi
                  , maxRuns = 100000
-                 , timePerMove = 10000 }
+                 , timePerMove = 10000
+                 }
 
 heuristicWeights :: (Int, Int, Int, Int)
 heuristicWeights = ( 12  -- stoneWeight
@@ -86,7 +91,7 @@ heuristicWeights = ( 12  -- stoneWeight
 
 
 
-genMove :: EngineState RealWorld -> Color -> IO Move
+genMove :: EngineState RealWorld -> Color -> IO (Move, EngineState RealWorld)
 genMove eState color = do
   now <- getCurrentTime
   let deadline = UTCTime { utctDay = utctDay now
@@ -102,8 +107,8 @@ genMove eState color = do
   (if null moves
    then
        if winningScore color score
-       then return $ Pass color
-       else return $ Resign color
+       then return $ (Pass color, eState)
+       else return $ (Resign color, eState)
    else (do
           slHeu <- stToIO $ makeStonesAndLibertyHeuristic gState heuristicWeights
 
@@ -112,9 +117,10 @@ genMove eState color = do
           seed <- withSystemRandom save
           rGen <- stToIO $ restore seed
 
-          (loc'', _) <- runUCT loc' gState initRaveMap rGen deadline (maxRuns eState)
+          (loc'', raveMap) <- runUCT loc' gState initRaveMap rGen deadline (maxRuns eState)
+          let eState' = eState { getUctTree = loc'', getRaveMap = raveMap }
 
-          return $ bestMoveFromLoc loc'' gState score))
+          return $ (bestMoveFromLoc loc'' gState score, eState')))
 
 
     where
@@ -128,43 +134,6 @@ genMove eState color = do
           picosecondsToDiffTime
           $ fromIntegral (timePerMove eState) * 1000000000
 
-
-debugUCT :: EngineState RealWorld -> Color -> IO ([(Move, Value)], [(Move, Value)])
-debugUCT eState color = do
-  now <- getCurrentTime
-  let deadline = UTCTime { utctDay = utctDay now
-                         , utctDayTime = thinkPicosecs + utctDayTime now }
-
-  moves <- stToIO $ nextMoves gState color
-  (if null moves
-   then return ([], [])
-   else (do
-          slHeu <- stToIO $ makeStonesAndLibertyHeuristic gState heuristicWeights
-
-          let loc' = expandNode loc slHeu moves
-
-          seed <- withSystemRandom save
-          rGen <- stToIO $ restore seed
-
-          (loc'', RaveMap raveMap) <- runUCT loc' gState initRaveMap rGen deadline (maxRuns eState)
-
-          let raves = map (second fst) $ M.assocs raveMap
-          let ucts = map (\l -> (nodeMove l, nodeValue l))
-                     $ map rootLabel $ subForest $ tree loc''
-
-          return $ (raves, ucts)))
-
-
-    where
-      gState = getGameState eState
-      initRaveMap = newRaveMap
-      loc = fromTree $ newMoveNode
-                       (trace "UCT tree root move accessed"
-                                  (Move (Stone (25,25) Black)))
-                       (0.5, 1)
-      thinkPicosecs =
-          picosecondsToDiffTime
-          $ fromIntegral (timePerMove eState) * 1000000000
 
 
 
@@ -303,64 +272,3 @@ pick as rGen = do
   return $ as !! i
 
 
-
-
-
-
-
-
-
-
-
-
-
-
-
--- gfxString :: Tree (UctLabel GameState) -> String
--- gfxString t =
---     (
---      "INFLUENCE " ++
---      (concatMap influenceFromLabel alternateFirstMoves) ++
---      "\n" ++
---      "LABEL " ++
---      (concatMap visitsFromLabel alternateFirstMoves) ++
---      "\n" ++ 
---      "TRIANGLE" ++
---      (concatMap ((((++) " ") . (show . nodeState))) $ filter isDone alternateFirstMoves) ++
---      -- "\n" ++
---      -- "VAR " ++
---      -- (concatMap moveFromLabel $ principalVariation t) ++
---      "\n"
---     )
---     where
---       alternateFirstMoves =
---           map rootLabel $ take 15 $ reverse $ sort $ subForest t
-    
-
--- influenceFromLabel :: (UctNode a) => UctLabel a -> String
--- influenceFromLabel label =
---     show (nodeState label) ++ " " ++
---     (printf "%.2f " (((winningProb label) - 0.5) * 2))
-
--- visitsFromLabel :: (UctNode a) => UctLabel a -> String
--- visitsFromLabel label =
---     show (nodeState label) ++ " " ++
---     if isDone label
---     then ""
---     else show (visits label) ++ " "
-
-
-
-
-
-
-
--- moveFromLabel :: UctLabel GameState -> String
--- moveFromLabel label =
---     case moveHistory state of
---       [] -> ""
---       moves ->
---           (show $ thisMoveColor state) ++ " " ++
---           (show $ last moves) ++ " "
---     where
---       state = nodeState label

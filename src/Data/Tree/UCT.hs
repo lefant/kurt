@@ -128,7 +128,7 @@ principalVariation loc =
 
 
 policyRaveUCB1 :: (UCTMove a, Ord a) => RaveMap a -> UCTPolicy a
-policyRaveUCB1 (RaveMap m) parentNode =
+policyRaveUCB1 m parentNode =
     maximumBy
     (comparing (combinedVal . rootLabel))
     $ subForest parentNode
@@ -243,16 +243,16 @@ updateRaveMap initMap evaluator moves =
     foldl' updateOneMove initMap moves
 
     where
-      updateOneMove (RaveMap m) move =
+      updateOneMove m move =
           case M.lookup move m of
             Just (oldValue, oldVisits) ->
-                RaveMap $ M.insert move (newValue, newVisits) m
+                M.insert move (newValue, newVisits) m
                 where
                   newValue =
                       ((oldValue * fromIntegral oldVisits) + value)
                       / fromIntegral newVisits
                   newVisits = succ oldVisits
             Nothing ->
-                RaveMap $ M.insert move (value, 1) m
+                M.insert move (value, 1) m
           where
             value = evaluator move
