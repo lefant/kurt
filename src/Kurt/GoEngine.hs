@@ -19,7 +19,6 @@ Move generator logic
 module Kurt.GoEngine ( genMove
                      , EngineState(..)
                      , newEngineState
-                     , heuristicWeights
                      ) where
 
 
@@ -55,6 +54,7 @@ data EngineState s = EngineState {
     , timePerMove     :: !Int
     , getUctC         :: !Value
     , getRaveWeight   :: !Value
+    , getHeuWeights   :: !(Int, Int, Int, Int)
      -- maybe this could have colorToMove?
     }
 
@@ -82,15 +82,12 @@ newEngineState = do
                  , timePerMove = 10000
                  , getUctC = 0.4
                  , getRaveWeight = 20
+                 , getHeuWeights = ( 12  -- stoneWeight
+                                   , 3   -- libertyMinWeight
+                                   , 1   -- libertyAvgWeight
+                                   , 1   -- centerWeight
+                                   )
                  }
-
-heuristicWeights :: (Int, Int, Int, Int)
-heuristicWeights = ( 12  -- stoneWeight
-                   , 3   -- libertyMinWeight
-                   , 1   -- libertyAvgWeight
-                   , 1   -- centerWeight
-                   )
-
 
 
 
@@ -114,14 +111,14 @@ genMove eState color = do
        then return $ (Pass color, eState)
        else return $ (Resign color, eState)
    else (do
-          slHeu <- stToIO $ makeStonesAndLibertyHeuristic gState heuristicWeights
+          slHeu <- stToIO $ makeStonesAndLibertyHeuristic gState (getHeuWeights eState)
 
           let loc' = expandNode loc slHeu moves
 
           seed <- withSystemRandom save
           rGen <- stToIO $ restore seed
 
-          (loc'', raveMap) <- runUCT loc' gState initRaveMap (getUctC eState) (getRaveWeight eState) rGen deadline (maxRuns eState)
+          (loc'', raveMap) <- runUCT loc' gState initRaveMap (getUctC eState) (getRaveWeight eState) (getHeuWeights eState) rGen deadline (maxRuns eState)
           let eState' = eState { getUctTree = loc'', getRaveMap = raveMap }
 
           return $ (bestMoveFromLoc loc'' gState score, eState')))
@@ -176,11 +173,12 @@ runUCT :: UCTTreeLoc Move
        -> RaveMap Move
        -> Value
        -> Value
+       -> (Int, Int, Int, Int)
        -> Gen RealWorld
        -> UTCTime
        -> Int
        -> IO (UCTTreeLoc Move, RaveMap Move)
-runUCT initLoc rootGameState initRaveMap uctC raveWeight rGen deadline runs =
+runUCT initLoc rootGameState initRaveMap uctC raveWeight hWeights rGen deadline runs =
     uctLoop initLoc initRaveMap 0
 
     where
@@ -196,7 +194,7 @@ runUCT initLoc rootGameState initRaveMap uctC raveWeight rGen deadline runs =
 
         leafGameState <- stToIO $ getLeafGameState rootGameState path
 
-        slHeu <- stToIO $ makeStonesAndLibertyHeuristic leafGameState heuristicWeights
+        slHeu <- stToIO $ makeStonesAndLibertyHeuristic leafGameState hWeights
 
         moves <- stToIO $ nextMoves leafGameState $ nextMoveColor leafGameState
 

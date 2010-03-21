@@ -36,7 +36,7 @@ import Data.Goban.GameState (GameState(..), newGameState, showGameState, updateG
 import Data.Goban.Types (gtpShowMove, gtpShowVertex, Move(..), Stone(..), Color(..))
 import Data.Goban.STVectorGoban (allStones)
 
-import Kurt.GoEngine (EngineState(..), newEngineState, genMove, heuristicWeights)
+import Kurt.GoEngine (EngineState(..), newEngineState, genMove)
 import Data.Tree.UCT.GameTree (MoveNode(..))
 
 
@@ -107,7 +107,7 @@ commandHandlers =
 
     ,("kurt_configure", cmd_kurt_configure)
 
-    ,("kurt_heuristic_total", make_cmd_kurt_heuristic heuristicWeights)
+    ,("kurt_heuristic_total", cmd_kurt_heuristic_total)
     ,("kurt_heuristic_stone", make_cmd_kurt_heuristic (1,0,0,0))
     ,("kurt_heuristic_liberty_min", make_cmd_kurt_heuristic (0,1,0,0))
     ,("kurt_heuristic_liberty_avg", make_cmd_kurt_heuristic (0,0,1,0))
@@ -300,6 +300,11 @@ cmd_gogui_analyze_commands [] state =
 cmd_gogui_analyze_commands _ _ = error "cmd_gogui_analyze_commands called with illegal argument type"
 
 
+cmd_kurt_heuristic_total :: CommandHandler RealWorld
+cmd_kurt_heuristic_total [] state =
+  make_cmd_kurt_heuristic (getHeuWeights state) [] state
+cmd_kurt_heuristic_total _ _ = error "cmd_kurt_heuristic_total called with illegal argument type"
+
 make_cmd_kurt_heuristic :: (Int, Int, Int, Int) -> CommandHandler RealWorld
 make_cmd_kurt_heuristic hWeights [] state = do
   moves <- stToIO $ nextMoves gState color
@@ -315,7 +320,7 @@ make_cmd_kurt_heuristic hWeights [] state = do
       flipSig = if color == Black then 1 else -1
       color = nextMoveColor gState
       gState = getGameState state
-make_cmd_kurt_heuristic _ _ _ = error "cmd_kurt_heuristic called with illegal argument type"
+make_cmd_kurt_heuristic _ _ _ = error "make_cmd_kurt_heuristic called with illegal argument type"
 
 cmd_kurt_uct_tree :: CommandHandler RealWorld
 cmd_kurt_uct_tree [] state = do
@@ -332,7 +337,7 @@ cmd_kurt_uct_tree [] state = do
       flipSig = if color == Black then 1 else -1
       color = nextMoveColor $ getGameState state
 
-cmd_kurt_uct_tree _ _ = error "cmd_kurt_heuristic called with illegal argument type"
+cmd_kurt_uct_tree _ _ = error "cmd_kurt_uct_tree called with illegal argument type"
 
 cmd_kurt_ravemap :: CommandHandler RealWorld
 cmd_kurt_ravemap [] state = do
@@ -349,7 +354,7 @@ cmd_kurt_ravemap [] state = do
       flipSig = if color == Black then 1 else -1
       color = nextMoveColor $ getGameState state
 
-cmd_kurt_ravemap _ _ = error "cmd_kurt_heuristic called with illegal argument type"
+cmd_kurt_ravemap _ _ = error "cmd_kurt_ravemap called with illegal argument type"
 
 
 
