@@ -66,12 +66,12 @@ showGoban g@(STGoban n _v) = do
           $ reverse
           ([xLegend]
            ++ zipWith (++) ys
-              (zipWith (++) (map (concatMap ((" " ++) . show)) ls) ys)
+              (zipWith (++) (map (unwords . (map show)) ls) ys)
            ++ [xLegend])
 
           where
             ys = map (printf " %2d ") [1 .. n]
-            xLegend = "    " ++ concatMap ((" " ++) . (: []) . xToLetter) [1 .. n]
+            xLegend = "    " ++ unwords (map ((: []) . xToLetter) [1 .. n])
       nLines xs = if null xs then Nothing else Just $ splitAt n xs
 
 

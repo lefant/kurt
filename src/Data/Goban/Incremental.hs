@@ -60,12 +60,11 @@ data Chain = Chain { chainColor           :: !Color
 
 instance Show Chain where
     show (Chain c ls vs ns) =
-        show c ++ " vs:" ++ concatMap ((" " ++) . gtpShowVertex) (S.elems vs)
-               ++ " ls:" ++ concatMap ((" " ++) . gtpShowVertex) (S.elems ls)
+        show c ++ " vs:" ++ unwords (map gtpShowVertex (S.elems vs))
+               ++ " ls:" ++ unwords (map gtpShowVertex (S.elems ls))
                ++ "\nns: "
                ++ concatMap (\(k, v) -> show k ++ " "
-                              ++ concatMap ((" " ++) . gtpShowVertex)
-                                                (S.elems v)
+                              ++ unwords (map gtpShowVertex (S.elems v))
                               ++ "; ") (M.toList ns)
                ++ "\n"
 
@@ -195,7 +194,7 @@ showChainIdGoban cg = do
 
           where
             ys = map (printf " %2d ") [1 .. n]
-            xLegend = "    " ++ concatMap ((" " ++) . (: []) . xToLetter) [1 .. n]
+            xLegend = "    " ++ unwords (map ((: []) . xToLetter) [1 .. n])
 
       maybePrint 0 = " ."
       maybePrint m = printf "%2d" m

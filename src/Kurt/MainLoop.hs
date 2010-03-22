@@ -17,7 +17,7 @@ module Kurt.MainLoop ( startLoop
                      ) where
     
 
-import Control.Arrow (second)
+import Control.Arrow (second, (&&&))
 import Control.Monad.ST (stToIO, RealWorld)
 import System.IO
 import Text.Parsec.String (Parser)
@@ -36,7 +36,7 @@ import Data.Goban.Types (gtpShowMove, gtpShowVertex, Move(..), Stone(..), Color(
 import Data.Goban.STVectorGoban (allStones)
 
 import Kurt.Config
-import Kurt.GoEngine (EngineState(..), newEngineState, genMove)
+import Kurt.GoEngine (EngineState(..), newEngineState, genMove, simulatePlayout)
 import Data.Tree.UCT.GameTree (MoveNode(..))
 
 
@@ -75,6 +75,8 @@ commandargparserlist =
 
     ,("kurt_uct_tree", noArgumentParser)
     ,("kurt_ravemap", noArgumentParser)
+    ,("kurt_simulate_playout", noArgumentParser)
+
     ,("kurt_heuristic_total", noArgumentParser)
     ,("kurt_heuristic_capture", noArgumentParser)
     ,("kurt_heuristic_liberty_min", noArgumentParser)
@@ -108,14 +110,16 @@ commandHandlers =
 
     ,("kurt_configure", cmd_kurt_configure)
 
+    ,("kurt_uct_tree", cmd_kurt_uct_tree)
+    ,("kurt_ravemap", cmd_kurt_ravemap)
+    ,("kurt_simulate_playout", cmd_kurt_simulate_playout)
+
     ,("kurt_heuristic_total", cmd_kurt_heuristic_total)
     ,("kurt_heuristic_capture", make_cmd_kurt_heuristic (\c -> c { hCaptureWeight = 1 }))
     ,("kurt_heuristic_liberty_min", make_cmd_kurt_heuristic (\c -> c { hMinLibertiesWeight = 1 }))
     ,("kurt_heuristic_liberty_total", make_cmd_kurt_heuristic (\c -> c { hLibertiesWeight = 1 }))
     ,("kurt_heuristic_chain_count", make_cmd_kurt_heuristic (\c -> c { hChainCountWeight = 1 }))
     ,("kurt_heuristic_center", make_cmd_kurt_heuristic (\c -> c { hCenterWeight = 1 }))
-    ,("kurt_uct_tree", cmd_kurt_uct_tree)
-    ,("kurt_ravemap", cmd_kurt_ravemap)
     ]
 
 
@@ -293,6 +297,7 @@ cmd_gogui_analyze_commands [] state =
            "param/kurt_configure/kurt_configure\n"
            ++ "gfx/kurt_uct_tree/kurt_uct_tree\n"
            ++ "gfx/kurt_ravemap/kurt_ravemap\n"
+           ++ "var/kurt_simulate_playout/kurt_simulate_playout\n"
            ++ "gfx/kurt_heuristic_total/kurt_heuristic_total\n"
            ++ "gfx/kurt_heuristic_capture/kurt_heuristic_capture\n"
            ++ "gfx/kurt_heuristic_liberty_min/kurt_heuristic_liberty_min\n"
@@ -334,17 +339,31 @@ make_cmd_kurt_heuristic _ _ _ = error "make_cmd_kurt_heuristic called with illeg
 
 cmd_kurt_uct_tree :: CommandHandler RealWorld
 cmd_kurt_uct_tree [] state = do
-  let str = concatMap
-            (\(Move (Stone p _c), v)
-                 -> " " ++ gtpShowVertex p
-                    ++ printf " %.2f" (((fromIntegral v / fromIntegral m) :: Float) * flipSig))
-                    -- ++ printf " %.2f" ((v - 0.5) * 2 * flipSig))
-            ucts
-  return $ Right ("INFLUENCE" ++ str, state)
+  -- let str = concatMap
+  --           (\(move, v)
+  --                -> " " ++ gtpShowMove move
+  --                   ++ printf " %.2f" (((fromIntegral v / fromIntegral m) :: Float) * flipSig))
+  --           ucts
+  let str = "INFLUENCE"
+            ++ concatMap
+                   (\(move, v)
+                        -> " " ++ gtpShowMove move
+                           ++ printf " %.2f" ((v - 0.5) * 2 * flipSig))
+                   ucts
+
+  let str' = "LABEL"
+             ++ concatMap
+                    (\(move, v) -> " " ++ gtpShowMove move ++ " " ++ show v)
+                    ucts'
+
+
+  return $ Right (str ++ "\n" ++ str', state)
     where
-      ucts = map (\l -> (nodeMove l, nodeVisits l))
-                     $ map rootLabel $ subForest $ tree $ getUctTree state
-      m = maximum $ map snd ucts
+      ucts = map (nodeMove &&& nodeValue) nodes
+      ucts' = map (nodeMove &&& nodeVisits) nodes
+
+      nodes = map rootLabel $ subForest $ tree $ getUctTree state
+      -- m = maximum $ map snd ucts
 
       flipSig = if color == Black then trace "flipSig black" 1 else trace "flipSig white" (- 1)
       color = thisMoveColor $ getGameState state
@@ -353,15 +372,21 @@ cmd_kurt_uct_tree _ _ = error "cmd_kurt_uct_tree called with illegal argument ty
 
 cmd_kurt_ravemap :: CommandHandler RealWorld
 cmd_kurt_ravemap [] state = do
-  let str = concatMap
-            (\(Move (Stone p _c), v)
-                 -> " " ++ gtpShowVertex p
-                    ++ printf " %.2f" ((v - 0.5) * 2 * flipSig))
-                    -- ++ printf " %.2f" (fst $ slHeu move))
-            raves
-  return $ Right ("INFLUENCE" ++ str, state)
+  let str = "INFLUENCE"
+            ++ concatMap
+                   (\(move, v)
+                        -> " " ++ gtpShowMove move
+                           ++ printf " %.2f" ((v - 0.5) * 2 * flipSig))
+                   (map (second fst) raves)
+
+  let str' = "LABEL"
+             ++ (concatMap
+                 (\(move, v) -> " " ++ gtpShowMove move ++ " " ++ show v)
+                 $ map (second snd) raves)
+
+  return $ Right (str ++ "\n" ++ str', state)
     where
-      raves = map (second fst) $ M.assocs $ getRaveMap state
+      raves = M.assocs $ getRaveMap state
 
       flipSig = if color == Black then trace "flipSig black" 1 else trace "flipSig white" (- 1)
       color = thisMoveColor $ getGameState state
@@ -369,6 +394,13 @@ cmd_kurt_ravemap [] state = do
 cmd_kurt_ravemap _ _ = error "cmd_kurt_ravemap called with illegal argument type"
 
 
+cmd_kurt_simulate_playout :: CommandHandler RealWorld
+cmd_kurt_simulate_playout [] state = do
+  moves <- simulatePlayout $ getGameState state
+  let str = unwords $ map gtpShowMove moves
+  return $ Right ("VAR " ++ str, state)
+
+cmd_kurt_simulate_playout _ _ = error "cmd_kurt_ravemap called with illegal argument type"
 
 
 
@@ -378,7 +410,7 @@ cmd_kurt_ravemap _ _ = error "cmd_kurt_ravemap called with illegal argument type
 cmd_kurt_configure :: CommandHandler RealWorld
 cmd_kurt_configure [MaybeKeyValueArgument Nothing] state =
     return $ Right (
-                    unlines $ [
+                    unlines [
                      "maxPlayouts " ++ show (maxPlayouts config)
                     ,"maxTime " ++ show (maxTime config)
                     ,"uctExploration " ++ show (uctExploration config)

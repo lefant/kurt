@@ -15,6 +15,7 @@ Move generator logic
 -}
 
 module Kurt.GoEngine ( genMove
+                     , simulatePlayout
                      , EngineState(..)
                      , newEngineState
                      ) where
@@ -200,7 +201,18 @@ runUCT initLoc rootGameState initRaveMap config rGen deadline  =
 
 
 
+simulatePlayout :: GameState RealWorld -> IO [Move]
+simulatePlayout gState = do
+  seed <- withSystemRandom save
+  rGen <- stToIO $ restore seed
 
+  gState' <- stToIO $ getLeafGameState gState []
+
+  (score, playedMoves) <- stToIO $ runOneRandom gState' rGen
+
+  trace ("simulatePlayout " ++ show score) $ return ()
+
+  return $ reverse playedMoves
 
 
 
@@ -214,7 +226,7 @@ runOneRandom initState rGenInit =
         move <- genMoveRand state rGen
         state' <- updateGameState state move
         case move of
-          (Pass _) -> do
+          (Pass passColor) -> do
                     move' <- genMoveRand state' rGen
                     state'' <- updateGameState state' move'
                     case move' of
@@ -222,7 +234,7 @@ runOneRandom initState rGenInit =
                                  score <- scoreGameState state''
                                  return (score, moves)
                       sm@(Move _) ->
-                          run state'' (runCount + 1) rGen (sm : moves)
+                          run state'' (runCount + 1) rGen (sm : (Pass passColor) : moves)
                       (Resign _) ->
                           error "runOneRandom encountered Resign"
           sm@(Move _) ->

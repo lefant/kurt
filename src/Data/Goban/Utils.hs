@@ -57,25 +57,28 @@ maxIntSet genF filterF p =
 
 
 
--- scoreToResult :: Color -> Score -> Value
 rateScore :: Score -> UCTEvaluator Move
-rateScore score (Move (Stone _p color)) =
+rateScore score move =
     if score == 0
     then 0.5
     else
         if winningScore color score
         then
             -- trace ("scoreToResult winning" ++ show (color, thisScore))
-            0.9 + bonus
-            -- 1.0
+            -- 0.9 + bonus
+            1.0
         else
             -- trace ("scoreToResult losing" ++ show (color, thisScore))
-            0.1 - bonus
-            -- 0.0
+            -- 0.1 - bonus
+            0.0
     where
-      bonus =
-          (sqrt $ max 99 $ abs $ realToFrac score) / 100
-rateScore _ _ = error "scoreToResult called with non-stone arg"
+      -- bonus =
+      --     (sqrt $ max 99 $ abs $ realToFrac score) / 100
+
+      color = case move of
+                Move (Stone _p c) -> c
+                Pass c -> c
+                Resign c -> error ("rateScore encountered resign " ++ show c)
 
 
 
