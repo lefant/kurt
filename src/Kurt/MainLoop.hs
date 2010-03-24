@@ -17,7 +17,7 @@ module Kurt.MainLoop ( startLoop
                      ) where
     
 
-import Control.Arrow (second, (&&&))
+import Control.Arrow ((&&&))
 import Control.Monad.ST (stToIO, RealWorld)
 import System.IO
 import Text.Parsec.String (Parser)
@@ -32,15 +32,16 @@ import Text.Printf (printf)
 import Network.GoTextProtocol2.Server.Parser
 import Network.GoTextProtocol2.Types
 import Data.Goban.GameState (GameState(..), newGameState, showGameState, updateGameState, scoreGameState, makeStonesAndLibertyHeuristic, nextMoves, nextMoveColor, thisMoveColor)
-import Data.Goban.Types (gtpShowMove, gtpShowVertex, Move(..), Stone(..), Color(..))
+import Data.Goban.Types (gtpShowMove, gtpShowVertex, Move(..), moveColor, Stone(..), Color(..))
 import Data.Goban.STVectorGoban (allStones)
+import Data.Goban.Utils (influenceFromWinrate)
 
 import Kurt.Config
 import Kurt.GoEngine (EngineState(..), newEngineState, genMove, simulatePlayout)
 import Data.Tree.UCT.GameTree (MoveNode(..))
 
 
-import Debug.TraceOrId (trace)
+-- import Debug.TraceOrId (trace)
 
 
 type CommandHandler s = [Argument] -> EngineState s -> IO (Either String (String, EngineState s))
@@ -346,9 +347,9 @@ cmd_kurt_uct_tree [] state = do
   --           ucts
   let str = "INFLUENCE"
             ++ concatMap
-                   (\(move, v)
+                   (\(move, value)
                         -> " " ++ gtpShowMove move
-                           ++ printf " %.2f" ((v - 0.5) * 2 * flipSig))
+                           ++ (influenceFromWinrate color value))
                    ucts
 
   let str' = "LABEL"
@@ -365,7 +366,6 @@ cmd_kurt_uct_tree [] state = do
       nodes = map rootLabel $ subForest $ tree $ getUctTree state
       -- m = maximum $ map snd ucts
 
-      flipSig = if color == Black then trace "flipSig black" 1 else trace "flipSig white" (- 1)
       color = thisMoveColor $ getGameState state
 
 cmd_kurt_uct_tree _ _ = error "cmd_kurt_uct_tree called with illegal argument type"
@@ -374,23 +374,21 @@ cmd_kurt_ravemap :: CommandHandler RealWorld
 cmd_kurt_ravemap [] state = do
   let str = "INFLUENCE"
             ++ concatMap
-                   (\(move, v)
-                        -> " " ++ gtpShowMove move
-                           ++ printf " %.2f" ((v - 0.5) * 2 * flipSig))
-                   (map (second fst) raves)
+                 (\(move, (value, _count)) ->
+                      " " ++ gtpShowMove move
+                      ++ (influenceFromWinrate color value))
+                 raves
 
   let str' = "LABEL"
-             ++ (concatMap
-                 (\(move, v) -> " " ++ gtpShowMove move ++ " " ++ show v)
-                 $ map (second snd) raves)
+            ++ concatMap
+                 (\(move, (_value, count)) ->
+                      " " ++ gtpShowMove move ++ " " ++ show count)
+                 raves
 
   return $ Right (str ++ "\n" ++ str', state)
     where
-      raves = M.assocs $ getRaveMap state
-
-      flipSig = if color == Black then trace "flipSig black" 1 else trace "flipSig white" (- 1)
+      raves = filter ((== color) . moveColor . fst) $ M.assocs $ getRaveMap state
       color = thisMoveColor $ getGameState state
-
 cmd_kurt_ravemap _ _ = error "cmd_kurt_ravemap called with illegal argument type"
 
 
@@ -410,7 +408,7 @@ cmd_kurt_simulate_playout _ _ = error "cmd_kurt_ravemap called with illegal argu
 cmd_kurt_configure :: CommandHandler RealWorld
 cmd_kurt_configure [MaybeKeyValueArgument Nothing] state =
     return $ Right (
-                    unlines [
+                    init $ unlines [
                      "maxPlayouts " ++ show (maxPlayouts config)
                     ,"maxTime " ++ show (maxTime config)
                     ,"uctExploration " ++ show (uctExploration config)
@@ -429,7 +427,7 @@ cmd_kurt_configure [MaybeKeyValueArgument (Just (str, n))] state =
                "maxplayouts" -> Right ("maxPlayouts set to " ++ show n, state { getConfig = (getConfig state) { maxPlayouts = n } } )
                "maxtime" -> Right ("maxTime set to " ++ show n, state { getConfig = (getConfig state) { maxTime = n } })
                "uctexploration" -> Right ("uctExploration set to " ++ show n, state { getConfig = (getConfig state) { uctExploration = fromIntegral n / 100} })
-               "raveWeight" -> Right ("raveWeight set to " ++ show n, state { getConfig = (getConfig state) { raveWeight = fromIntegral n} })
+               "raveweight" -> Right ("raveWeight set to " ++ show n, state { getConfig = (getConfig state) { raveWeight = fromIntegral n} })
                "hcaptureweight" -> Right ("hCaptureWeight set to " ++ show n, state { getConfig = (getConfig state) { hCaptureWeight = n} })
                "hminlibertiesweight" -> Right ("hMinLibertiesWeight set to " ++ show n, state { getConfig = (getConfig state) { hMinLibertiesWeight = n} })
                "hlibertiesweight" -> Right ("hLibertiesWeight set to " ++ show n, state { getConfig = (getConfig state) { hLibertiesWeight = n} })

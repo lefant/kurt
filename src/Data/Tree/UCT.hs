@@ -123,13 +123,21 @@ principalVariation loc =
 
 policyRaveUCB1 :: (UCTMove a, Ord a) => Value -> Value -> RaveMap a -> UCTPolicy a
 policyRaveUCB1 exploratoryC raveWeight m parentNode =
-    maximumBy
-    (comparing (combinedVal . rootLabel))
-    $ subForest parentNode
+    -- trace ("policyRaveUCB1 " ++ show (nodeMove $ rootLabel choosen))
+    choosen
     where
+      choosen = maximumBy
+                (comparing (combinedVal . rootLabel))
+                $ subForest parentNode
+
+
       combinedVal node =
-          beta * raveVal + (1 - beta) * uctVal
+          -- trace ("combinedVal "
+          --        ++ show (nodeMove node, total, (raveVal, raveCount), (uctVal, uctCount), beta, parentVisits))
+          total
           where
+            total = beta * raveVal + (1 - beta) * uctVal
+
             beta = fromIntegral raveCount
                    / (intSum + intSum / raveWeight)
             intSum = fromIntegral $ raveCount + uctCount

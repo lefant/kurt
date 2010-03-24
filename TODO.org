@@ -3,8 +3,6 @@
 * Roadmap march:
 
 * tune heuristic
-** analyze commands:
-*** random playout variant
 
 ---------------------------
 
@@ -25,13 +23,10 @@
 
 ** wrap UCT in some toplevel object?
 
-** sample playouts
-
 ** STUArray instead of STVector with thaw and freeze before and updateGameState
 *** would need to support all of STVector in Incremental
 *** first shift chain ids to signed (so we can tell from array which color the stone is)
 *** add border
-
 
 
 

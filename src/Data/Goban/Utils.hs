@@ -17,15 +17,17 @@ module Data.Goban.Utils ( maxIntSet
 
                         , rateScore
                         , winningScore
+                        , influenceFromWinrate
                         ) where
 
 
 -- import Data.List ((\\))
 import qualified Data.IntSet as S
+import Text.Printf (printf)
 
 import Data.Goban.Types
 import Data.Tree.UCT (UCTEvaluator)
-
+import Data.Tree.UCT.GameTree (Value)
 
 -- import Debug.TraceOrId (trace)
 
@@ -92,3 +94,7 @@ winningScore color thisScore =
           -- trace ("winningScore White " ++ show (thisScore < 0))
           thisScore < 0
 
+
+influenceFromWinrate :: Color -> Value -> String
+influenceFromWinrate color v =
+    printf " %.2f" $ (if color == Black then id else negate) $ ((v - 0.5) * 2)
