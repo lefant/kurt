@@ -47,7 +47,7 @@ import Data.Goban.Utils
 import Data.Goban.STVectorGoban
 import Data.Goban.Incremental
 
--- import Debug.TraceOrId (trace)
+import Debug.TraceOrId (trace)
 
 
 
@@ -364,8 +364,7 @@ makeStonesAndLibertyHeuristic state config = do
 thisMoveColor :: GameState s -> Color
 thisMoveColor state =
     case moveHistory state of
-      [] ->
-          error "thisMoveColor called when moveHistory still empty"
+      [] -> trace "thisMoveColor called when moveHistory still empty" White
       moves ->
           case last moves of
             Move (Stone _ color) -> color
