@@ -411,7 +411,7 @@ cmd_kurt_configure [MaybeKeyValueArgument Nothing] state =
                     init $ unlines [
                      "maxPlayouts " ++ show (maxPlayouts config)
                     ,"maxTime " ++ show (maxTime config)
-                    ,"uctExploration " ++ show (uctExploration config)
+                    ,"uctExplorationPercent " ++ show (uctExplorationPercent config)
                     ,"raveWeight " ++ show (raveWeight config)
                     ,"hCaptureWeight " ++ show (hCaptureWeight config)
                     ,"hMinLibertiesWeight " ++ show (hMinLibertiesWeight config)
@@ -426,8 +426,8 @@ cmd_kurt_configure [MaybeKeyValueArgument (Just (str, n))] state =
     return $ case str of
                "maxplayouts" -> Right ("maxPlayouts set to " ++ show n, state { getConfig = (getConfig state) { maxPlayouts = n } } )
                "maxtime" -> Right ("maxTime set to " ++ show n, state { getConfig = (getConfig state) { maxTime = n } })
-               "uctexploration" -> Right ("uctExploration set to " ++ show n, state { getConfig = (getConfig state) { uctExploration = fromIntegral n / 100} })
-               "raveweight" -> Right ("raveWeight set to " ++ show n, state { getConfig = (getConfig state) { raveWeight = fromIntegral n} })
+               "uctexplorationpercent" -> Right ("uctExplorationPercent set to " ++ show n, state { getConfig = (getConfig state) { uctExplorationPercent = n } })
+               "raveweight" -> Right ("raveWeight set to " ++ show n, state { getConfig = (getConfig state) { raveWeight = n} })
                "hcaptureweight" -> Right ("hCaptureWeight set to " ++ show n, state { getConfig = (getConfig state) { hCaptureWeight = n} })
                "hminlibertiesweight" -> Right ("hMinLibertiesWeight set to " ++ show n, state { getConfig = (getConfig state) { hMinLibertiesWeight = n} })
                "hlibertiesweight" -> Right ("hLibertiesWeight set to " ++ show n, state { getConfig = (getConfig state) { hLibertiesWeight = n} })

@@ -78,7 +78,7 @@ selectLeaf policy initLoc =
           where
             selectedTree = policy $ tree loc
 
-policyUCB1 :: UCTMove a => Value -> UCTPolicy a
+policyUCB1 :: UCTMove a => Int -> UCTPolicy a
 policyUCB1 exploratoryC node =
     maximumBy
     (comparing (ucb1 exploratoryC parentVisits . rootLabel))
@@ -86,8 +86,8 @@ policyUCB1 exploratoryC node =
     where
       parentVisits = nodeVisits $ rootLabel node
 
-ucb1 :: UCTMove a => Value -> Count -> MoveNode a -> Value
-ucb1 exploratoryC parentVisits node =
+ucb1 :: UCTMove a => Int -> Count -> MoveNode a -> Value
+ucb1 exploratoryCPercent parentVisits node =
     -- trace ("ucb1: "
     --        ++ show (nodeMove node, oldValue, ucb1part, value))
     value
@@ -102,6 +102,8 @@ ucb1 exploratoryC parentVisits node =
              * sqrt
                    (log (fromIntegral parentVisits)
                     / (fromIntegral (nodeVisits node) + 1))
+
+      exploratoryC = fromIntegral exploratoryCPercent / 100
 
 -- policyMaxUCTValue :: UCTMove a => UCTPolicy a
 -- policyMaxUCTValue node =
@@ -121,7 +123,7 @@ principalVariation loc =
     pathToLeaf $ selectLeaf policyMaxRobust loc
 
 
-policyRaveUCB1 :: (UCTMove a, Ord a) => Value -> Value -> RaveMap a -> UCTPolicy a
+policyRaveUCB1 :: (UCTMove a, Ord a) => Int -> Int -> RaveMap a -> UCTPolicy a
 policyRaveUCB1 exploratoryC raveWeight m parentNode =
     -- trace ("policyRaveUCB1 " ++ show (nodeMove $ rootLabel choosen))
     choosen
@@ -139,7 +141,7 @@ policyRaveUCB1 exploratoryC raveWeight m parentNode =
             total = beta * raveVal + (1 - beta) * uctVal
 
             beta = fromIntegral raveCount
-                   / (intSum + intSum / raveWeight)
+                   / (intSum + intSum / fromIntegral raveWeight)
             intSum = fromIntegral $ raveCount + uctCount
 
             (raveVal, raveCount) = fromMaybe (0.5, 0) (M.lookup move m)

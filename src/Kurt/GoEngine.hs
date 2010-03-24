@@ -188,7 +188,7 @@ runUCT initLoc rootGameState initRaveMap config rGen deadline  =
         let done = False
 
         (loc', path) <- return $ selectLeafPath
-                        (policyRaveUCB1 (uctExploration config) (raveWeight config) raveMap) loc
+                        (policyRaveUCB1 (uctExplorationPercent config) (raveWeight config) raveMap) loc
                         -- (policyUCB1 (uctExploration config)) loc
 
         leafGameState <- stToIO $ getLeafGameState rootGameState path

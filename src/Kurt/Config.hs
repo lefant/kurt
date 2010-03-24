@@ -22,20 +22,19 @@ module Kurt.Config ( KurtConfig(..)
 import System.Console.CmdArgs
 
 import Data.Goban.Types (Score)
-import Data.Tree.UCT.GameTree (Value)
 
 
-data KurtConfig = KurtConfig { maxPlayouts          :: Int
-                             , maxTime              :: Int
-                             , uctExploration       :: Value 
-                             , raveWeight           :: Value
-                             , hCaptureWeight       :: Int
-                             , hMinLibertiesWeight  :: Int
-                             , hLibertiesWeight     :: Int
-                             , hChainCountWeight    :: Int
-                             , hCenterWeight        :: Int
-                             , initialKomi          :: Score
-                             , initialBoardsize     :: Int
+data KurtConfig = KurtConfig { maxPlayouts           :: Int
+                             , maxTime               :: Int
+                             , uctExplorationPercent :: Int
+                             , raveWeight            :: Int
+                             , hCaptureWeight        :: Int
+                             , hMinLibertiesWeight   :: Int
+                             , hLibertiesWeight      :: Int
+                             , hChainCountWeight     :: Int
+                             , hCenterWeight         :: Int
+                             , initialKomi           :: Score
+                             , initialBoardsize      :: Int
                              }
                   deriving (Show, Eq, Data, Typeable)
 
@@ -46,9 +45,9 @@ kurtDefaultConfig = mode $ KurtConfig {
                              & text "Max simulations run during move generation"
              , maxTime = 5000 &= typ "INT"
                          & text "Max time used during move generation (ms)"
-             , uctExploration = 0.4 &= typ "FLOAT"
-                                & text "Exploration constant used in UCT formula"
-             , raveWeight = 20 &= typ "FLOAT"
+             , uctExplorationPercent = 40 &= typ "INT"
+                                & text "Exploration constant used in UCT formula (percent)"
+             , raveWeight = 20 &= typ "INT"
                                 & text "Weight used for RAVE in UCT-RAVE formula"
              , hCaptureWeight = 20 &= typ "INT"
                                 & text "Weight used for captures in heuristic"
