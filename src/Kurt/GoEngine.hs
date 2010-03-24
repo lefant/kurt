@@ -29,6 +29,7 @@ import Data.Time.Clock ( UTCTime(..)
                        , getCurrentTime
                        )
 import Data.List ((\\))
+-- import qualified Data.Map as M (empty, insert)
 
 
 import Kurt.Config
@@ -102,6 +103,13 @@ genMove eState color = do
           seed <- withSystemRandom save
           rGen <- stToIO $ restore seed
 
+
+          -- -- initialize rave map with random values to avoid all moves
+          -- -- ranked equal in some situation
+          -- initRaveMap <- stToIO $ foldM (u rGen) M.empty
+          --                [ Move (Stone p c) | p <- (allVertices (boardsize gState)), c <- [Black, White]]
+
+
           (loc'', raveMap) <- runUCT loc' gState initRaveMap config rGen deadline
           -- (getUctC eState) (getRaveWeight eState) (getHeuWeights eState) rGen deadline (maxRuns eState)
           let eState' = eState { getUctTree = loc'', getRaveMap = raveMap }
@@ -114,6 +122,12 @@ genMove eState color = do
 
       gState = getGameState eState
       initRaveMap = newRaveMap
+
+      -- u :: Gen RealWorld -> RaveMap Move -> Move -> ST RealWorld (RaveMap Move)
+      -- u rGen' m move = do
+      --   v <- uniform rGen'
+      --   return $ M.insert move ((0.495 + v / 100), 1) m
+
       loc = fromTree $ newMoveNode
                        (trace "UCT tree root move accessed"
                                   (Move (Stone (25,25) Black)))
@@ -175,6 +189,7 @@ runUCT initLoc rootGameState initRaveMap config rGen deadline  =
 
         (loc', path) <- return $ selectLeafPath
                         (policyRaveUCB1 (uctExploration config) (raveWeight config) raveMap) loc
+                        -- (policyUCB1 (uctExploration config)) loc
 
         leafGameState <- stToIO $ getLeafGameState rootGameState path
 
@@ -269,7 +284,7 @@ genMoveRand state rGen =
 
 pick :: [Vertex] -> Gen s -> ST s Vertex
 pick as rGen = do
-  i <- liftM (`mod` (length as - 1)) $ uniform rGen
+  i <- liftM (`mod` (length as)) $ uniform rGen
   return $ as !! i
 
 
