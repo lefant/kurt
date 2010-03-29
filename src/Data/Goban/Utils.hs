@@ -74,8 +74,8 @@ rateScore score move =
             0.1 - bonus
             -- 0.0
     where
-      -- bonus =
-      --     (sqrt $ max 99 $ abs $ realToFrac score) / 100
+      bonus =
+          (sqrt $ max 99 $ abs $ realToFrac score) / 100
 
       color = case move of
                 Move (Stone _p c) -> c
