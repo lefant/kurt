@@ -34,7 +34,7 @@ module Data.Goban.STVectorGoban ( STGoban(..)
                                 , allStones
                                 , allLibertiesColorCount
                                 , colorTerritories
-                                , intAllAdjacentStonesSameColor
+                                , allAdjacentStonesSameColor
                                 ) where
 
 import Control.Monad (filterM)
@@ -360,16 +360,16 @@ allLibertiesColorCount g@(STGoban n _v) color = do
 
 
 
-colorTerritories :: STGoban s -> [Int] -> ST s [(Color, [Int])]
+colorTerritories :: STGoban s -> [Vertex] -> ST s [(Color, [Vertex])]
 colorTerritories g t = do
-  maybeColor <- intAllAdjacentStonesSameColor g t
+  maybeColor <- allAdjacentStonesSameColor g t
   return $ case maybeColor of
              Just tColor -> [(tColor, t)]
              Nothing -> []
 
-intAllAdjacentStonesSameColor :: STGoban s -> [Int] -> ST s (Maybe Color)
-intAllAdjacentStonesSameColor g ps = do
-  as <- mapM (intAdjacentStones g) ps
+allAdjacentStonesSameColor :: STGoban s -> [Vertex] -> ST s (Maybe Color)
+allAdjacentStonesSameColor g ps = do
+  as <- mapM (adjacentStones g) ps
   return $ maybeSameColor $ map stoneColor $ concat as
     where
       maybeSameColor [] = Nothing

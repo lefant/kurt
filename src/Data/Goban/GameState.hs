@@ -33,14 +33,12 @@ module Data.Goban.GameState ( GameState(..)
 
 import Control.Monad (filterM, foldM)
 import Control.Monad.ST (ST)
-import Data.List ((\\))
 -- import Data.Array.IArray (Array)
 import Data.Array.MArray (freeze, thaw)
-import qualified Data.IntSet as S
+import qualified Data.Set as S
 
 import Kurt.Config
 import Data.Goban.Types
-import Data.Goban.IntVertex
 import Data.Tree.UCT (UCTHeuristic)
 import Data.Tree.UCT.GameTree (Value)
 import Data.Goban.Utils
@@ -51,13 +49,11 @@ import Debug.TraceOrId (trace)
 
 
 
-type IntVertexSet = S.IntSet
-
 data GameState s = GameState { goban           :: !(STGoban s)
                              , chainGoban      :: !(ChainIdGoban s)
                              , chains          :: !ChainMap
                              , boardsize       :: !Boardsize
-                             , freeVerticesSet :: !IntVertexSet
+                             , freeVerticesSet :: !VertexSet
                              , koBlocked       :: !(Maybe Vertex)
                              , moveHistory     :: ![Move]
                              , komi            :: !Score
@@ -109,7 +105,7 @@ newGameState n initKomi = do
                    -- , whitePrisoners = 0
                    }
   where
-    initFreeVertices = S.fromList $ [0 .. (maxIntIndex n)] \\ borderVertices n
+    initFreeVertices = S.fromList $ [(x, y) | x <- [1 .. n], y <- [1 .. n]]
 
 
 
@@ -202,12 +198,9 @@ updateGameState state move =
       cg = chainGoban state
 
       freeVerticesSet' p dead =
-          S.fromList
-               (map (vertexToInt (boardsize state) . stoneVertex) dead)
+          S.fromList (map stoneVertex dead)
           `S.union`
-          S.delete
-               (vertexToInt (boardsize state) p)
-               (freeVerticesSet state)
+          S.delete p (freeVerticesSet state)
 
 
 scoreGameState :: GameState s -> ST s Score
@@ -230,7 +223,7 @@ scoreGameState state = do
                 $ filter ((== color) . fst) $ concat ts
 
 
-emptyStrings :: GameState s -> [[Int]]
+emptyStrings :: GameState s -> [[Vertex]]
 emptyStrings state =
   emptyStrings' initFrees []
 
@@ -241,18 +234,16 @@ emptyStrings state =
               emptyStrings' frees'' (S.toList iMax : xs)
           where
             frees'' = frees' `S.difference` iMax
-            iMax = maxIntSet myAdjacentVertices isFree i
-            (i, frees') = S.deleteFindMin frees
+            iMax = maxSet myAdjacentVertices isFree p
+            (p, frees') = S.deleteFindMin frees
 
-      myAdjacentVertices i =
-          S.fromDistinctAscList (intAscAdjacentVertices n i)
+      myAdjacentVertices p =
+          S.fromList (adjacentVertices p)
 
       -- maybe actually looking it up in the goban is faster?
       isFree i = i `S.member` initFrees
 
       initFrees = freeVerticesSet state
-
-      n = boardsize state
 
 
 
@@ -385,13 +376,9 @@ nextMoveColor state =
 
 freeVertices :: GameState s -> [Vertex]
 freeVertices state =
-    map (intToVertex (boardsize state))
-            $ S.toList
-            $ case koBlocked state of
-                Nothing -> freeVerticesSet state
-                Just i ->
-                    S.delete (vertexToInt (boardsize state) i)
-                         $ freeVerticesSet state
+    S.toList $ case koBlocked state of
+                 Nothing -> freeVerticesSet state
+                 Just p -> S.delete p $ freeVerticesSet state
 
 
 

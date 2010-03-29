@@ -13,7 +13,7 @@ Various utility functions for Goban Implementation (without direct dependencies 
 
 -}
 
-module Data.Goban.Utils ( maxIntSet
+module Data.Goban.Utils ( maxSet
 
                         , rateScore
                         , winningScore
@@ -22,7 +22,7 @@ module Data.Goban.Utils ( maxIntSet
 
 
 -- import Data.List ((\\))
-import qualified Data.IntSet as S
+import qualified Data.Set as S
 import Text.Printf (printf)
 
 import Data.Goban.Types
@@ -43,19 +43,31 @@ import Data.Tree.UCT.GameTree (Value)
 --       fgen n =
 --           filter filterF $ genF n
 
-
-maxIntSet :: (Int -> S.IntSet) -> (Int -> Bool) -> Int -> S.IntSet
-maxIntSet genF filterF p =
-    maxIntSet' (S.singleton p) S.empty
+maxSet :: (Vertex -> VertexSet) -> (Vertex -> Bool) -> Vertex -> VertexSet
+maxSet genF filterF p =
+    maxSet' (S.singleton p) S.empty
     where
-      maxIntSet' is js
+      maxSet' is js
           | S.null is = js
-          | otherwise = maxIntSet' is'' js'
+          | otherwise = maxSet' is'' js'
           where
             is'' = S.union is' $ S.difference ks js
             js' = S.insert i js
             ks = S.filter filterF $ genF i
             (i, is') = S.deleteFindMin is
+
+-- maxIntSet :: (Int -> S.IntSet) -> (Int -> Bool) -> Int -> S.IntSet
+-- maxIntSet genF filterF p =
+--     maxIntSet' (S.singleton p) S.empty
+--     where
+--       maxIntSet' is js
+--           | S.null is = js
+--           | otherwise = maxIntSet' is'' js'
+--           where
+--             is'' = S.union is' $ S.difference ks js
+--             js' = S.insert i js
+--             ks = S.filter filterF $ genF i
+--             (i, is') = S.deleteFindMin is
 
 
 

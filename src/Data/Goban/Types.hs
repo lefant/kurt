@@ -16,6 +16,7 @@ General low-level types for Goban Implementation
 
 module Data.Goban.Types ( Move(..)
                         , VertexState(..)
+                        , VertexSet
                         , Stone(..)
                         , Color(..)
                         , Vertex
@@ -42,7 +43,7 @@ module Data.Goban.Types ( Move(..)
 
 
 import Data.Char (chr, ord, toUpper)
-
+import Data.Set (Set)
 import Data.Tree.UCT.GameTree (UCTMove)
 
 
@@ -96,6 +97,8 @@ showColorForBoard :: Color -> String
 showColorForBoard Black = "x"
 showColorForBoard White = "o"
 
+
+type VertexSet = Set Vertex
 
 type Vertex = (Coord, Coord)
 

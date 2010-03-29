@@ -74,8 +74,6 @@ noChainId = 0
 
 -- type LibertyCount = Int
 
-type VertexSet = S.Set Vertex
-
 -- maybe also reconsider Vector for this?
 type ChainMap = M.IntMap Chain
 
