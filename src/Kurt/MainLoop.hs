@@ -275,15 +275,23 @@ cmd_final_status_list _ _ = error "cmd_final_status_list called with illegal arg
 
 
 cmd_time_left :: CommandHandler RealWorld
+cmd_time_left [TimeLeftArgument 0 0] state =
+    return $ Right ("", state)
 cmd_time_left [TimeLeftArgument seconds stones] state =
     return
-    $ Right ("", state { getConfig = (getConfig state) { maxTime = ms } } )
+    $ Right ("", state { getConfig = (getConfig state) { maxTime = ms'' } } )
     where
-      ms =
+      ms'' = ms' - 300
+      ms' =
           if stones == 0
-          then (seconds * 900) `div` estMaxMoves
-          else (seconds * 900) `div` stones
-      estMaxMoves = (boardSize state + 1) ^ (2 :: Int)
+          then ms `div` (movesLeft + 1)
+          else ms `div` (stones + 1)
+      ms = seconds * 950
+      movesLeft = ((estMaxMoves - moveCount) * (estMaxMoves + moveCount))
+                  `div`
+                  ((4 * estMaxMoves) + 1)
+      estMaxMoves = max ((boardSize state) ^ (2 :: Int)) (moveCount + 15)
+      moveCount = length $ moveHistory $ getGameState state
 cmd_time_left _ _ = error "cmd_time_left called with illegal argument type"
 
 

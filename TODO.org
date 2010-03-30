@@ -77,6 +77,7 @@ General:
 * scoring
 ** area for now
 * timer could be more sophisticated
+** low main time and lots of byoyomi will not be used well (will try to complete in main time)
 * testing
 ** quickcheck
 ** hunit
