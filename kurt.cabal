@@ -34,9 +34,6 @@ library
                  ,Data.Goban.Types
   build-depends:
                   base >= 3 && < 5
-                 ,test-framework-quickcheck
-                 ,test-framework-hunit
-                 ,test-framework
                  ,parsec >= 3
                  ,haskell98
                  ,random
@@ -55,9 +52,6 @@ executable kurt
   hs-source-dirs: src
   build-depends:
                   base >= 3 && < 5
-                 ,test-framework-quickcheck
-                 ,test-framework-hunit
-                 ,test-framework
                  ,parsec >= 3
                  ,haskell98
                  ,random
