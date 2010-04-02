@@ -20,6 +20,7 @@ module Network.GoTextProtocol2.Server.Parser ( pureParseCommand
                                              , colorArgParser
                                              , moveArgParser
                                              , timeleftArgParser
+                                             , timesettingsArgParser
                                              , stringArgParser
                                              , maybeKeyValueArgParser
                                              ) where
@@ -179,6 +180,20 @@ timeleftArgParser =
       spaces
       stones <- parseInt
       return [TimeLeftArgument time stones]
+
+timesettingsArgParser :: Parser [Argument]
+timesettingsArgParser =
+    do
+      space
+      spaces
+      maintime <- parseInt
+      space
+      spaces
+      byotime <- parseInt
+      space
+      spaces
+      stones <- parseInt
+      return [TimeSettingsArgument maintime byotime stones]
 
 
 

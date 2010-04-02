@@ -69,6 +69,7 @@ commandargparserlist =
     ,("kgs-game_over", noArgumentParser)
     ,("showboard", noArgumentParser)
     ,("time_left", timeleftArgParser)
+    ,("time_settings", timesettingsArgParser)
     ,("version", noArgumentParser)
 
     ,("gogui-analyze_commands", noArgumentParser)
@@ -107,6 +108,7 @@ commandHandlers =
     ,("kgs-game_over", cmd_quit)
     ,("showboard", cmd_showboard)
     ,("time_left", cmd_time_left)
+    ,("time_settings", cmd_time_settings)
     ,("version", cmd_version)
 
     ,("gogui-analyze_commands", cmd_gogui_analyze_commands)
@@ -295,6 +297,23 @@ cmd_time_left [TimeLeftArgument seconds stones] state =
       estMaxMoves = max ((boardSize state) ^ (2 :: Int)) (moveCount + 15)
       moveCount = length $ moveHistory $ getGameState state
 cmd_time_left _ _ = error "cmd_time_left called with illegal argument type"
+
+cmd_time_settings :: CommandHandler RealWorld
+cmd_time_settings [TimeSettingsArgument maintime byotime stones] state =
+    return
+    $ Right ("", state { getConfig = (getConfig state) { maxTime = ms'' } } )
+    where
+      ms'' = ms' - 300
+      ms' =
+          if maintime > byotime
+          then maintime `div` (movesLeft + 1)
+          else byotime `div` (stones + 1)
+      movesLeft = ((estMaxMoves - moveCount) * (estMaxMoves + moveCount))
+                  `div`
+                  ((4 * estMaxMoves) + 1)
+      estMaxMoves = max ((boardSize state) ^ (2 :: Int)) (moveCount + 15)
+      moveCount = length $ moveHistory $ getGameState state
+cmd_time_settings _ _ = error "cmd_time_left called with illegal argument type"
 
 
 

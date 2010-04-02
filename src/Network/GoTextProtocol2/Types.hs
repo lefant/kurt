@@ -31,5 +31,6 @@ data Argument = IntArgument Int
               | ColorArgument Color
               | FloatArgument Float
               | TimeLeftArgument Int Int
+              | TimeSettingsArgument Int Int Int
               | MaybeKeyValueArgument (Maybe (String, Int))
                 deriving (Show, Eq)
