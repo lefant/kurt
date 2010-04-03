@@ -41,7 +41,7 @@ import Kurt.GoEngine (EngineState(..), newEngineState, genMove, simulatePlayout)
 import Data.Tree.UCT.GameTree (MoveNode(..))
 
 
--- import Debug.TraceOrId (trace)
+import Debug.TraceOrId (trace)
 
 
 type CommandHandler s = [Argument] -> EngineState s -> IO (Either String (String, EngineState s))
@@ -240,8 +240,8 @@ cmd_showboard _ _ = error "cmd_showboard called with illegal argument type"
 cmd_play :: CommandHandler RealWorld
 cmd_play [MoveArgument move] state = do
   gState' <- stToIO $ updateGameState (getGameState state) move
-  -- str <- stToIO $ showGameState gState'
-  -- trace ("cmd_play board: " ++ str) $ return ()
+  str <- stToIO $ showGameState gState'
+  trace ("cmd_play " ++ gtpShowMove move ++ "\n" ++ str) $ return ()
   return $ Right ("", state { getGameState = gState' })
 cmd_play _ _ = error "cmd_play called with illegal argument type"
 
@@ -249,8 +249,8 @@ cmd_genmove :: CommandHandler RealWorld
 cmd_genmove [ColorArgument color] state = do
   (move, state') <- genMove state color
   gState' <- stToIO $ updateGameState (getGameState state) move
-  -- str <- stToIO $ showGameState gState'
-  -- trace ("cmd_genmove board:" ++ str) $ return ()
+  str <- stToIO $ showGameState gState'
+  trace ("cmd_genmove " ++ gtpShowMove move ++ "\n" ++ str) $ return ()
   return $ Right (gtpShowMove move, state' { getGameState = gState' })
 cmd_genmove _ _ = error "cmd_genmove called with illegal argument type"
 

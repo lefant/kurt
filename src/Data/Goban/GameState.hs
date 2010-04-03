@@ -66,11 +66,11 @@ data GameState s = GameState { goban           :: !(STGoban s)
 showGameState :: GameState s -> ST s String
 showGameState state = do
   gobanStr <- showGoban $ goban state
-  chainGobanStr <- showChainIdGoban $ chainGoban state
   score <- scoreGameState state
-  return $ chainGobanStr ++ "\n"
-             ++
-             (unlines (zipWith (++) (lines gobanStr) $ [
+  -- chainGobanStr <- showChainIdGoban $ chainGoban state
+  -- return $ chainGobanStr ++ "\n"
+  --            ++
+  return $ (unlines (zipWith (++) (lines gobanStr) $ [
                        ""
                       ,"   blackStones: " ++ show (blackStones state)
                       ,"   whiteStones: " ++ show (whiteStones state)
