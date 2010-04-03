@@ -137,6 +137,12 @@ floatArgParser =
     do
       space
       spaces
+      maybeMinus <- (do
+                      (try
+                       (do
+                         char '-'
+                         return negate
+                        <|> return id)))
       (do
         (try
          (do
@@ -144,12 +150,12 @@ floatArgParser =
            char '.'
            d2 <- many1 digit
            n <- return $ read (d1 ++ ['.'] ++ d2)
-           return $ [FloatArgument n]))
+           return $ [FloatArgument $ maybeMinus n]))
         <|> (do
               d1 <- many1 digit
               n <- return $ read (d1 ++ ".0")
-              return $ [FloatArgument n])
-        <?> "komi value (ie. something like 6.5 or 0)")
+              return $ [FloatArgument $ maybeMinus n])
+        <?> "komi value (ie. something like 6.5 or 0 or even -2.5)")
 
 
 moveArgParser :: Parser [Argument]
