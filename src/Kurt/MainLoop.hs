@@ -31,14 +31,14 @@ import Text.Printf (printf)
 
 import Network.GoTextProtocol2.Server.Parser
 import Network.GoTextProtocol2.Types
-import Data.Goban.GameState (GameState(..), newGameState, showGameState, updateGameState, scoreGameState, makeStonesAndLibertyHeuristic, nextMoves, nextMoveColor, thisMoveColor)
+import Data.Goban.GameState (GameState(..), newGameState, showGameState, scoreGameState, makeStonesAndLibertyHeuristic, nextMoves, nextMoveColor, thisMoveColor)
 import Data.Goban.Types (gtpShowMove, gtpShowVertex, Move(..), moveColor, Stone(..), Color(..))
 import Data.Goban.STVectorGoban (allStones)
 import Data.Goban.Utils (influenceFromWinrate)
 
 import Kurt.Config
-import Kurt.GoEngine (EngineState(..), newEngineState, genMove, simulatePlayout)
-import Data.Tree.UCT.GameTree (MoveNode(..))
+import Kurt.GoEngine (EngineState(..), newEngineState, updateEngineState, newUctTree, genMove, simulatePlayout)
+import Data.Tree.UCT.GameTree (MoveNode(..), newRaveMap)
 
 
 import Debug.TraceOrId (trace)
@@ -209,7 +209,10 @@ cmd_version _ state =
 cmd_clear_board :: CommandHandler RealWorld
 cmd_clear_board [] state = do
   gState' <- stToIO $ newGameState (boardSize state) (getKomi state)
-  return $ Right ("", state { getGameState = gState' })
+  return $ Right ("", state { getGameState = gState'
+                            , getUctTree = newUctTree
+                            , getRaveMap = newRaveMap
+                            })
 cmd_clear_board _ _ = error "cmd_clear_board called with illegal argument type"
 
 cmd_komi :: CommandHandler RealWorld
@@ -239,19 +242,19 @@ cmd_showboard _ _ = error "cmd_showboard called with illegal argument type"
 
 cmd_play :: CommandHandler RealWorld
 cmd_play [MoveArgument move] state = do
-  gState' <- stToIO $ updateGameState (getGameState state) move
-  str <- stToIO $ showGameState gState'
+  state' <- stToIO $ updateEngineState state move
+  str <- stToIO $ showGameState $ getGameState state'
   trace ("cmd_play " ++ gtpShowMove move ++ "\n" ++ str) $ return ()
-  return $ Right ("", state { getGameState = gState' })
+  return $ Right ("", state')
 cmd_play _ _ = error "cmd_play called with illegal argument type"
 
 cmd_genmove :: CommandHandler RealWorld
 cmd_genmove [ColorArgument color] state = do
   (move, state') <- genMove state color
-  gState' <- stToIO $ updateGameState (getGameState state) move
-  str <- stToIO $ showGameState gState'
+  state'' <- stToIO $ updateEngineState state' move
+  str <- stToIO $ showGameState $ getGameState state''
   trace ("cmd_genmove " ++ gtpShowMove move ++ "\n" ++ str) $ return ()
-  return $ Right (gtpShowMove move, state' { getGameState = gState' })
+  return $ Right (gtpShowMove move, state'')
 cmd_genmove _ _ = error "cmd_genmove called with illegal argument type"
 
 cmd_final_score :: CommandHandler RealWorld

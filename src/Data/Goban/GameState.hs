@@ -114,7 +114,7 @@ nextMoves :: GameState s -> Color -> ST s [Move]
 nextMoves state color = do
   let freeStones = map (flip Stone color) $ freeVertices state
   sanes <- filterM (isSaneMove state) freeStones
-  return $ map Move sanes
+  return $ Pass color : map Move sanes
 
 
 isSaneMove :: GameState s -> Stone -> ST s Bool
@@ -267,7 +267,7 @@ centerHeuristic state (Move (Stone (x, y) _color)) =
       l = length $ moveHistory state
       n = boardsize state
       m = n
-centerHeuristic _ _ = error "centerHeuristic received non StoneMove arg"
+centerHeuristic _ _ = (0.1, 1)
 
 
 
@@ -347,7 +347,7 @@ makeStonesAndLibertyHeuristic state config = do
           l = length $ moveHistory state
 
 
-    stonesAndLibertiesHeu _ _ _ = error "stonesAndLibertiesHeu received non StoneMove arg"
+    stonesAndLibertiesHeu _ _ _ = (0.01, 1)
 
     n = boardsize state
 

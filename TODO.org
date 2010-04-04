@@ -2,18 +2,14 @@
 
 * Roadmap march:
 
-* tune heuristic
-
----------------------------
+* heuristic
+** capture needs to dominate everything
+** individual liberties needs to dominate (atari - extend)
 
 
 * homework:
 
-* better kgs support
-** time management
-*** time_settings
-*** kgs-time_settings
-*** kgs-game_over support
+** age ravemap
 
 * nice to have
 
