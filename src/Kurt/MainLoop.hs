@@ -33,8 +33,8 @@ import Network.GoTextProtocol2.Server.Parser
 import Network.GoTextProtocol2.Types
 import Data.Goban.GameState (GameState(..), newGameState, showGameState, scoreGameState, makeStonesAndLibertyHeuristic, nextMoves, nextMoveColor, thisMoveColor)
 import Data.Goban.Types (gtpShowMove, gtpShowVertex, moveColor, isStoneMove, Color(..))
-import Data.Goban.STVectorGoban (allStones)
 import Data.Goban.Utils (influenceFromWinrate)
+import Data.Goban.Incremental (allStones)
 
 import Kurt.Config
 import Kurt.GoEngine (EngineState(..), newEngineState, updateEngineState, newUctTree, genMove, simulatePlayout)
@@ -270,14 +270,13 @@ cmd_final_score _ _ = error "cmd_final_score called with illegal argument type"
 
 cmd_final_status_list :: CommandHandler RealWorld
 cmd_final_status_list [StringArgument arg] state =
-    case arg of
-      "dead" -> return $ Right ("", state)
-      "seki" -> return $ Right ("", state)
-      "alive" ->
-          do
-            stones <- stToIO $ allStones $ goban $ getGameState state
-            return $ Right (unwords $ map gtpShowVertex stones, state)
-      other -> error ("cmd_final_status_list illegal arg: " ++ other)
+    return $ Right (str, state)
+    where
+      str = case arg of
+              "dead" -> ""
+              "seki" -> ""
+              "alive" -> unwords $ map gtpShowVertex $ allStones $ chains $ getGameState state
+              other -> error ("cmd_final_status_list illegal arg: " ++ other)
 cmd_final_status_list _ _ = error "cmd_final_status_list called with illegal argument type"
 
 

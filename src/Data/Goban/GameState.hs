@@ -42,7 +42,7 @@ import Data.Goban.Types
 import Data.Tree.UCT (UCTHeuristic)
 import Data.Tree.UCT.GameTree (Value)
 import Data.Goban.Utils
-import Data.Goban.STVectorGoban
+import Data.Goban.STVectorGoban (STGoban(..), showGoban, newGoban, copyGoban, addStone, deleteStones, colorTerritories, isPotentialFullEye)
 import Data.Goban.Incremental
 
 import Debug.TraceOrId (trace)
