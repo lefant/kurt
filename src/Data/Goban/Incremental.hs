@@ -318,11 +318,17 @@ idChain caller cm i =
     -- trace ("idChain " ++ show (i, cm)) $
     fromMaybe (error ("idChain Nothing " ++ caller)) $ M.lookup i cm
 
-nextChainId :: ChainMap -> ChainId
-nextChainId cm =
-    if null ks then 1 else succ $ last ks
-    where
-      ks = M.keys cm
+nextChainId :: ChainMap -> Color -> ChainId
+nextChainId cm color =
+    case color of
+      Black ->
+          if M.null cm
+          then 1
+          else max 1 (fst $ M.findMax cm) + 1
+      White ->
+          if M.null cm
+          then -1
+          else min -1 (fst $ M.findMin cm) - 1
 
 
 
@@ -360,7 +366,7 @@ mapAddChain cm (Stone p color) adjFrees neighs =
                 , chainVertices = S.singleton p
                 , chainNeighbours = neighs
                 }
-      i = nextChainId cm
+      i = nextChainId cm color
 
 mapAddChainNeighbours :: ChainMap -> ChainId -> VertexSet -> ChainNeighbours
                       -> ChainMap
