@@ -5,15 +5,11 @@
 * heuristic
 ** capture needs to dominate everything
 ** individual liberties needs to dominate (atari - extend)
-
+** self-atari is *mostly bad*
 
 * homework:
 
-** age ravemap
-
 * nice to have
-
-** could restore previous uct tree / rave map from engine state, age a little and reuse
 
 ** could ponder on previous uct tree / rave map in engine state while waiting for opponent
 

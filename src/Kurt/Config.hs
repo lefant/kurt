@@ -47,7 +47,7 @@ kurtDefaultConfig = mode $ KurtConfig {
                          & text "Max time used during move generation (ms)"
              , uctExplorationPercent = 10 &= typ "INT"
                                 & text "Exploration constant used in UCT formula (percent)"
-             , raveWeight = 10 &= typ "INT"
+             , raveWeight = 20 &= typ "INT"
                                 & text "Weight used for RAVE in UCT-RAVE formula"
              , hCaptureWeight = 25 &= typ "INT"
                                 & text "Weight used for captures in heuristic"

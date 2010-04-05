@@ -23,6 +23,7 @@ module Kurt.GoEngine ( genMove
                      ) where
 
 
+import Control.Arrow (second)
 import Control.Monad (liftM)
 import Control.Monad.ST (ST, RealWorld, stToIO)
 import System.Random.MWC (Gen, uniform, withSystemRandom, save, restore)
@@ -32,7 +33,10 @@ import Data.Time.Clock ( UTCTime(..)
                        )
 import Data.List ((\\))
 import Data.Maybe (fromMaybe)
+import qualified Data.Map as M
 -- import qualified Data.Map as M (empty, insert)
+import Data.Tree (rootLabel)
+import Data.Tree.Zipper (tree, fromTree, findChild, hasChildren)
 
 
 import Kurt.Config
@@ -45,8 +49,8 @@ import Data.Tree.UCT.GameTree (MoveNode(..), UCTTreeLoc, RaveMap, newRaveMap, ne
 import Data.Tree.UCT
 
 import Debug.TraceOrId (trace)
-import Data.Tree (rootLabel)
-import Data.Tree.Zipper (tree, fromTree, findChild)
+
+-- import Data.Tree (drawTree)
 
 data EngineState s = EngineState {
       getGameState    :: GameState s
@@ -75,21 +79,25 @@ newEngineState config = do
                  }
 
 newUctTree :: UCTTreeLoc Move
-newUctTree = fromTree $ newMoveNode
-             (trace "UCT tree root move accessed"
-              (Move (Stone (25,25) Black)))
-             (0.5, 1)
-
+newUctTree =
+    fromTree $ newMoveNode
+            (trace "UCT tree root move accessed"
+             (Move (Stone (25,25) White)))
+            (0.5, 1)
 
 updateEngineState :: EngineState s -> Move -> ST s (EngineState s)
 updateEngineState eState move = do
-    gState <- updateGameState (getGameState eState) move
-    return $ eState { getGameState = gState, getUctTree = uctTree' }
+    gState' <- updateGameState gState move
+    return $ eState { getGameState = gState', getUctTree = loc' }
     where
-      uctTree' = case move of
-                   (Resign _) -> uctTree
-                   _otherwise -> selectSubtree uctTree move
-      uctTree = getUctTree eState
+      gState = getGameState eState
+      loc' = case move of
+               (Resign _) -> loc
+               _otherwise ->
+                   if hasChildren loc
+                   then selectSubtree loc move
+                   else newUctTree
+      loc = getUctTree eState
 
 selectSubtree :: UCTTreeLoc Move -> Move -> UCTTreeLoc Move
 selectSubtree loc move =
@@ -131,18 +139,19 @@ genMove eState color = do
           --                [ Move (Stone p c) | p <- (allVertices (boardsize gState)), c <- [Black, White]]
 
 
-          (loc, raveMap) <- runUCT (getUctTree eState) gState initRaveMap config rGen deadline
+          (loc', raveMap') <- runUCT loc gState raveMap config rGen deadline
           -- (getUctC eState) (getRaveWeight eState) (getHeuWeights eState) rGen deadline (maxRuns eState)
-          let eState' = eState { getUctTree = loc, getRaveMap = raveMap }
+          let eState' = eState { getUctTree = loc', getRaveMap = raveMap' }
 
-          return $ (bestMoveFromLoc loc gState score, eState')))
+          return $ (bestMoveFromLoc loc' gState score, eState')))
 
 
     where
       config = getConfig eState
 
       gState = getGameState eState
-      initRaveMap = newRaveMap
+      loc = getUctTree eState
+      raveMap = M.map (second ((1 +) . (`div` 2))) $ getRaveMap eState
 
       -- u :: Gen RealWorld -> RaveMap Move -> Move -> ST RealWorld (RaveMap Move)
       -- u rGen' m move = do

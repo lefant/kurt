@@ -32,7 +32,7 @@ import Text.Printf (printf)
 import Network.GoTextProtocol2.Server.Parser
 import Network.GoTextProtocol2.Types
 import Data.Goban.GameState (GameState(..), newGameState, showGameState, scoreGameState, makeStonesAndLibertyHeuristic, nextMoves, nextMoveColor, thisMoveColor)
-import Data.Goban.Types (gtpShowMove, gtpShowVertex, Move(..), moveColor, Stone(..), Color(..))
+import Data.Goban.Types (gtpShowMove, gtpShowVertex, moveColor, isStoneMove, Color(..))
 import Data.Goban.STVectorGoban (allStones)
 import Data.Goban.Utils (influenceFromWinrate)
 
@@ -351,11 +351,11 @@ make_cmd_kurt_heuristic fConfig [] state = do
   moves <- stToIO $ nextMoves gState color
   slHeu <- stToIO $ makeStonesAndLibertyHeuristic gState config'
   let str = concatMap
-            (\move@(Move (Stone p _c))
-                 -> " " ++ gtpShowVertex p
+            (\move
+                 -> " " ++ gtpShowMove move
                     ++ printf " %.2f" (((fst $ slHeu move) - 0.5) * 2 * flipSig))
                     -- ++ printf " %.2f" (fst $ slHeu move))
-            moves
+            $ filter isStoneMove moves
   return $ Right ("INFLUENCE" ++ str, state)
     where
       flipSig = if color == Black then 1 else -1
