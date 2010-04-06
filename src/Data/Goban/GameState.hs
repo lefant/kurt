@@ -42,7 +42,7 @@ import Data.Goban.Types
 import Data.Tree.UCT (UCTHeuristic)
 import Data.Tree.UCT.GameTree (Value)
 import Data.Goban.Utils
-import Data.Goban.STVectorGoban (STGoban(..), showGoban, newGoban, copyGoban, addStone, deleteStones, colorTerritories)
+import Data.Goban.STVectorGoban (STGoban(..), showGoban, newGoban, copyGoban, addStone, deleteStones)
 import Data.Goban.Incremental
 
 import Debug.TraceOrId (trace)
@@ -206,7 +206,7 @@ updateGameState state move =
 scoreGameState :: GameState s -> ST s Score
 scoreGameState state = do
   let empties = emptyStrings state
-  colorTs <- mapM (colorTerritories (goban state)) empties
+  colorTs <- mapM (colorTerritories (chainGoban state)) empties
   let blackTerritory = countTerritory Black colorTs
   let whiteTerritory = countTerritory White colorTs
   let b = fromIntegral $ blackStones state + blackTerritory

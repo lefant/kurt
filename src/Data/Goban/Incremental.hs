@@ -23,6 +23,7 @@ module Data.Goban.Incremental ( Chain(..)
                               , stonesAndLiberties
                               , allStones
                               , isPotentialFullEye
+                              , colorTerritories
 
                               , newChainGoban
                               , newChainMap
@@ -36,7 +37,7 @@ module Data.Goban.Incremental ( Chain(..)
 import Control.Arrow (second)
 import Control.Monad (liftM, foldM)
 import Control.Monad.ST (ST)
-import Data.Maybe (fromMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, mapMaybe, catMaybes)
 import Data.List (foldl', partition, unfoldr, transpose, nub, sort)
 import Text.Printf (printf)
 
@@ -198,36 +199,32 @@ allStones cm =
     S.toList $ S.unions $ map chainVertices $ M.elems cm
 
 
--- allLibertiesColorCount :: STGoban s -> Color -> ST s Int
--- allLibertiesColorCount g@(STGoban n _v) color = do
---   stones <- mapM (intVertexToStone g) ([0 .. maxIntIndex n] \\ borderVertices n)
---   liberties <- mapM (adjacentFree g . stoneVertex) $ filter sameColor $ catMaybes stones
---   return $ length $ concat liberties
 
---     where
---       sameColor (Stone _p color') =
---           color == color'
+colorTerritories :: ChainIdGoban s -> [Vertex] -> ST s [(Color, [Vertex])]
+colorTerritories g t = do
+  maybeColor <- allAdjacentStonesSameColor g t
+  return $ case maybeColor of
+             Just tColor -> [(tColor, t)]
+             Nothing -> []
 
+allAdjacentStonesSameColor :: ChainIdGoban s -> [Vertex] -> ST s (Maybe Color)
+allAdjacentStonesSameColor g ps = do
+  as <- mapM (adjacentStones g) ps
+  return $ maybeSameColor $ map stoneColor $ concat as
+    where
+      maybeSameColor [] = Nothing
+      maybeSameColor (c : cs) =
+          if all (c ==) cs
+          then Just c
+          else Nothing
 
+adjacentStones :: ChainIdGoban s -> Vertex -> ST s [Stone]
+adjacentStones g p =
+    verticesToStones g $ adjacentVertices p
 
--- colorTerritories :: STGoban s -> [Vertex] -> ST s [(Color, [Vertex])]
--- colorTerritories g t = do
---   maybeColor <- allAdjacentStonesSameColor g t
---   return $ case maybeColor of
---              Just tColor -> [(tColor, t)]
---              Nothing -> []
-
--- allAdjacentStonesSameColor :: STGoban s -> [Vertex] -> ST s (Maybe Color)
--- allAdjacentStonesSameColor g ps = do
---   as <- mapM (adjacentStones g) ps
---   return $ maybeSameColor $ map stoneColor $ concat as
---     where
---       maybeSameColor [] = Nothing
---       maybeSameColor (c : cs) =
---           if all (c ==) cs
---           then Just c
---           else Nothing
-
+verticesToStones :: ChainIdGoban s -> [Vertex] -> ST s [Stone]
+verticesToStones g ps =
+    fmap catMaybes (mapM (vertexStone g) ps)
 
 
 
@@ -366,6 +363,14 @@ vertexChain :: ChainIdGoban s -> ChainMap -> Vertex -> ST s Chain
 vertexChain cg cm p = do
   i <- vertexId cg p
   return $ idChain "vertexChain" cm i
+
+vertexStone :: ChainIdGoban s -> Vertex -> ST s (Maybe Stone)
+vertexStone cg p = do
+  s <- vertexState cg p
+  return $ case s of
+             Colored color -> Just $ Stone p color
+             Empty -> Nothing
+             Border -> Nothing
 
 vertexState :: ChainIdGoban s -> Vertex -> ST s VertexState
 vertexState cg p = do
