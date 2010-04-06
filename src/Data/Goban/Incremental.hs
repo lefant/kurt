@@ -34,7 +34,7 @@ module Data.Goban.Incremental ( Chain(..)
 
 
 import Control.Arrow (second)
-import Control.Monad (foldM)
+import Control.Monad (liftM, foldM)
 import Control.Monad.ST (ST)
 import Data.Maybe (fromMaybe, mapMaybe)
 import Data.List (foldl', partition, unfoldr, transpose, nub, sort)
@@ -76,6 +76,9 @@ noChainId = 0
 
 borderChainId :: ChainId
 borderChainId = 999999
+
+filterBorder :: [(ChainId, b)] -> [(ChainId, b)]
+filterBorder = filter ((/= borderChainId) . fst)
 
 -- type LibertyCount = Int
 
@@ -161,15 +164,12 @@ stonesAndLiberties cg cm s@(Stone p color) =
       (adjFreePs, adjIdPs) = partition ((== noChainId) . fst) adjPs
 
       -- lookup all adjacent chain ids
-      adjPs = map readPairWithKey $ adjacentVerticesInBounds n p
+      adjPs = filterBorder $ map readPairWithKey $ adjacentVertices p
 
       readPairWithKey ap =
           (v, ap)
           where
             v = cg UA.! ap
-
-      n = n1 - 1
-      (_, (n1, _)) = UA.bounds cg
 
 
 
@@ -323,11 +323,8 @@ adjacentStuff :: ChainIdGoban s -> ChainMap -> Stone
                        [ChainId],
                        ChainNeighbours)
 adjacentStuff cg cm (Stone p color) = do
-  (_, (n1, _)) <- STUA.getBounds cg
-  let n = n1 - 1
-
   -- lookup all adjacent chain ids
-  adjPs <- mapM readPairWithKey $ adjacentVerticesInBounds n p
+  adjPs <- liftM filterBorder $ mapM readPairWithKey $ adjacentVertices p
 
   -- partition out free vertices
   (adjFreePs, adjIdPs) <- return $ partition ((== noChainId) . fst) adjPs
