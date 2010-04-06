@@ -17,13 +17,13 @@ helpers: vertex / integer conversion
 
 module Data.Goban.IntVertex ( intToVertex
                             , vertexToInt
-                            , borderVertices
+                            , intBorderVertices
                             , maxIntIndex
                             , intAscAdjacentVertices
                             ) where
 
 
-import Data.Goban.Types (Boardsize, Vertex)
+import Data.Goban.Types (Boardsize, Vertex, borderVertices)
 
 -- import Debug.TraceOrId (trace)
 
@@ -32,11 +32,9 @@ import Data.Goban.Types (Boardsize, Vertex)
 type IntVertex = Int
 
 
-borderVertices :: Boardsize -> [IntVertex]
-borderVertices n =
-    map (vertexToInt n) $
-            [(x, y) | x <- [0, n + 1], y <- [0 .. n + 1] ]
-            ++ [(x, y) | x <- [1 .. n], y <- [0, n + 1] ]
+intBorderVertices :: Boardsize -> [IntVertex]
+intBorderVertices n =
+    map (vertexToInt n) $ borderVertices n
 
 {-# INLINE vertexToInt #-}
 vertexToInt :: Boardsize -> Vertex -> IntVertex

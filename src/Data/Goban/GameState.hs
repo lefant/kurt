@@ -42,7 +42,7 @@ import Data.Goban.Types
 import Data.Tree.UCT (UCTHeuristic)
 import Data.Tree.UCT.GameTree (Value)
 import Data.Goban.Utils
-import Data.Goban.STVectorGoban (STGoban(..), showGoban, newGoban, copyGoban, addStone, deleteStones, colorTerritories, isPotentialFullEye)
+import Data.Goban.STVectorGoban (STGoban(..), showGoban, newGoban, copyGoban, addStone, deleteStones, colorTerritories)
 import Data.Goban.Incremental
 
 import Debug.TraceOrId (trace)
@@ -120,7 +120,7 @@ nextMoves state color = do
 isSaneMove :: GameState s -> Stone -> ST s Bool
 isSaneMove state stone = do
   -- trace ("isSaneMove called with " ++ show stone) $ do
-  potEye <- isPotentialFullEye (goban state) stone
+  potEye <- isPotentialFullEye (chainGoban state) stone
   (if potEye
    then
        -- trace ("isSaneMove potEye " ++ show stone) $

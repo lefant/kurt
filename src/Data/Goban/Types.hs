@@ -28,6 +28,7 @@ module Data.Goban.Types ( Move(..)
                         , isStoneMove
 
                         , allVertices
+                        , borderVertices
                         , adjacentVertices
                         , adjacentVerticesInBounds
                         , diagonalVertices
@@ -132,6 +133,10 @@ allVertices :: Boardsize -> [Vertex]
 allVertices n =
     [(x, y) | y <- reverse [1 .. n], x <- [1 .. n]]
 
+borderVertices :: Boardsize -> [Vertex]
+borderVertices n =
+    [(x, y) | x <- [0, n + 1], y <- [0 .. n + 1] ]
+    ++ [(x, y) | x <- [1 .. n], y <- [0, n + 1] ]
 
 adjacentVertices :: Vertex -> [Vertex]
 adjacentVertices (x, y) =

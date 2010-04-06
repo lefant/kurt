@@ -57,7 +57,7 @@ data STGoban s = STGoban !Boardsize (VM.STVector s Word)
 
 showGoban :: STGoban s -> ST s String
 showGoban g@(STGoban n _v) = do
-  vertexStates <- mapM (intReadGoban g) $ [0 .. (maxIntIndex n)] \\ borderVertices n
+  vertexStates <- mapM (intReadGoban g) $ [0 .. (maxIntIndex n)] \\ intBorderVertices n
   let ls = unfoldr nLines vertexStates
   return $ board ls
     where
@@ -91,7 +91,7 @@ showGoban g@(STGoban n _v) = do
 newGoban :: Boardsize -> ST s (STGoban s)
 newGoban n = do
   v <- VM.newWith (maxIntIndex n + 1) (stateToWord Empty)
-  mapM_ (\i -> VM.write v i (stateToWord Border)) (borderVertices n)
+  mapM_ (\i -> VM.write v i (stateToWord Border)) (intBorderVertices n)
   return $ STGoban n v
 
 copyGoban :: STGoban s -> ST s (STGoban s)
@@ -345,12 +345,12 @@ allStones :: STGoban s -> ST s [Vertex]
 allStones g@(STGoban n _v) =
     fmap (map stoneVertex . catMaybes)
              (mapM (intVertexToStone g)
-              ([0 .. maxIntIndex n] \\ borderVertices n))
+              ([0 .. maxIntIndex n] \\ intBorderVertices n))
 
 
 allLibertiesColorCount :: STGoban s -> Color -> ST s Int
 allLibertiesColorCount g@(STGoban n _v) color = do
-  stones <- mapM (intVertexToStone g) ([0 .. maxIntIndex n] \\ borderVertices n)
+  stones <- mapM (intVertexToStone g) ([0 .. maxIntIndex n] \\ intBorderVertices n)
   liberties <- mapM (adjacentFree g . stoneVertex) $ filter sameColor $ catMaybes stones
   return $ length $ concat liberties
 
