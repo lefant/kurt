@@ -328,7 +328,7 @@ nextChainId cm color =
       White ->
           if M.null cm
           then -1
-          else min -1 (fst $ M.findMin cm) - 1
+          else min (-1) (fst $ M.findMin cm) - 1
 
 
 
