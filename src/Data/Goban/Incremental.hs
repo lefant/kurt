@@ -242,8 +242,8 @@ showChainIdGoban :: ChainIdGoban s -> ST s String
 showChainIdGoban cg = do
   (_, (n1, _)) <- STUA.getBounds cg
   let n = n1 - 1
-  chainIds <- STUA.getElems cg
-  let ls = transpose $ unfoldr (nLines n) chainIds
+  chainIds <- liftM (filter (/= borderChainId)) $ STUA.getElems cg
+  let ls = transpose $ unfoldr (nLines n) $ map idState chainIds
   return $ board n ls
     where
       board n ls =
@@ -251,15 +251,13 @@ showChainIdGoban cg = do
           $ reverse
           ([xLegend]
            ++ zipWith (++) ys
-              (zipWith (++) (map (concatMap maybePrint) ls) ys)
+              (zipWith (++) (map (unwords . (map show)) ls) ys)
            ++ [xLegend])
 
           where
             ys = map (printf " %2d ") [1 .. n]
             xLegend = "    " ++ unwords (map ((: []) . xToLetter) [1 .. n])
 
-      maybePrint 0 = " ."
-      maybePrint m = printf "%2d" m
       nLines n xs = if null xs then Nothing else Just $ splitAt n xs
 
 

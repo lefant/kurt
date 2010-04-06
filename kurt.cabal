@@ -28,10 +28,6 @@ library
                   Kurt.MainLoop
                  ,Kurt.GoEngine
                  ,Data.Tree.UCT
-                 ,Data.Goban.GameState
-                 ,Data.Goban.STVectorGoban
-                 ,Data.Goban.Utils
-                 ,Data.Goban.Types
   build-depends:
                   base >= 3 && < 5
                  ,parsec >= 3
@@ -41,7 +37,6 @@ library
                  ,containers >= 0.3
                  ,rosezipper
                  ,array
-                 ,vector
                  ,time
                  ,cmdargs
   ghc-options: -O1
@@ -58,7 +53,6 @@ executable kurt
                  ,mwc-random
                  ,containers >= 0.3
                  ,rosezipper
-                 ,vector
                  ,time
                  ,cmdargs
   ghc-options: -O1

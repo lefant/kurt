@@ -42,15 +42,14 @@ import Data.Goban.Types
 import Data.Tree.UCT (UCTHeuristic)
 import Data.Tree.UCT.GameTree (Value)
 import Data.Goban.Utils
-import Data.Goban.STVectorGoban (STGoban(..), showGoban, newGoban, copyGoban, addStone, deleteStones)
+-- import Data.Goban.STVectorGoban (STGoban(..), showGoban, newGoban, copyGoban, addStone, deleteStones)
 import Data.Goban.Incremental
 
 import Debug.TraceOrId (trace)
 
 
 
-data GameState s = GameState { goban           :: !(STGoban s)
-                             , chainGoban      :: !(ChainIdGoban s)
+data GameState s = GameState { chainGoban      :: !(ChainIdGoban s)
                              , chains          :: !ChainMap
                              , boardsize       :: !Boardsize
                              , freeVerticesSet :: !VertexSet
@@ -65,12 +64,9 @@ data GameState s = GameState { goban           :: !(STGoban s)
 
 showGameState :: GameState s -> ST s String
 showGameState state = do
-  gobanStr <- showGoban $ goban state
+  chainGobanStr <- showChainIdGoban $ chainGoban state
   score <- scoreGameState state
-  -- chainGobanStr <- showChainIdGoban $ chainGoban state
-  -- return $ chainGobanStr ++ "\n"
-  --            ++
-  return $ (unlines (zipWith (++) (lines gobanStr) $ [
+  return $ (unlines (zipWith (++) (lines chainGobanStr) $ [
                        ""
                       ,"   blackStones: " ++ show (blackStones state)
                       ,"   whiteStones: " ++ show (whiteStones state)
@@ -89,10 +85,8 @@ showGameState state = do
 
 newGameState :: Boardsize -> Score -> ST s (GameState s)
 newGameState n initKomi = do
-  g <- newGoban n
   cg <- newChainGoban n
-  return GameState { goban = g
-                   , chainGoban = cg
+  return GameState { chainGoban = cg
                    , chains = newChainMap
                    , boardsize = n
                    , freeVerticesSet = initFreeVertices
@@ -139,11 +133,10 @@ isSaneMove state stone = do
 -- compute game state at the end of a move sequence by replaying it
 getLeafGameState :: GameState s -> [Move] -> ST s (GameState s)
 getLeafGameState state moves = do
-  g' <- copyGoban $ goban state
   fcg :: ChainIdGobanFrozen <- (freeze $ chainGoban state)
   -- fcg :: (Array Vertex Int) <- (freeze $ chainGoban state)
   cg' <- thaw fcg
-  let state' = state { goban = g', chainGoban = cg' }
+  let state' = state { chainGoban = cg' }
   foldM updateGameState state' moves
 
 
@@ -166,12 +159,8 @@ updateGameState state move =
             -- incremental
             (chains', dead) <- addChainStone cg (chains state) stone
 
-            addStone g stone
-            deleteStones g dead
-
             let state' = state {
-                        goban = g
-                      , chainGoban = cg
+                        chainGoban = cg
                       , chains = chains'
                       , moveHistory = moveHistory state ++ [move]
                       , blackStones =
@@ -194,7 +183,6 @@ updateGameState state move =
 
             return state'
     where
-      g = goban state
       cg = chainGoban state
 
       freeVerticesSet' p dead =
