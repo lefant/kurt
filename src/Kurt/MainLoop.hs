@@ -21,7 +21,6 @@ import Control.Arrow ((&&&))
 import Control.Monad.ST (stToIO, RealWorld)
 import System.IO
 import Text.Parsec.String (Parser)
-import Data.Char
 import Data.List
 import qualified Data.Map as M (assocs)
 import Data.Tree (rootLabel, subForest)

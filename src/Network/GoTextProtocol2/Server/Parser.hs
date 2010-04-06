@@ -26,7 +26,7 @@ module Network.GoTextProtocol2.Server.Parser ( pureParseCommand
                                              ) where
 
 import Text.ParserCombinators.Parsec
-import Text.Parsec.Char
+-- import Text.Parsec.Char
 import Data.Char (toLower)
 import Monad (liftM)
 
@@ -85,8 +85,8 @@ idCommandline :: CommandArgParserList -> Parser (Maybe Id, Command)
 idCommandline commandList =
     do
       lineId <- commandId
-      space
-      spaces
+      _ <- space
+      _ <- spaces
       c <- (command commandList)
       spaces
       return (Just lineId, c)
@@ -126,8 +126,8 @@ noArgumentParser = return []
 stringArgParser :: Parser [Argument]
 stringArgParser =
     do
-      space
-      spaces
+      _ <- space
+      _ <- spaces
       str <- many1 (letter <|> char '-' <|> char '_')
       return $ [StringArgument (map toLower str)]
 
@@ -135,19 +135,19 @@ stringArgParser =
 floatArgParser :: Parser [Argument]
 floatArgParser =
     do
-      space
-      spaces
+      _ <- space
+      _ <- spaces
       maybeMinus <- (do
                       (try
                        (do
-                         char '-'
+                         _ <- char '-'
                          return negate
                         <|> return id)))
       (do
         (try
          (do
            d1 <- many1 digit
-           char '.'
+           _ <- char '.'
            d2 <- many1 digit
            n <- return $ read (d1 ++ ['.'] ++ d2)
            return $ [FloatArgument $ maybeMinus n]))
@@ -162,11 +162,11 @@ moveArgParser :: Parser [Argument]
 moveArgParser =
     do
       (ColorArgument c) <- colorParser
-      space
-      spaces
+      _ <- space
+      _ <- spaces
       (do
         (do
-          try (string "pass")
+          _ <- try (string "pass")
           return [MoveArgument (Pass c)])
          <|> (do
                l <- letter
@@ -179,25 +179,25 @@ timeleftArgParser :: Parser [Argument]
 timeleftArgParser =
     do
       (ColorArgument _c) <- colorParser
-      space
-      spaces
+      _ <- space
+      _ <- spaces
       time <- parseInt
-      space
-      spaces
+      _ <- space
+      _ <- spaces
       stones <- parseInt
       return [TimeLeftArgument time stones]
 
 timesettingsArgParser :: Parser [Argument]
 timesettingsArgParser =
     do
-      space
-      spaces
+      _ <- space
+      _ <- spaces
       maintime <- parseInt
-      space
-      spaces
+      _ <- space
+      _ <- spaces
       byotime <- parseInt
-      space
-      spaces
+      _ <- space
+      _ <- spaces
       stones <- parseInt
       return [TimeSettingsArgument maintime byotime stones]
 
@@ -212,8 +212,8 @@ colorArgParser =
 colorParser :: Parser Argument
 colorParser =
     do
-      space
-      spaces
+      _ <- space
+      _ <- spaces
       c <- (do
              try (string "white")
          <|> try (string "w")
@@ -233,8 +233,8 @@ colorParser =
 intArgParser :: Parser [Argument]
 intArgParser =
     do
-      space
-      spaces
+      _ <- space
+      _ <- spaces
       n <- parseInt
       return $ [IntArgument n]
 
@@ -245,11 +245,11 @@ parseInt = liftM read $ many1 digit
 maybeKeyValueArgParser :: Parser [Argument]
 maybeKeyValueArgParser =
     (do
-      space
-      spaces
+      _ <- space
+      _ <- spaces
       str <- many1 (letter <|> char '-' <|> char '_')
-      space
-      spaces
+      _ <- space
+      _ <- spaces
       n <- parseInt
       return [MaybeKeyValueArgument $ Just ((map toLower str), n)])
      <|> return [MaybeKeyValueArgument Nothing]
