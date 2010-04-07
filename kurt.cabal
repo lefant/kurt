@@ -56,7 +56,7 @@ executable kurt
                  ,time
                  ,cmdargs
   ghc-options: -O1
-  ghc-prof-options: -auto-all
+  ghc-prof-options: -auto-all -caf-all
 
 source-repository head
   type:     git

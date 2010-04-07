@@ -32,7 +32,7 @@ import Data.List (unfoldr, maximumBy, foldl')
 import qualified Data.Map as M
 import Data.Ord (comparing)
 import Data.Tree (Tree(..))
-import Data.Tree.Zipper (TreeLoc, tree, hasChildren, parent, findChild, modifyTree, modifyLabel)
+import Data.Tree.Zipper (TreeLoc, tree, hasChildren, parent, getChild, modifyTree, modifyLabel)
 
 -- import Debug.TraceOrId (trace)
 
@@ -52,9 +52,8 @@ import Data.Tree.UCT.GameTree
 -- selection section
 -----------------------------------
 
-type UCTPolicy a = (UCTTree a -> UCTTree a)
+type UCTPolicy a = (Int -> [(MoveNode a, Int)] -> Int)
 -- selects a leaf according to in-tree selection policy
--- default UCB1, should be pluggable
 
 selectLeafPath :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a
                -> (UCTTreeLoc a, [a])
@@ -62,29 +61,68 @@ selectLeafPath policy loc =
     -- trace ("selectLeafPath " ++ show (map nodeMove $ pathToLeaf leaf))
     (leaf, map nodeMove $ pathToLeaf leaf)
     where
-      leaf = selectLeaf policy loc
+      leaf = selectChild policy loc
 
-selectLeaf :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a
+selectChild :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a
            -> UCTTreeLoc a
-selectLeaf policy initLoc =
+selectChild policy initLoc =
     selectNode initLoc
     where
       selectNode loc =
           if hasChildren loc
           then
-              selectNode $ fromJust $ findChild (selectedTree ==) loc
+              selectNode $ fromJust $ getChild selectedId loc
           else
               loc
           where
-            selectedTree = policy $ tree loc
+            selectedId = policy parentVisits numberedChildren
+            numberedChildren = zip (map rootLabel $ subForest $ tree loc) [1..]
+            parentVisits = nodeVisits $ rootLabel $ tree loc
+
+
+principalVariation :: (UCTMove a) => UCTTreeLoc a -> [MoveNode a]
+principalVariation loc =
+    -- pathToLeaf $ selectLeaf policyMaxUCTValue loc
+    pathToLeaf $ selectChild policyMaxRobust loc
+
+
+policyMaxRobust :: UCTMove a => UCTPolicy a
+policyMaxRobust = policyMaker (\_ n -> nodeVisits n)
+
+-- policyMaxUCTValue :: UCTMove a => UCTPolicy a
+-- policyMaxUCTValue node =
+--     maximumBy
+--     (comparing (nodeValue . rootLabel))
+--     $ subForest node
+
+
+
+
 
 policyUCB1 :: UCTMove a => Int -> UCTPolicy a
-policyUCB1 exploratoryC node =
-    maximumBy
-    (comparing (ucb1 exploratoryC parentVisits . rootLabel))
-    $ subForest node
+policyUCB1 exploratoryC =
+    policyMaker (ucb1 exploratoryC)
+
+
+policyRaveUCB1 :: (UCTMove a, Ord a) => Int -> Int -> RaveMap a -> UCTPolicy a
+policyRaveUCB1 exploratoryC raveWeight m =
+    policyMaker combinedVal
     where
-      parentVisits = nodeVisits $ rootLabel node
+      combinedVal parentVisits node =
+          -- trace ("combinedVal "
+          --        ++ show (nodeMove node, total, (raveVal, raveCount), (uctVal, uctCount), beta, parentVisits))
+          total
+          where
+            total = beta * raveVal + (1 - beta) * uctVal
+
+            beta = fromIntegral raveCount
+                   / (intSum + intSum / fromIntegral raveWeight)
+            intSum = fromIntegral $ raveCount + uctCount
+
+            (raveVal, raveCount) = fromMaybe (0.5, 0) (M.lookup move m)
+            uctVal = ucb1 exploratoryC parentVisits node
+            uctCount = nodeVisits node
+            move = nodeMove node
 
 ucb1 :: UCTMove a => Int -> Count -> MoveNode a -> Value
 ucb1 exploratoryCPercent parentVisits node =
@@ -105,53 +143,13 @@ ucb1 exploratoryCPercent parentVisits node =
 
       exploratoryC = fromIntegral exploratoryCPercent / 100
 
--- policyMaxUCTValue :: UCTMove a => UCTPolicy a
--- policyMaxUCTValue node =
---     maximumBy
---     (comparing (nodeValue . rootLabel))
---     $ subForest node
-
-policyMaxRobust :: UCTMove a => UCTPolicy a
-policyMaxRobust node =
-    maximumBy
-    (comparing (nodeVisits . rootLabel))
-    $ subForest node
-
-principalVariation :: (UCTMove a) => UCTTreeLoc a -> [MoveNode a]
-principalVariation loc =
-    -- pathToLeaf $ selectLeaf policyMaxUCTValue loc
-    pathToLeaf $ selectLeaf policyMaxRobust loc
 
 
-policyRaveUCB1 :: (UCTMove a, Ord a) => Int -> Int -> RaveMap a -> UCTPolicy a
-policyRaveUCB1 exploratoryC raveWeight m parentNode =
-    -- trace ("policyRaveUCB1 " ++ show (nodeMove $ rootLabel choosen))
-    choosen
-    where
-      choosen = maximumBy
-                (comparing (combinedVal . rootLabel))
-                $ subForest parentNode
-
-
-      combinedVal node =
-          -- trace ("combinedVal "
-          --        ++ show (nodeMove node, total, (raveVal, raveCount), (uctVal, uctCount), beta, parentVisits))
-          total
-          where
-            total = beta * raveVal + (1 - beta) * uctVal
-
-            beta = fromIntegral raveCount
-                   / (intSum + intSum / fromIntegral raveWeight)
-            intSum = fromIntegral $ raveCount + uctCount
-
-            (raveVal, raveCount) = fromMaybe (0.5, 0) (M.lookup move m)
-            uctVal = ucb1 exploratoryC parentVisits node
-            uctCount = nodeVisits node
-            move = nodeMove node
-
-      parentVisits = nodeVisits $ rootLabel parentNode
-
-
+policyMaker :: (Ord b) => (Int -> MoveNode a -> b) -> UCTPolicy a
+policyMaker val parentVisits numberedChildren =
+    snd $ maximumBy
+            (comparing ((val parentVisits) . fst))
+            numberedChildren
 
 
 -- computes list of moves needed to reach the passed leaf loc from the root

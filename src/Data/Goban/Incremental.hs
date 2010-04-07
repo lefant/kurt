@@ -52,7 +52,6 @@ import qualified Data.Array.Unboxed as UA
 
 
 import Data.Goban.Types
--- import Data.Goban.IntVertex
 
 
 data Chain = Chain { chainColor           :: !Color
@@ -81,7 +80,6 @@ borderChainId = 999999
 filterBorder :: [(ChainId, b)] -> [(ChainId, b)]
 filterBorder = filter ((/= borderChainId) . fst)
 
--- type LibertyCount = Int
 
 -- maybe also reconsider Vector for this?
 type ChainMap = M.IntMap Chain

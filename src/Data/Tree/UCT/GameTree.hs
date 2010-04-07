@@ -52,7 +52,7 @@ type Count = Int
 class (Eq a, Show a) => UCTMove a
 
 
-data MoveNode a = MoveNode { nodeMove   :: a
+data MoveNode a = MoveNode { nodeMove   :: !a
                            , nodeValue  :: !Value
                            , nodeVisits :: !Count
                            }
