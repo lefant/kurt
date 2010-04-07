@@ -16,15 +16,19 @@ Go GameState Implementation
 -}
 
 module Data.Goban.GameState ( GameState(..)
+                            , GameStateST(..)
+
                             , newGameState
+                            , updateGameState
+                            , nextMoves
+
                             , showGameStateST
                             , scoreGameStateST
                             , getLeafGameStateST
                             , updateGameStateST
                             , centerHeuristic
                             , makeStonesAndLibertyHeuristic
-                            , nextMoves
-                            , isSaneMove
+                            , isSaneMoveST
                             , freeVertices
                             , thisMoveColor
                             , nextMoveColor
@@ -32,7 +36,7 @@ module Data.Goban.GameState ( GameState(..)
 
 
 import Control.Monad (filterM, foldM)
-import Control.Monad.ST (ST)
+import Control.Monad.ST (ST, runST)
 -- import Data.Array.IArray (Array)
 import Data.Array.MArray (freeze, thaw)
 import qualified Data.Set as S
@@ -108,15 +112,21 @@ newGameState n initKomi =
 
 
 
-nextMoves :: GameStateST s -> Color -> ST s [Move]
-nextMoves state color = do
-  let freeStones = map (flip Stone color) $ freeVertices state
-  sanes <- filterM (isSaneMove state) freeStones
-  return $ Pass color : map Move sanes
+nextMoves :: GameState -> Color -> [Move]
+nextMoves (GameState goban state) color =
+  Pass color : map Move sanes
+  where
+    sanes =
+        runST $ do
+          gobanST <- thaw goban
+          filterM (isSaneMoveST (GameStateST gobanST state)) freeStones
+
+    freeStones = map (flip Stone color) $ freeVertices state
 
 
-isSaneMove :: GameStateST s -> Stone -> ST s Bool
-isSaneMove (GameStateST goban state) stone = do
+
+isSaneMoveST :: GameStateST s -> Stone -> ST s Bool
+isSaneMoveST (GameStateST goban state) stone = do
   -- trace ("isSaneMove called with " ++ show stone) $ do
   potEye <- isPotentialFullEye goban stone
   (if potEye
@@ -145,60 +155,68 @@ getLeafGameStateST gState@(GameStateST goban _state) moves = do
 
 
 
+updateGameState :: GameState -> Move -> GameState
+updateGameState gState@(GameState goban state) move =
+  case move of
+    Pass _color ->
+        gState { getState = idStuff state move }
+    Resign _color ->
+        gState { getState = idStuff state move }
+    Move stone ->
+        runST $
+        do
+          gobanST <- thaw goban
+          (chains', dead) <- addChainStone gobanST (chains state) stone
+          goban' <- freeze gobanST
+          return $ gState { getGoban = goban'
+                          , getState = updateStuff state move dead chains' }
+
+
 updateGameStateST :: GameStateST s -> Move -> ST s (GameStateST s)
 updateGameStateST gState@(GameStateST goban state) move = do
   case move of
     Pass _color ->
-        return $ gState { getStateST =
-                              state { moveHistory = moveHistory state ++ [move]
-                                    , koBlocked = Nothing } }
+        return $ gState { getStateST = idStuff state move }
     Resign _color ->
-        return $ gState { getStateST =
-                              state { moveHistory = moveHistory state ++ [move]
-                                    , koBlocked = Nothing } }
+        return $ gState { getStateST = idStuff state move }
     Move stone ->
         do
-          -- incremental
           (chains', dead) <- addChainStone goban (chains state) stone
           return $ gState { getGobanST = goban
                           , getStateST = updateStuff state move dead chains' }
 
+idStuff :: GameStateStuff -> Move -> GameStateStuff
+idStuff state move =
+    state { moveHistory = moveHistory state ++ [move]
+          , koBlocked = Nothing }
+    
+
 updateStuff :: GameStateStuff -> Move -> [Stone] -> ChainMap -> GameStateStuff
-updateStuff state move dead chains' =
-    case move of
-      Pass _color ->
-          state {
-                moveHistory = moveHistory state ++ [move]
-              , koBlocked = Nothing
-              }
-      Resign _color ->
-          state {
-                moveHistory = moveHistory state ++ [move]
-              , koBlocked = Nothing
-              }
-      Move (Stone p c) ->
-          state { chains = chains'
-                , moveHistory = moveHistory state ++ [move]
-                , blackStones =
-                    if c == Black
-                    then blackStones state + 1
-                    else blackStones state - length dead
-                , whiteStones =
-                    if c == White
-                    then whiteStones state + 1
-                    else whiteStones state - length dead
-                , koBlocked =
-                    case dead of
-                      [Stone k _] -> Just k
-                      _ -> Nothing
-                , freeVerticesSet =
-                    S.fromList (map stoneVertex dead)
-                         `S.union`
-                         S.delete p (freeVerticesSet state)
-                }
+updateStuff state move@(Move (Stone p c)) dead chains' =
+    state { chains = chains'
+          , moveHistory = moveHistory state ++ [move]
+          , blackStones =
+              if c == Black
+              then blackStones state + 1
+              else blackStones state - length dead
+          , whiteStones =
+              if c == White
+              then whiteStones state + 1
+              else whiteStones state - length dead
+          , koBlocked =
+              case dead of
+                [Stone k _] -> Just k
+                _ -> Nothing
+          , freeVerticesSet =
+              S.fromList (map stoneVertex dead)
+                   `S.union`
+                   S.delete p (freeVerticesSet state)
+          }
 
             -- str <- showGameStateST state'
             -- trace ("updateGameState" ++ str) $ return ()
+updateStuff _ move _ _ = error $ "updateStuff unsupported move: " ++ show move
+
 
 
 
@@ -365,8 +383,8 @@ nextMoveColor (GameStateST _goban state) =
             Resign color -> color
 
 
-freeVertices :: GameStateST s -> [Vertex]
-freeVertices (GameStateST _goban state) =
+freeVertices :: GameStateStuff -> [Vertex]
+freeVertices state =
     S.toList $ case koBlocked state of
                  Nothing -> freeVerticesSet state
                  Just p -> S.delete p $ freeVerticesSet state
