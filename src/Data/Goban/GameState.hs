@@ -27,9 +27,13 @@ module Data.Goban.GameState ( GameState(..)
 
                             , getLeafGameStateST
                             , updateGameStateST
+                            , nextMovesST
+                            , isSaneMoveST
+                            , scoreGameStateST
+
                             , centerHeuristic
                             , makeStonesAndLibertyHeuristic
-                            , isSaneMoveST
+
                             , freeVertices
                             , thisMoveColor
                             , nextMoveColor
@@ -130,6 +134,13 @@ nextMoves (GameState goban state) color =
 
     freeStones = map (flip Stone color) $ freeVertices state
 
+nextMovesST :: GameStateST s -> Color -> ST s [Move]
+nextMovesST (GameStateST gobanST state) color = do
+  sanes <- filterM (isSaneMoveST (GameStateST gobanST state)) freeStones
+  return $ Pass color : map Move sanes
+  where
+    freeStones = map (flip Stone color) $ freeVertices state
+
 
 
 isSaneMoveST :: GameStateST s -> Stone -> ST s Bool
@@ -224,7 +235,10 @@ updateStuff state move@(Move (Stone p c)) dead chains' =
 updateStuff _ move _ _ = error $ "updateStuff unsupported move: " ++ show move
 
 
-
+scoreGameStateST :: GameStateST s -> ST s Score
+scoreGameStateST (GameStateST gobanST state) = do
+  goban <- freeze gobanST
+  return $ scoreGameState $ GameState goban state
 
 scoreGameState :: GameState -> Score
 scoreGameState (GameState goban state) =

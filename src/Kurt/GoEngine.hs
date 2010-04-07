@@ -42,7 +42,7 @@ import Data.Tree.Zipper (tree, fromTree, findChild, hasChildren)
 import Kurt.Config
 import Data.Goban.Types (Move(..), Stone(..), Color(..), Vertex, Score)
 import Data.Goban.Utils (winningScore, rateScore)
-import Data.Goban.GameState (GameState(..), GameStateST(..), GameStateStuff, newGameState, scoreGameState, updateGameState, updateGameStateST, getLeafGameStateST, makeStonesAndLibertyHeuristic, nextMoveColor, nextMoves, isSaneMoveST, freeVertices)
+import Data.Goban.GameState (GameState(..), GameStateST(..), GameStateStuff, newGameState, scoreGameState, scoreGameStateST, updateGameState, updateGameStateST, getLeafGameStateST, makeStonesAndLibertyHeuristic, nextMoveColor, nextMoves, nextMovesST, isSaneMoveST, freeVertices)
 
 
 import Data.Tree.UCT.GameTree (MoveNode(..), UCTTreeLoc, RaveMap, newRaveMap, newMoveNode)
@@ -218,14 +218,14 @@ runUCT initLoc rootGameState initRaveMap config rGen deadline  =
 
         slHeu <- stToIO $ makeStonesAndLibertyHeuristic leafGameState config
 
-        moves <- stToIO $ nextMoves leafGameState $ nextMoveColor leafGameState
+        moves <- stToIO $ nextMovesST leafGameState $ nextMoveColor $ getStateST leafGameState
 
         let loc'' = expandNode loc' slHeu moves
         -- let loc'' = expandNode loc' constantHeuristic moves
 
         (oneState, playedMoves) <- stToIO $ runOneRandom leafGameState rGen
 
-        let score = scoreGameState oneState
+        score <- stToIO $ scoreGameStateST oneState
 
         let raveMap' = updateRaveMap raveMap (rateScore score) $ drop (length playedMoves `div` 3) playedMoves
 
@@ -241,14 +241,15 @@ runUCT initLoc rootGameState initRaveMap config rGen deadline  =
 
 
 
-simulatePlayout :: GameStateST RealWorld -> IO [Move]
+simulatePlayout :: GameState -> IO [Move]
 simulatePlayout gState = do
   seed <- withSystemRandom save
   rGen <- stToIO $ restore seed
 
   gState' <- stToIO $ getLeafGameStateST gState []
 
-  (score, playedMoves) <- stToIO $ runOneRandom gState' rGen
+  (oneState, playedMoves) <- stToIO $ runOneRandom gState' rGen
+  score <- stToIO $ scoreGameStateST oneState
 
   trace ("simulatePlayout " ++ show score) $ return ()
 
@@ -260,8 +261,8 @@ runOneRandom :: GameStateST s -> Gen s -> ST s (GameStateST s, [Move])
 runOneRandom initState rGenInit =
     run initState 0 rGenInit []
     where
-      run :: GameStateST s -> Int -> Gen s -> [Move] -> ST s (Score, [Move])
-      run _ 1000 _ _ = return (0, [])
+      run :: GameStateST s -> Int -> Gen s -> [Move] -> ST s (GameStateST s, [Move])
+      run state 1000 _ moves = return (trace ("runOneRandom not done after 1000 moves " ++ show moves) state, [])
       run state runCount rGen moves = do
         move <- genMoveRand state rGen
         state' <- updateGameStateST state move
@@ -285,7 +286,7 @@ runOneRandom initState rGenInit =
 
 genMoveRand :: GameStateST s -> Gen s -> ST s Move
 genMoveRand state rGen =
-    pickSane $ freeVertices state
+    pickSane $ freeVertices $ getStateST state
     where
       pickSane [] =
            return $ Pass color
@@ -303,7 +304,7 @@ genMoveRand state rGen =
          then return $ Move stone
          else pickSane (ps \\ [p]))
 
-      color = nextMoveColor state
+      color = nextMoveColor $ getStateST state
 
 
 pick :: [Vertex] -> Gen s -> ST s Vertex
