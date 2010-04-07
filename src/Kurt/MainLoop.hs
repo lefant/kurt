@@ -207,9 +207,9 @@ cmd_version _ state =
 
 
 cmd_clear_board :: CommandHandler RealWorld
-cmd_clear_board [] state = do
-  let gState' = newGameState (boardSize state) (getKomi state)
-  return $ Right ("", state { getGameState = gState'
+cmd_clear_board [] state =
+  return $ Right ("", state { getGameState =
+                                  newGameState (boardSize state) (getKomi state)
                             , getUctTree = newUctTree
                             , getRaveMap = newRaveMap
                             })
@@ -233,10 +233,8 @@ cmd_komi _ _ = error "cmd_komi called with illegal argument type"
 cmd_boardsize :: CommandHandler RealWorld
 cmd_boardsize [IntArgument n] state =
     return $ Right ("",
-                    state {
-                      getGameState =
-                      error "gamestate undefined after boardsize until clear board received"
-                    , boardSize = n } )
+                    state { getGameState = newGameState n (getKomi state)
+                          , boardSize = n } )
 cmd_boardsize _ _ = error "cmd_boardsize called with illegal argument type"
 
 cmd_showboard :: CommandHandler RealWorld
