@@ -26,11 +26,12 @@ import qualified Data.Map as M (assocs)
 import Data.Tree (rootLabel, subForest)
 import Data.Tree.Zipper (tree)
 import Text.Printf (printf)
+import Data.Array.MArray (thaw)
 
 
 import Network.GoTextProtocol2.Server.Parser
 import Network.GoTextProtocol2.Types
-import Data.Goban.GameState (GameState(..), newGameState, showGameState, scoreGameState, makeStonesAndLibertyHeuristic, nextMoves, nextMoveColor, thisMoveColor)
+import Data.Goban.GameState (GameState(..), GameStateST(..), GameStateStuff(..), newGameState, showGameState, scoreGameState, makeStonesAndLibertyHeuristic, nextMoves, nextMoveColor, thisMoveColor)
 import Data.Goban.Types (gtpShowMove, gtpShowVertex, moveColor, isStoneMove, Color(..))
 import Data.Goban.Utils (influenceFromWinrate)
 import Data.Goban.Incremental (allStones)
@@ -43,7 +44,7 @@ import Data.Tree.UCT.GameTree (MoveNode(..), newRaveMap)
 import Debug.TraceOrId (trace)
 
 
-type CommandHandler s = [Argument] -> EngineState s -> IO (Either String (String, EngineState s))
+type CommandHandler _s = [Argument] -> EngineState -> IO (Either String (String, EngineState))
 
 
 lookupC :: String -> [(String, CommandHandler RealWorld)] -> Maybe (String, CommandHandler RealWorld)
@@ -132,9 +133,9 @@ startLoop config =
     do
       hSetBuffering stdin LineBuffering
       hSetBuffering stdout LineBuffering
-      stToIO (newEngineState config) >>= loop
+      loop $ newEngineState config
 
-loop :: EngineState RealWorld -> IO ()
+loop :: EngineState -> IO ()
 loop oldState =
     do
       input <- getLine
@@ -207,7 +208,7 @@ cmd_version _ state =
 
 cmd_clear_board :: CommandHandler RealWorld
 cmd_clear_board [] state = do
-  gState' <- stToIO $ newGameState (boardSize state) (getKomi state)
+  let gState' = newGameState (boardSize state) (getKomi state)
   return $ Right ("", state { getGameState = gState'
                             , getUctTree = newUctTree
                             , getRaveMap = newRaveMap
@@ -216,12 +217,17 @@ cmd_clear_board _ _ = error "cmd_clear_board called with illegal argument type"
 
 cmd_komi :: CommandHandler RealWorld
 cmd_komi [FloatArgument f] state =
-    return $ Right ("",
-                    state {
-                      getKomi = f
-                    , getGameState = gState { komi = f } } )
+    return $
+    Right ("",
+             state {
+             getKomi = f
+           , getGameState =
+               gState { getState =
+                            stuff { komi = f } } } )
     where
       gState = getGameState state
+      stuff = getState gState
+
 cmd_komi _ _ = error "cmd_komi called with illegal argument type"
 
 cmd_boardsize :: CommandHandler RealWorld
@@ -235,14 +241,14 @@ cmd_boardsize _ _ = error "cmd_boardsize called with illegal argument type"
 
 cmd_showboard :: CommandHandler RealWorld
 cmd_showboard [] state = do
-  str <- stToIO $ showGameState $ getGameState state
+  let str = showGameState $ getGameState state
   return $ Right ("showboard\n" ++ str, state)
 cmd_showboard _ _ = error "cmd_showboard called with illegal argument type"
 
 cmd_play :: CommandHandler RealWorld
 cmd_play [MoveArgument move] state = do
-  state' <- stToIO $ updateEngineState state move
-  str <- stToIO $ showGameState $ getGameState state'
+  let state' = updateEngineState state move
+  let str = showGameState $ getGameState state'
   trace ("cmd_play " ++ gtpShowMove move ++ "\n" ++ str) $ return ()
   return $ Right ("", state')
 cmd_play _ _ = error "cmd_play called with illegal argument type"
@@ -250,15 +256,15 @@ cmd_play _ _ = error "cmd_play called with illegal argument type"
 cmd_genmove :: CommandHandler RealWorld
 cmd_genmove [ColorArgument color] state = do
   (move, state') <- genMove state color
-  state'' <- stToIO $ updateEngineState state' move
-  str <- stToIO $ showGameState $ getGameState state''
+  let state'' = updateEngineState state' move
+  let str = showGameState $ getGameState state''
   trace ("cmd_genmove " ++ gtpShowMove move ++ "\n" ++ str) $ return ()
   return $ Right (gtpShowMove move, state'')
 cmd_genmove _ _ = error "cmd_genmove called with illegal argument type"
 
 cmd_final_score :: CommandHandler RealWorld
 cmd_final_score [] state = do
-  scoreFloat <- stToIO $ scoreGameState $ getGameState state
+  let scoreFloat = scoreGameState $ getGameState state
   return $ Right (scoreString scoreFloat, state)
     where
       scoreString s
@@ -274,7 +280,7 @@ cmd_final_status_list [StringArgument arg] state =
       str = case arg of
               "dead" -> ""
               "seki" -> ""
-              "alive" -> unwords $ map gtpShowVertex $ allStones $ chains $ getGameState state
+              "alive" -> unwords $ map gtpShowVertex $ allStones $ chains $ getState $ getGameState state
               other -> error ("cmd_final_status_list illegal arg: " ++ other)
 cmd_final_status_list _ _ = error "cmd_final_status_list called with illegal argument type"
 
@@ -296,7 +302,7 @@ cmd_time_left [TimeLeftArgument seconds stones] state =
                   `div`
                   ((4 * estMaxMoves) + 1)
       estMaxMoves = max ((boardSize state) ^ (2 :: Int)) (moveCount + 15)
-      moveCount = length $ moveHistory $ getGameState state
+      moveCount = length $ moveHistory $ getState $ getGameState state
 cmd_time_left _ _ = error "cmd_time_left called with illegal argument type"
 
 cmd_time_settings :: CommandHandler RealWorld
@@ -313,7 +319,7 @@ cmd_time_settings [TimeSettingsArgument maintime byotime stones] state =
                   `div`
                   ((4 * estMaxMoves) + 1)
       estMaxMoves = max ((boardSize state) ^ (2 :: Int)) (moveCount + 15)
-      moveCount = length $ moveHistory $ getGameState state
+      moveCount = length $ moveHistory $ getState $ getGameState state
 cmd_time_settings _ _ = error "cmd_time_left called with illegal argument type"
 
 
@@ -346,8 +352,12 @@ cmd_kurt_heuristic_total _ _ = error "cmd_kurt_heuristic_total called with illeg
 
 make_cmd_kurt_heuristic :: (KurtConfig -> KurtConfig) -> CommandHandler RealWorld
 make_cmd_kurt_heuristic fConfig [] state = do
-  moves <- stToIO $ nextMoves gState color
-  slHeu <- stToIO $ makeStonesAndLibertyHeuristic gState config'
+  let moves = nextMoves gState color
+  slHeu <- stToIO $ do
+             gobanST <- thaw $ getGoban gState
+             let gStateST = GameStateST { getGobanST = gobanST
+                                        , getStateST = getState gState }
+             makeStonesAndLibertyHeuristic gStateST config'
   let str = concatMap
             (\move
                  -> " " ++ gtpShowMove move
@@ -357,7 +367,7 @@ make_cmd_kurt_heuristic fConfig [] state = do
   return $ Right ("INFLUENCE" ++ str, state)
     where
       flipSig = if color == Black then 1 else -1
-      color = nextMoveColor gState
+      color = nextMoveColor $ getState gState
       gState = getGameState state
       config' = fConfig $ (getConfig state) { hCaptureWeight       = 0
                                             , hMinLibertiesWeight  = 0
@@ -396,7 +406,7 @@ cmd_kurt_uct_tree [] state = do
       nodes = map rootLabel $ subForest $ tree $ getUctTree state
       -- m = maximum $ map snd ucts
 
-      color = thisMoveColor $ getGameState state
+      color = thisMoveColor $ getState $ getGameState state
 
 cmd_kurt_uct_tree _ _ = error "cmd_kurt_uct_tree called with illegal argument type"
 
@@ -418,7 +428,7 @@ cmd_kurt_ravemap [] state = do
   return $ Right (str ++ "\n" ++ str', state)
     where
       raves = filter ((== color) . moveColor . fst) $ M.assocs $ getRaveMap state
-      color = thisMoveColor $ getGameState state
+      color = thisMoveColor $ getState $ getGameState state
 cmd_kurt_ravemap _ _ = error "cmd_kurt_ravemap called with illegal argument type"
 
 
