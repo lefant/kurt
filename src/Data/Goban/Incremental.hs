@@ -17,7 +17,7 @@ Incrementally updated stone chains including liberty count for goban.
 module Data.Goban.Incremental ( Chain(..)
                               , ChainMap
                               , ChainIdGoban
-                              , ChainIdGobanFrozen
+                              , ChainIdGobanST
 
                               , isSuicide
                               , stonesAndLiberties
@@ -25,7 +25,7 @@ module Data.Goban.Incremental ( Chain(..)
                               , isPotentialFullEye
                               , colorTerritories
 
-                              , newChainGoban
+                              , newChainIdGoban
                               , newChainMap
                               , showChainIdGoban
                               , vertexChain
@@ -90,9 +90,9 @@ showChainMap cm =
 
 
 -- try this instead of Vector this time
-type ChainIdGoban s = STUA.STUArray s Vertex ChainId
+type ChainIdGobanST s = STUA.STUArray s Vertex ChainId
 
-type ChainIdGobanFrozen = UA.UArray Vertex ChainId
+type ChainIdGoban = UA.UArray Vertex ChainId
 
 type ChainNeighbours = M.IntMap VertexSet
 
@@ -101,7 +101,7 @@ type ChainNeighbours = M.IntMap VertexSet
 
 
 
-isSuicide :: ChainIdGoban s -> ChainMap -> Stone -> ST s Bool
+isSuicide :: ChainIdGobanST s -> ChainMap -> Stone -> ST s Bool
 isSuicide cg cm s@(Stone p _color) = do
   (adjFrees, ourIds, neighIds, _neighs) <- adjacentStuff cg cm s
 
@@ -112,7 +112,7 @@ isSuicide cg cm s@(Stone p _color) = do
 
 
 
-stonesAndLiberties :: ChainIdGobanFrozen -> ChainMap -> Stone
+stonesAndLiberties :: ChainIdGoban -> ChainMap -> Stone
                    -> (Int, Int, Int, Int, Int, Int)
 stonesAndLiberties cg cm s@(Stone p color) =
     (captureC, chainC, ourMinL, otherMinL, ourTotalL, otherTotalL)
@@ -172,7 +172,7 @@ stonesAndLiberties cg cm s@(Stone p color) =
 
 
 
-isPotentialFullEye :: ChainIdGoban s -> Stone -> ST s Bool
+isPotentialFullEye :: ChainIdGobanST s -> Stone -> ST s Bool
 isPotentialFullEye g (Stone p color) = do
   as <- mapM (vertexState g) $ adjacentVertices p
   (if all isSameColorOrBorder as
@@ -198,14 +198,14 @@ allStones cm =
 
 
 
-colorTerritories :: ChainIdGoban s -> [Vertex] -> ST s [(Color, [Vertex])]
+colorTerritories :: ChainIdGobanST s -> [Vertex] -> ST s [(Color, [Vertex])]
 colorTerritories g t = do
   maybeColor <- allAdjacentStonesSameColor g t
   return $ case maybeColor of
              Just tColor -> [(tColor, t)]
              Nothing -> []
 
-allAdjacentStonesSameColor :: ChainIdGoban s -> [Vertex] -> ST s (Maybe Color)
+allAdjacentStonesSameColor :: ChainIdGobanST s -> [Vertex] -> ST s (Maybe Color)
 allAdjacentStonesSameColor g ps = do
   as <- mapM (adjacentStones g) ps
   return $ maybeSameColor $ map stoneColor $ concat as
@@ -216,11 +216,11 @@ allAdjacentStonesSameColor g ps = do
           then Just c
           else Nothing
 
-adjacentStones :: ChainIdGoban s -> Vertex -> ST s [Stone]
+adjacentStones :: ChainIdGobanST s -> Vertex -> ST s [Stone]
 adjacentStones g p =
     verticesToStones g $ adjacentVertices p
 
-verticesToStones :: ChainIdGoban s -> [Vertex] -> ST s [Stone]
+verticesToStones :: ChainIdGobanST s -> [Vertex] -> ST s [Stone]
 verticesToStones g ps =
     fmap catMaybes (mapM (vertexStone g) ps)
 
@@ -228,15 +228,15 @@ verticesToStones g ps =
 
 
 
-newChainGoban :: Boardsize -> ST s (ChainIdGoban s)
-newChainGoban n = do
-  cg <- STUA.newArray ((0, 0), (n + 1, n + 1)) noChainId
-  mapM_ (\p -> STUA.writeArray cg p borderChainId) $ borderVertices n
-  return cg
-  -- STUA.newArray ((1, 1), (n, n)) noChainId
+newChainIdGoban :: Boardsize -> ChainIdGoban
+newChainIdGoban n =
+    UA.array ((0, 0), (n + 1, n + 1)) $ board ++ border
+    where
+      board = zip (allVertices n) $ repeat noChainId
+      border = zip (borderVertices n) $ repeat borderChainId
 
 
-showChainIdGoban :: ChainIdGoban s -> ST s String
+showChainIdGoban :: ChainIdGobanST s -> ST s String
 showChainIdGoban cg = do
   (_, (n1, _)) <- STUA.getBounds cg
   let n = n1 - 1
@@ -262,7 +262,7 @@ showChainIdGoban cg = do
 
 
 
-addChainStone :: ChainIdGoban s -> ChainMap -> Stone -> ST s (ChainMap, [Stone])
+addChainStone :: ChainIdGobanST s -> ChainMap -> Stone -> ST s (ChainMap, [Stone])
 addChainStone cg cm s@(Stone p _color) = do
   (adjFrees, ourIds, neighIds, neighs) <- adjacentStuff cg cm s
 
@@ -310,7 +310,7 @@ addChainStone cg cm s@(Stone p _color) = do
 
 
 
-adjacentStuff :: ChainIdGoban s -> ChainMap -> Stone
+adjacentStuff :: ChainIdGobanST s -> ChainMap -> Stone
               -> ST s (VertexSet,
                        [ChainId],
                        [ChainId],
@@ -343,7 +343,7 @@ adjacentStuff cg cm (Stone p color) = do
 
 
 
-deleteChain :: ChainIdGoban s -> ChainMap -> ChainId -> ST s ChainMap
+deleteChain :: ChainIdGobanST s -> ChainMap -> ChainId -> ST s ChainMap
 deleteChain cg cm i = do
   mapM_ resetVertex vs
   return $ mapDeleteChain cm i
@@ -355,12 +355,12 @@ deleteChain cg cm i = do
 
 
 
-vertexChain :: ChainIdGoban s -> ChainMap -> Vertex -> ST s Chain
+vertexChain :: ChainIdGobanST s -> ChainMap -> Vertex -> ST s Chain
 vertexChain cg cm p = do
   i <- vertexId cg p
   return $ idChain "vertexChain" cm i
 
-vertexStone :: ChainIdGoban s -> Vertex -> ST s (Maybe Stone)
+vertexStone :: ChainIdGobanST s -> Vertex -> ST s (Maybe Stone)
 vertexStone cg p = do
   s <- vertexState cg p
   return $ case s of
@@ -368,12 +368,12 @@ vertexStone cg p = do
              Empty -> Nothing
              Border -> Nothing
 
-vertexState :: ChainIdGoban s -> Vertex -> ST s VertexState
+vertexState :: ChainIdGobanST s -> Vertex -> ST s VertexState
 vertexState cg p = do
   i <- vertexId cg p
   return $ idState i
 
-vertexId :: ChainIdGoban s -> Vertex -> ST s Int
+vertexId :: ChainIdGobanST s -> Vertex -> ST s Int
 vertexId cg p = STUA.readArray cg p
 
 
