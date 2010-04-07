@@ -42,7 +42,7 @@ import Data.Tree.Zipper (tree, fromTree, findChild, hasChildren)
 import Kurt.Config
 import Data.Goban.Types (Move(..), Stone(..), Color(..), Vertex, Score)
 import Data.Goban.Utils (winningScore, rateScore)
-import Data.Goban.GameState (GameState, GameStateST(..), newGameState, scoreGameStateST, updateGameState, updateGameStateST, getLeafGameStateST, makeStonesAndLibertyHeuristic, nextMoveColor, nextMoves, isSaneMoveST, freeVertices)
+import Data.Goban.GameState (GameState(..), GameStateST(..), GameStateStuff, newGameState, scoreGameState, updateGameState, updateGameStateST, getLeafGameStateST, makeStonesAndLibertyHeuristic, nextMoveColor, nextMoves, isSaneMoveST, freeVertices)
 
 
 import Data.Tree.UCT.GameTree (MoveNode(..), UCTTreeLoc, RaveMap, newRaveMap, newMoveNode)
@@ -114,7 +114,7 @@ genMove eState color = do
                          , utctDayTime = thinkPicosecs + utctDayTime now }
 
   let moves = nextMoves gState color
-  score <- stToIO $ scoreGameStateST gState
+  let score = scoreGameState gState
   -- boardStr <- stToIO $ showGoban $ goban gState
   -- trace ("genMove" ++ boardStr) $ return ()
   -- trace ("genMove freeVertices: " ++ show (freeVertices gState)) $ return ()
@@ -140,7 +140,7 @@ genMove eState color = do
           -- (getUctC eState) (getRaveWeight eState) (getHeuWeights eState) rGen deadline (maxRuns eState)
           let eState' = eState { getUctTree = loc', getRaveMap = raveMap' }
 
-          return $ (bestMoveFromLoc loc' gState score, eState')))
+          return $ (bestMoveFromLoc loc' (getState gState) score, eState')))
 
 
     where
@@ -163,7 +163,7 @@ genMove eState color = do
 
 
 
-bestMoveFromLoc :: UCTTreeLoc Move -> GameStateST s -> Score -> Move
+bestMoveFromLoc :: UCTTreeLoc Move -> GameStateStuff -> Score -> Move
 bestMoveFromLoc loc state score =
     case principalVariation loc of
       [] ->
@@ -193,7 +193,7 @@ bestMoveFromLoc loc state score =
 
 
 runUCT :: UCTTreeLoc Move
-       -> GameStateST RealWorld
+       -> GameState
        -> RaveMap Move
        -> KurtConfig
        -> Gen RealWorld
@@ -223,7 +223,9 @@ runUCT initLoc rootGameState initRaveMap config rGen deadline  =
         let loc'' = expandNode loc' slHeu moves
         -- let loc'' = expandNode loc' constantHeuristic moves
 
-        (score, playedMoves) <- stToIO $ runOneRandom leafGameState rGen
+        (oneState, playedMoves) <- stToIO $ runOneRandom leafGameState rGen
+
+        let score = scoreGameState oneState
 
         let raveMap' = updateRaveMap raveMap (rateScore score) $ drop (length playedMoves `div` 3) playedMoves
 
@@ -254,7 +256,7 @@ simulatePlayout gState = do
 
 
 
-runOneRandom :: GameStateST s -> Gen s -> ST s (Score, [Move])
+runOneRandom :: GameStateST s -> Gen s -> ST s (GameStateST s, [Move])
 runOneRandom initState rGenInit =
     run initState 0 rGenInit []
     where
@@ -268,9 +270,8 @@ runOneRandom initState rGenInit =
                     move' <- genMoveRand state' rGen
                     state'' <- updateGameStateST state' move'
                     case move' of
-                      (Pass _) -> do
-                                 score <- scoreGameStateST state''
-                                 return (score, moves)
+                      (Pass _) ->
+                          return (state'', moves)
                       sm@(Move _) ->
                           run state'' (runCount + 1) rGen (sm : (Pass passColor) : moves)
                       (Resign _) ->

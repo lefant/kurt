@@ -17,13 +17,14 @@ Go GameState Implementation
 
 module Data.Goban.GameState ( GameState(..)
                             , GameStateST(..)
+                            , GameStateStuff(..)
 
                             , newGameState
                             , updateGameState
                             , nextMoves
+                            , scoreGameState
+                            , showGameState
 
-                            , showGameStateST
-                            , scoreGameStateST
                             , getLeafGameStateST
                             , updateGameStateST
                             , centerHeuristic
@@ -71,11 +72,9 @@ data GameStateStuff = GameStateStuff { chains          :: !ChainMap
                                      , whiteStones     :: !Int
                                      }
 
-showGameStateST :: GameStateST s -> ST s String
-showGameStateST gState@(GameStateST goban state) = do
-  chainGobanStr <- showChainIdGoban goban
-  score <- scoreGameStateST gState
-  return $ (unlines (zipWith (++) (lines chainGobanStr) $ [
+showGameState :: GameState -> String
+showGameState gState@(GameState goban state) =
+    (unlines (zipWith (++) (lines chainGobanStr) $ [
                        ""
                       ,"   blackStones: " ++ show (blackStones state)
                       ,"   whiteStones: " ++ show (whiteStones state)
@@ -89,8 +88,16 @@ showGameStateST gState@(GameStateST goban state) = do
           -- ++ "\n"
          ))
   where
+    chainGobanStr =
+        runST $ do
+          gobanST <- thaw goban
+          showChainIdGoban gobanST
+
+    score = scoreGameState gState
+
     showKoBlocked (Just p) = gtpShowVertex p
     showKoBlocked Nothing = ""
+
 
 newGameState :: Boardsize -> Score -> GameState
 newGameState n initKomi =
@@ -145,13 +152,12 @@ isSaneMoveST (GameStateST goban state) stone = do
 
 
 -- compute game state at the end of a move sequence by replaying it
-getLeafGameStateST :: GameStateST s -> [Move] -> ST s (GameStateST s)
-getLeafGameStateST gState@(GameStateST goban _state) moves = do
-  fcg :: ChainIdGoban <- freeze goban
-  -- fcg :: (Array Vertex Int) <- (freeze $ gobanST state)
-  cg' <- thaw fcg
-  let gState' = gState { getGobanST = cg' }
-  foldM updateGameStateST gState' moves
+getLeafGameStateST :: GameState -> [Move] -> ST s (GameStateST s)
+getLeafGameStateST (GameState goban state) moves = do
+  gobanST <- thaw goban
+  let gState = GameStateST { getGobanST = gobanST
+                           , getStateST = state }
+  foldM updateGameStateST gState moves
 
 
 
@@ -220,28 +226,30 @@ updateStuff _ move _ _ = error $ "updateStuff unsupported move: " ++ show move
 
 
 
-scoreGameStateST :: GameStateST s -> ST s Score
-scoreGameStateST gState@(GameStateST goban state) = do
-  let empties = emptyStrings gState
-  colorTs <- mapM (colorTerritories goban) empties
-  let blackTerritory = countTerritory Black colorTs
-  let whiteTerritory = countTerritory White colorTs
-  let b = fromIntegral $ blackStones state + blackTerritory
-  let w = fromIntegral $ whiteStones state + whiteTerritory
-  -- trace ("scoreGameState empties " ++ show empties) $ return ()
-  -- trace ("scoreGameState colorTs " ++ show colorTs) $ return ()
-  -- trace ("scoreGameStateST stones " ++ show (blackStones state, whiteStones state)) $ return ()
-  -- trace ("scoreGameState " ++ show ((blackTerritory, b), (whiteTerritory, w))) $ return ()
-  return $ b - w - komi state
+scoreGameState :: GameState -> Score
+scoreGameState (GameState goban state) =
+    b - w - komi state
+    where
+      b = fromIntegral $ blackStones state + blackTerritory
+      w = fromIntegral $ whiteStones state + whiteTerritory
 
-  where
-    countTerritory color ts =
-        sum $ map (fromIntegral . length . snd)
-                $ filter ((== color) . fst) $ concat ts
+      blackTerritory = countTerritory Black colorTs
+      whiteTerritory = countTerritory White colorTs
+
+      colorTs =
+          runST $ do
+            gobanST <- thaw goban
+            mapM (colorTerritories gobanST) empties
+
+      countTerritory color ts =
+          sum $ map (fromIntegral . length . snd)
+                  $ filter ((== color) . fst) $ concat ts
+
+      empties = emptyStrings state
 
 
-emptyStrings :: GameStateST s -> [[Vertex]]
-emptyStrings (GameStateST _goban state) =
+emptyStrings :: GameStateStuff -> [[Vertex]]
+emptyStrings state =
   emptyStrings' initFrees []
 
     where
@@ -361,8 +369,8 @@ makeStonesAndLibertyHeuristic (GameStateST goban state) config = do
     n = boardsize state
 
 
-thisMoveColor :: GameStateST s -> Color
-thisMoveColor (GameStateST _goban state) =
+thisMoveColor :: GameStateStuff -> Color
+thisMoveColor state =
     case moveHistory state of
       [] -> trace "thisMoveColor called when moveHistory still empty" White
       moves ->
@@ -371,8 +379,8 @@ thisMoveColor (GameStateST _goban state) =
             Pass color -> color
             Resign color -> color
 
-nextMoveColor :: GameStateST s -> Color
-nextMoveColor (GameStateST _goban state) =
+nextMoveColor :: GameStateStuff -> Color
+nextMoveColor state =
     case moveHistory state of
       [] -> Black
       moves ->
