@@ -15,13 +15,6 @@
 
 ** wrap UCT in some toplevel object?
 
-** STUArray instead of STVector with thaw and freeze before and updateGameState
-*** would need to support all of STVector in Incremental
-*** first shift chain ids to signed (so we can tell from array which color the stone is)
-*** add border
-
-
-
 * tune updateGameState speed
 ** adjacentStuff is called very often
 ** policyRaveUCB1 could maybe do less computation
@@ -29,9 +22,6 @@
 
 * refactoring
 ** GameState versus Goban and representation still could be improved
-
-** STVectorGoban
-*** toEnum / fromEnum would clearly be better than word(To/From)state
 
 ** if copyGoban is used cleverly, maybe runOneRandom could use runST without the RealWorld
 *** it seems this would need something like STUArrays thaw / freeze support
@@ -55,10 +45,6 @@
 
 
 
-* Data.Tree.UCT
-** come back for "negamax if done"?
-
-
 ** possible incremental goban improvement: http://en.wikipedia.org/wiki/Disjoint-set_data_structure
 
 
@@ -77,17 +63,7 @@ General:
 ** http://www.haskell.org/haskellwiki/How_to_profile_a_Haskell_program
 * benchmark
 ** criterion
-* better board representation
-** more high level stuff
-*** incremential group and liberty tracking?
 
-
-
-* Data.Goban.UArray
-** http://stackoverflow.com/questions/976936/how-to-create-unboxed-mutable-array-instance/978143#978143
-** http://www.mail-archive.com/haskell-cafe@haskell.org/msg38528.html
-** http://www.mail-archive.com/haskell-cafe@haskell.org/msg38530.html
-** http://www.mail-archive.com/haskell-cafe@haskell.org/msg38540.html
 
 Network.GoTextProtocol2.Server:
 * merge commandargparserlist and commandHandlers lists

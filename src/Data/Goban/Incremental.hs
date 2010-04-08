@@ -29,7 +29,7 @@ module Data.Goban.Incremental ( Chain(..)
                               , newChainMap
                               , showChainIdGoban
                               , vertexChain
-                              , addChainStone
+                              , addStone
                               ) where
 
 
@@ -250,17 +250,32 @@ showChainIdGoban goban =
 
 
 isSuicide :: ChainIdGobanST s -> ChainMap -> Stone -> ST s Bool
-isSuicide cg cm s@(Stone p _color) = do
-  (adjFrees, ourIds, neighIds, _neighs) <- adjacentStuff cg cm s
+isSuicide cg cm (Stone p color) = do
+  adjPs <- liftM (filter (/= borderChainId)) $ mapM (STUA.readArray cg) $ adjacentVertices p
+  return $ isSuicide' adjPs
 
-  return (S.null adjFrees
-          && all (S.null . S.delete p . chainLiberties . idChain "isSuicide ourIds" cm) ourIds
-          && all (not . S.null . S.delete p . chainLiberties . idChain "isSuicide neighIds" cm) neighIds)
+    where
+      isSuicide' adjPs =
+          (null adjFrees
+           && all (S.null . S.delete p . chainLiberties . idChain "isSuicide ourIds" cm) ourIds'
+           && all (not . S.null . S.delete p . chainLiberties . idChain "isSuicide neighIds" cm) neighIds')
+
+          where
+            -- partition out free vertices
+            (adjFrees, adjIds) = partition (== noChainId) adjPs
+
+            -- partition friend and foe
+            (ourIds, neighIds) = partition ((color ==) . chainColor . idChain ("adjacentStuff partition " ++ show adjIds ++ "\n" ++ showChainMap cm) cm) adjIds
+            -- list of adjacent same color chain ids
+            ourIds' = nub ourIds
+            -- ChainNeighbour type neighbour id - vertex map
+            neighIds' = nub neighIds
 
 
 
-addChainStone :: ChainIdGobanST s -> ChainMap -> Stone -> ST s (ChainMap, [Stone])
-addChainStone cg cm s@(Stone p _color) = do
+
+addStone :: ChainIdGobanST s -> ChainMap -> Stone -> ST s (ChainMap, [Stone])
+addStone cg cm s@(Stone p _color) = do
   (adjFrees, ourIds, neighIds, neighs) <- adjacentStuff cg cm s
 
   -- add new chain with played stone and
@@ -335,6 +350,39 @@ adjacentStuff cg cm (Stone p color) = do
 
     where
       readPairWithKey ap = do
+        v <- STUA.readArray cg ap
+        return (v, ap)
+
+
+adjacentStuff2 :: ChainIdGobanST s -> ChainMap -> Stone
+              -> ST s (VertexSet,
+                       [ChainId],
+                       [ChainId])
+adjacentStuff2 cg cm (Stone p color) = do
+  -- lookup all adjacent chain ids
+  adjPs <- liftM filterBorder $ mapM readPairWithKey $ adjacentVertices p
+  return $ adjacentStuff2' adjPs
+
+    where
+      adjacentStuff2' adjPs =
+          (adjFrees, ourIds, neighIds)
+
+          where
+            -- partition out free vertices
+            (adjFreePs, adjIdPs) = {-# SCC "as2_partFrees" #-} partition ((== noChainId) . fst) adjPs
+
+            -- partition friend and foe
+            (ourIdPs, neighIdPs) = {-# SCC "as2_partStones" #-} partition ((color ==) . chainColor . idChain ("adjacentStuff partition " ++ show adjIdPs ++ "\n" ++ showChainMap cm) cm . fst) adjIdPs
+
+            -- VertexSet of adjacent liberties
+            adjFrees = {-# SCC "as2_adjFrees" #-} S.fromList $ map snd adjFreePs
+            -- list of adjacent same color chain ids
+            ourIds = {-# SCC "as2_ourIds" #-} nub $ map fst ourIdPs
+            -- ChainNeighbour type neighbour id - vertex map
+            neighIds = {-# SCC "as2_neighIds" #-} nub $ map fst neighIdPs
+
+
+      readPairWithKey ap = {-# SCC "as2_readPair" #-} do
         v <- STUA.readArray cg ap
         return (v, ap)
 
