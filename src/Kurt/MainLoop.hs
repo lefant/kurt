@@ -18,7 +18,6 @@ module Kurt.MainLoop ( startLoop
     
 
 import Control.Arrow ((&&&))
-import Control.Monad.ST (RealWorld)
 import System.IO
 import Text.Parsec.String (Parser)
 import Data.List
@@ -43,10 +42,10 @@ import Data.Tree.UCT.GameTree (MoveNode(..), newRaveMap)
 import Debug.TraceOrId (trace)
 
 
-type CommandHandler _s = [Argument] -> EngineState -> IO (Either String (String, EngineState))
+type CommandHandler = [Argument] -> EngineState -> IO (Either String (String, EngineState))
 
 
-lookupC :: String -> [(String, CommandHandler RealWorld)] -> Maybe (String, CommandHandler RealWorld)
+lookupC :: String -> [(String, CommandHandler)] -> Maybe (String, CommandHandler)
 lookupC cmd = find (\(x, _) -> x == cmd)
 
 
@@ -89,7 +88,7 @@ commandargparserlist =
 
 
 
-commandHandlers :: [(String, CommandHandler RealWorld)]
+commandHandlers :: [(String, CommandHandler)]
 commandHandlers =
     [
      ("boardsize", cmd_boardsize)
@@ -177,35 +176,35 @@ outputIdOrBlank Nothing = " "
 outputIdOrBlank (Just lineId) = show lineId ++ " "
 
 
-cmd_known_command :: CommandHandler RealWorld
+cmd_known_command :: CommandHandler
 cmd_known_command [StringArgument cmd] state =
     return $ case lookupC cmd commandHandlers of
       Nothing -> Right ("false", state)
       Just (_, _) -> Right ("true", state)
 cmd_known_command _ _ = error "cmd_known_command called with illegal argument type"
 
-cmd_list_commands :: CommandHandler RealWorld
+cmd_list_commands :: CommandHandler
 cmd_list_commands _ state =
     return $ Right (reverse $ drop 1 $ reverse $ unlines $ map fst commandHandlers, state)
 
-cmd_name :: CommandHandler RealWorld
+cmd_name :: CommandHandler
 cmd_name _ state =
     return $ Right ("kurt", state)
 
-cmd_protocol_version :: CommandHandler RealWorld
+cmd_protocol_version :: CommandHandler
 cmd_protocol_version _ state =
     return $ Right ("2", state)
 
-cmd_quit :: CommandHandler RealWorld
+cmd_quit :: CommandHandler
 cmd_quit _ _ =
     error "bye!"
 
-cmd_version :: CommandHandler RealWorld
+cmd_version :: CommandHandler
 cmd_version _ state =
     return $ Right ("0.0.1", state)
 
 
-cmd_clear_board :: CommandHandler RealWorld
+cmd_clear_board :: CommandHandler
 cmd_clear_board [] state =
   return $ Right ("", state { getGameState =
                                   newGameState (boardSize state) (getKomi state)
@@ -214,7 +213,7 @@ cmd_clear_board [] state =
                             })
 cmd_clear_board _ _ = error "cmd_clear_board called with illegal argument type"
 
-cmd_komi :: CommandHandler RealWorld
+cmd_komi :: CommandHandler
 cmd_komi [FloatArgument f] state =
     return $
     Right ("",
@@ -229,48 +228,48 @@ cmd_komi [FloatArgument f] state =
 
 cmd_komi _ _ = error "cmd_komi called with illegal argument type"
 
-cmd_boardsize :: CommandHandler RealWorld
+cmd_boardsize :: CommandHandler
 cmd_boardsize [IntArgument n] state =
     return $ Right ("",
                     state { getGameState = newGameState n (getKomi state)
                           , boardSize = n } )
 cmd_boardsize _ _ = error "cmd_boardsize called with illegal argument type"
 
-cmd_showboard :: CommandHandler RealWorld
-cmd_showboard [] state = do
-  let str = showGameState $ getGameState state
-  return $ Right ("showboard\n" ++ str, state)
+cmd_showboard :: CommandHandler
+cmd_showboard [] state =
+  return $ Right ("showboard\n" ++ (showGameState $ getGameState state), state)
 cmd_showboard _ _ = error "cmd_showboard called with illegal argument type"
 
-cmd_play :: CommandHandler RealWorld
-cmd_play [MoveArgument move] state = do
-  let state' = updateEngineState state move
-  let str = showGameState $ getGameState state'
-  trace ("cmd_play " ++ gtpShowMove move ++ "\n" ++ str) $ return ()
-  return $ Right ("", state')
+cmd_play :: CommandHandler
+cmd_play [MoveArgument move] state =
+    trace ("cmd_play " ++ gtpShowMove move ++ "\n" ++ str)
+              $ return $ Right ("", state')
+  where
+    state' = updateEngineState state move
+    str = showGameState $ getGameState state'
 cmd_play _ _ = error "cmd_play called with illegal argument type"
 
-cmd_genmove :: CommandHandler RealWorld
+cmd_genmove :: CommandHandler
 cmd_genmove [ColorArgument color] state = do
   (move, state') <- genMove state color
   let state'' = updateEngineState state' move
   let str = showGameState $ getGameState state''
-  trace ("cmd_genmove " ++ gtpShowMove move ++ "\n" ++ str) $ return ()
-  return $ Right (gtpShowMove move, state'')
+  trace ("cmd_genmove " ++ gtpShowMove move ++ "\n" ++ str)
+            $ return $ Right (gtpShowMove move, state'')
 cmd_genmove _ _ = error "cmd_genmove called with illegal argument type"
 
-cmd_final_score :: CommandHandler RealWorld
-cmd_final_score [] state = do
-  let scoreFloat = scoreGameState $ getGameState state
-  return $ Right (scoreString scoreFloat, state)
+cmd_final_score :: CommandHandler
+cmd_final_score [] state =
+    return $ Right (scoreString scoreFloat, state)
     where
       scoreString s
           | s < 0 = "W+" ++ show (-1 * s)
           | s > 0 = "B+" ++ show s
           | otherwise = "0"
+      scoreFloat = scoreGameState $ getGameState state
 cmd_final_score _ _ = error "cmd_final_score called with illegal argument type"
 
-cmd_final_status_list :: CommandHandler RealWorld
+cmd_final_status_list :: CommandHandler
 cmd_final_status_list [StringArgument arg] state =
     return $ Right (str, state)
     where
@@ -282,7 +281,7 @@ cmd_final_status_list [StringArgument arg] state =
 cmd_final_status_list _ _ = error "cmd_final_status_list called with illegal argument type"
 
 
-cmd_time_left :: CommandHandler RealWorld
+cmd_time_left :: CommandHandler
 cmd_time_left [TimeLeftArgument 0 0] state =
     return $ Right ("", state)
 cmd_time_left [TimeLeftArgument seconds stones] state =
@@ -302,7 +301,7 @@ cmd_time_left [TimeLeftArgument seconds stones] state =
       moveCount = length $ moveHistory $ getState $ getGameState state
 cmd_time_left _ _ = error "cmd_time_left called with illegal argument type"
 
-cmd_time_settings :: CommandHandler RealWorld
+cmd_time_settings :: CommandHandler
 cmd_time_settings [TimeSettingsArgument maintime byotime stones] state =
     return
     $ Right ("", state { getConfig = (getConfig state) { maxTime = ms'' } } )
@@ -325,7 +324,7 @@ cmd_time_settings _ _ = error "cmd_time_left called with illegal argument type"
 -- gogui analyze gtp extensions
 -------------------------------
 
-cmd_gogui_analyze_commands :: CommandHandler RealWorld
+cmd_gogui_analyze_commands :: CommandHandler
 cmd_gogui_analyze_commands [] state =
     return $ Right (
            "param/kurt_configure/kurt_configure\n"
@@ -342,23 +341,24 @@ cmd_gogui_analyze_commands [] state =
 cmd_gogui_analyze_commands _ _ = error "cmd_gogui_analyze_commands called with illegal argument type"
 
 
-cmd_kurt_heuristic_total :: CommandHandler RealWorld
+cmd_kurt_heuristic_total :: CommandHandler
 cmd_kurt_heuristic_total [] state =
   make_cmd_kurt_heuristic (const (getConfig state)) [] state
 cmd_kurt_heuristic_total _ _ = error "cmd_kurt_heuristic_total called with illegal argument type"
 
-make_cmd_kurt_heuristic :: (KurtConfig -> KurtConfig) -> CommandHandler RealWorld
-make_cmd_kurt_heuristic fConfig [] state = do
-  let moves = nextMoves gState color
-  let slHeu = makeStonesAndLibertyHeuristic gState config'
-  let str = concatMap
+make_cmd_kurt_heuristic :: (KurtConfig -> KurtConfig) -> CommandHandler
+make_cmd_kurt_heuristic fConfig [] state =
+    return $ Right ("INFLUENCE" ++ str, state)
+    where
+      moves = nextMoves gState color
+      slHeu = makeStonesAndLibertyHeuristic gState config'
+      str = concatMap
             (\move
                  -> " " ++ gtpShowMove move
                     ++ printf " %.2f" (((fst $ slHeu move) - 0.5) * 2 * flipSig))
                     -- ++ printf " %.2f" (fst $ slHeu move))
             $ filter isStoneMove moves
-  return $ Right ("INFLUENCE" ++ str, state)
-    where
+
       flipSig = if color == Black then 1 else -1
       color = nextMoveColor $ getState gState
       gState = getGameState state
@@ -371,28 +371,22 @@ make_cmd_kurt_heuristic fConfig [] state = do
 
 make_cmd_kurt_heuristic _ _ _ = error "make_cmd_kurt_heuristic called with illegal argument type"
 
-cmd_kurt_uct_tree :: CommandHandler RealWorld
-cmd_kurt_uct_tree [] state = do
-  -- let str = concatMap
-  --           (\(move, v)
-  --                -> " " ++ gtpShowMove move
-  --                   ++ printf " %.2f" (((fromIntegral v / fromIntegral m) :: Float) * flipSig))
-  --           ucts
-  let str = "INFLUENCE"
+cmd_kurt_uct_tree :: CommandHandler
+cmd_kurt_uct_tree [] state =
+    return $ Right (str ++ "\n" ++ str', state)
+    where
+      str = "INFLUENCE"
             ++ concatMap
                    (\(move, value)
                         -> " " ++ gtpShowMove move
                            ++ (influenceFromWinrate color value))
                    ucts
 
-  let str' = "LABEL"
+      str' = "LABEL"
              ++ concatMap
                     (\(move, v) -> " " ++ gtpShowMove move ++ " " ++ show v)
                     ucts'
 
-
-  return $ Right (str ++ "\n" ++ str', state)
-    where
       ucts = map (nodeMove &&& nodeValue) nodes
       ucts' = map (nodeMove &&& nodeVisits) nodes
 
@@ -403,29 +397,29 @@ cmd_kurt_uct_tree [] state = do
 
 cmd_kurt_uct_tree _ _ = error "cmd_kurt_uct_tree called with illegal argument type"
 
-cmd_kurt_ravemap :: CommandHandler RealWorld
-cmd_kurt_ravemap [] state = do
-  let str = "INFLUENCE"
+cmd_kurt_ravemap :: CommandHandler
+cmd_kurt_ravemap [] state =
+    return $ Right (str ++ "\n" ++ str', state)
+    where
+      str = "INFLUENCE"
             ++ concatMap
                  (\(move, (value, _count)) ->
                       " " ++ gtpShowMove move
                       ++ (influenceFromWinrate color value))
                  raves
 
-  let str' = "LABEL"
+      str' = "LABEL"
             ++ concatMap
                  (\(move, (_value, count)) ->
                       " " ++ gtpShowMove move ++ " " ++ show count)
                  raves
 
-  return $ Right (str ++ "\n" ++ str', state)
-    where
       raves = filter ((== color) . moveColor . fst) $ M.assocs $ getRaveMap state
       color = thisMoveColor $ getState $ getGameState state
 cmd_kurt_ravemap _ _ = error "cmd_kurt_ravemap called with illegal argument type"
 
 
-cmd_kurt_simulate_playout :: CommandHandler RealWorld
+cmd_kurt_simulate_playout :: CommandHandler
 cmd_kurt_simulate_playout [] state = do
   moves <- simulatePlayout $ getGameState state
   let str = unwords $ map gtpShowMove moves
@@ -438,7 +432,7 @@ cmd_kurt_simulate_playout _ _ = error "cmd_kurt_ravemap called with illegal argu
 -- purely kurt specific gtp extensions
 --------------------------------------
 
-cmd_kurt_configure :: CommandHandler RealWorld
+cmd_kurt_configure :: CommandHandler
 cmd_kurt_configure [MaybeKeyValueArgument Nothing] state =
     return $ Right (
                     init $ unlines [
