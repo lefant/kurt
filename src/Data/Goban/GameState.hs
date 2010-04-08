@@ -189,7 +189,7 @@ updateGameState gState@(GameState goban state) move =
         runST $
         do
           gobanST <- thaw goban
-          (chains', dead) <- addChainStone gobanST (chains state) stone
+          (chains', dead) <- addStone gobanST (chains state) stone
           -- gobanST goes out of scope after this function, so unsafe is ok here
           goban' <- unsafeFreeze gobanST
           return $ gState { getGoban = goban'
@@ -205,7 +205,7 @@ updateGameStateST gState@(GameStateST goban state) move = do
         return $ gState { getStateST = idStuff state move }
     Move stone ->
         do
-          (chains', dead) <- addChainStone goban (chains state) stone
+          (chains', dead) <- addStone goban (chains state) stone
           return $ gState { getGobanST = goban
                           , getStateST = updateStuff state move dead chains' }
 
