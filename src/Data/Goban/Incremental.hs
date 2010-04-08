@@ -101,13 +101,53 @@ type ChainNeighbours = M.IntMap VertexSet
 
 
 
-isSuicide :: ChainIdGobanST s -> ChainMap -> Stone -> ST s Bool
-isSuicide cg cm s@(Stone p _color) = do
-  (adjFrees, ourIds, neighIds, _neighs) <- adjacentStuff cg cm s
+isPotentialFullEye :: ChainIdGobanST s -> Stone -> ST s Bool
+isPotentialFullEye g (Stone p color) = do
+  as <- mapM (vertexState g) $ adjacentVertices p
+  (if all isSameColorOrBorder as
+   then do
+     ds <- mapM (vertexState g) $ diagonalVertices p
+     let opponentDiagonalCount = length $ filter isOtherColor ds
+     let borderDiagonalCount = length $ filter isBorder ds
+     return ((opponentDiagonalCount == 0)
+             || ((opponentDiagonalCount == 1)
+                 && (borderDiagonalCount == 0)))
+   else return False)
 
-  return (S.null adjFrees
-          && all (S.null . S.delete p . chainLiberties . idChain "isSuicide ourIds" cm) ourIds
-          && all (not . S.null . S.delete p . chainLiberties . idChain "isSuicide neighIds" cm) neighIds)
+   where
+     isSameColorOrBorder c = c `elem` [Border, Colored color]
+     isBorder c = c == Border
+     isOtherColor c = c == Colored (otherColor color)
+
+
+
+
+colorTerritories :: ChainIdGobanST s -> [Vertex] -> ST s [(Color, [Vertex])]
+colorTerritories g t = do
+  maybeColor <- allAdjacentStonesSameColor g t
+  return $ case maybeColor of
+             Just tColor -> [(tColor, t)]
+             Nothing -> []
+
+allAdjacentStonesSameColor :: ChainIdGobanST s -> [Vertex] -> ST s (Maybe Color)
+allAdjacentStonesSameColor g ps = do
+  as <- mapM (adjacentStones g) ps
+  return $ maybeSameColor $ map stoneColor $ concat as
+    where
+      maybeSameColor [] = Nothing
+      maybeSameColor (c : cs) =
+          if all (c ==) cs
+          then Just c
+          else Nothing
+
+adjacentStones :: ChainIdGobanST s -> Vertex -> ST s [Stone]
+adjacentStones g p =
+    verticesToStones g $ adjacentVertices p
+
+verticesToStones :: ChainIdGobanST s -> [Vertex] -> ST s [Stone]
+verticesToStones g ps =
+    fmap catMaybes (mapM (vertexStone g) ps)
+
 
 
 
@@ -171,58 +211,10 @@ stonesAndLiberties cg cm s@(Stone p color) =
             v = cg UA.! ap
 
 
-
-isPotentialFullEye :: ChainIdGobanST s -> Stone -> ST s Bool
-isPotentialFullEye g (Stone p color) = do
-  as <- mapM (vertexState g) $ adjacentVertices p
-  (if all isSameColorOrBorder as
-   then do
-     ds <- mapM (vertexState g) $ diagonalVertices p
-     let opponentDiagonalCount = length $ filter isOtherColor ds
-     let borderDiagonalCount = length $ filter isBorder ds
-     return ((opponentDiagonalCount == 0)
-             || ((opponentDiagonalCount == 1)
-                 && (borderDiagonalCount == 0)))
-   else return False)
-
-   where
-     isSameColorOrBorder c = c `elem` [Border, Colored color]
-     isBorder c = c == Border
-     isOtherColor c = c == Colored (otherColor color)
-
-
-
 allStones :: ChainMap -> [Vertex]
 allStones cm =
     S.toList $ S.unions $ map chainVertices $ M.elems cm
 
-
-
-colorTerritories :: ChainIdGobanST s -> [Vertex] -> ST s [(Color, [Vertex])]
-colorTerritories g t = do
-  maybeColor <- allAdjacentStonesSameColor g t
-  return $ case maybeColor of
-             Just tColor -> [(tColor, t)]
-             Nothing -> []
-
-allAdjacentStonesSameColor :: ChainIdGobanST s -> [Vertex] -> ST s (Maybe Color)
-allAdjacentStonesSameColor g ps = do
-  as <- mapM (adjacentStones g) ps
-  return $ maybeSameColor $ map stoneColor $ concat as
-    where
-      maybeSameColor [] = Nothing
-      maybeSameColor (c : cs) =
-          if all (c ==) cs
-          then Just c
-          else Nothing
-
-adjacentStones :: ChainIdGobanST s -> Vertex -> ST s [Stone]
-adjacentStones g p =
-    verticesToStones g $ adjacentVertices p
-
-verticesToStones :: ChainIdGobanST s -> [Vertex] -> ST s [Stone]
-verticesToStones g ps =
-    fmap catMaybes (mapM (vertexStone g) ps)
 
 
 
@@ -254,6 +246,16 @@ showChainIdGoban goban =
       n = n1 - 1
       (_, (n1, _)) = UA.bounds goban
 
+
+
+
+isSuicide :: ChainIdGobanST s -> ChainMap -> Stone -> ST s Bool
+isSuicide cg cm s@(Stone p _color) = do
+  (adjFrees, ourIds, neighIds, _neighs) <- adjacentStuff cg cm s
+
+  return (S.null adjFrees
+          && all (S.null . S.delete p . chainLiberties . idChain "isSuicide ourIds" cm) ourIds
+          && all (not . S.null . S.delete p . chainLiberties . idChain "isSuicide neighIds" cm) neighIds)
 
 
 
