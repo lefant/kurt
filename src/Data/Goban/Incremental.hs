@@ -236,28 +236,23 @@ newChainIdGoban n =
       border = zip (borderVertices n) $ repeat borderChainId
 
 
-showChainIdGoban :: ChainIdGobanST s -> ST s String
-showChainIdGoban cg = do
-  (_, (n1, _)) <- STUA.getBounds cg
-  let n = n1 - 1
-  chainIds <- liftM (filter (/= borderChainId)) $ STUA.getElems cg
-  let ls = transpose $ unfoldr (nLines n) $ map idState chainIds
-  return $ board n ls
+showChainIdGoban :: ChainIdGoban -> String
+showChainIdGoban goban =
+    unlines $ reverse
+                ([xLegend]
+                 ++ zipWith (++) ys
+                        (zipWith (++) (map (unwords . (map show)) ls) ys)
+                 ++ [xLegend])
     where
-      board n ls =
-          unlines
-          $ reverse
-          ([xLegend]
-           ++ zipWith (++) ys
-              (zipWith (++) (map (unwords . (map show)) ls) ys)
-           ++ [xLegend])
+      ls = transpose $ unfoldr nLines $ map idState chainIds
+      chainIds = filter (/= borderChainId) $ UA.elems goban
+      nLines xs = if null xs then Nothing else Just $ splitAt n xs
 
-          where
-            ys = map (printf " %2d ") [1 .. n]
-            xLegend = "    " ++ unwords (map ((: []) . xToLetter) [1 .. n])
+      ys = map (printf " %2d ") [1 .. n]
+      xLegend = "    " ++ unwords (map ((: []) . xToLetter) [1 .. n])
 
-      nLines n xs = if null xs then Nothing else Just $ splitAt n xs
-
+      n = n1 - 1
+      (_, (n1, _)) = UA.bounds goban
 
 
 

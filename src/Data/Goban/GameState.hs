@@ -78,7 +78,7 @@ data GameStateStuff = GameStateStuff { chains          :: !ChainMap
 
 showGameState :: GameState -> String
 showGameState gState@(GameState goban state) =
-    (unlines (zipWith (++) (lines chainGobanStr) $ [
+    (unlines (zipWith (++) (lines $ showChainIdGoban goban) $ [
                        ""
                       ,"   blackStones: " ++ show (blackStones state)
                       ,"   whiteStones: " ++ show (whiteStones state)
@@ -92,13 +92,7 @@ showGameState gState@(GameState goban state) =
           -- ++ "\n"
          ))
   where
-    chainGobanStr =
-        runST $ do
-          gobanST <- thaw goban
-          showChainIdGoban gobanST
-
     score = scoreGameState gState
-
     showKoBlocked (Just p) = gtpShowVertex p
     showKoBlocked Nothing = ""
 
@@ -235,13 +229,23 @@ updateStuff state move@(Move (Stone p c)) dead chains' =
 updateStuff _ move _ _ = error $ "updateStuff unsupported move: " ++ show move
 
 
+
 scoreGameStateST :: GameStateST s -> ST s Score
 scoreGameStateST (GameStateST gobanST state) = do
-  goban <- freeze gobanST
-  return $ scoreGameState $ GameState goban state
+  colorTs <- mapM (colorTerritories gobanST) $ emptyStrings state
+  return $ scoreGameState' state colorTs
 
 scoreGameState :: GameState -> Score
 scoreGameState (GameState goban state) =
+    scoreGameState' state colorTs
+    where
+      colorTs =
+          runST $ do
+            gobanST <- thaw goban
+            mapM (colorTerritories gobanST) $ emptyStrings state
+
+scoreGameState' :: GameStateStuff -> [[(Color, [a])]] -> Score
+scoreGameState' state colorTs =
     b - w - komi state
     where
       b = fromIntegral $ blackStones state + blackTerritory
@@ -250,16 +254,9 @@ scoreGameState (GameState goban state) =
       blackTerritory = countTerritory Black colorTs
       whiteTerritory = countTerritory White colorTs
 
-      colorTs =
-          runST $ do
-            gobanST <- thaw goban
-            mapM (colorTerritories gobanST) empties
-
       countTerritory color ts =
           sum $ map (fromIntegral . length . snd)
                   $ filter ((== color) . fst) $ concat ts
-
-      empties = emptyStrings state
 
 
 emptyStrings :: GameStateStuff -> [[Vertex]]
