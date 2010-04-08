@@ -24,6 +24,8 @@ module Data.Goban.GameState ( GameState(..)
                             , nextMoves
                             , scoreGameState
                             , showGameState
+                            , thawGameState
+                            , freezeGameStateST
 
                             , getLeafGameStateST
                             , updateGameStateST
@@ -43,7 +45,7 @@ module Data.Goban.GameState ( GameState(..)
 import Control.Monad (filterM, foldM)
 import Control.Monad.ST (ST, runST)
 -- import Data.Array.IArray (Array)
-import Data.Array.MArray (freeze, thaw)
+import Data.Array.MArray (thaw, freeze, unsafeFreeze)
 import qualified Data.Set as S
 
 import Kurt.Config
@@ -115,6 +117,16 @@ newGameState n initKomi =
     initFreeVertices = S.fromList $ [(x, y) | x <- [1 .. n], y <- [1 .. n]]
 
 
+freezeGameStateST :: GameStateST s -> ST s GameState
+freezeGameStateST (GameStateST gobanST state) = do
+  goban <- freeze gobanST
+  return $ GameState goban state
+
+thawGameState :: GameState -> ST s (GameStateST s)
+thawGameState (GameState goban state) = do
+  gobanST <- thaw goban
+  return $ GameStateST gobanST state
+
 
 
 nextMoves :: GameState -> Color -> [Move]
@@ -178,7 +190,8 @@ updateGameState gState@(GameState goban state) move =
         do
           gobanST <- thaw goban
           (chains', dead) <- addChainStone gobanST (chains state) stone
-          goban' <- freeze gobanST
+          -- gobanST goes out of scope after this function, so unsafe is ok here
+          goban' <- unsafeFreeze gobanST
           return $ gState { getGoban = goban'
                           , getState = updateStuff state move dead chains' }
 
@@ -300,11 +313,10 @@ centerHeuristic _ _ = (0.1, 1)
 
 
 
-makeStonesAndLibertyHeuristic :: GameStateST s -> KurtConfig
-                              -> ST s (UCTHeuristic Move)
-makeStonesAndLibertyHeuristic (GameStateST goban state) config = do
-  fcg :: ChainIdGoban <- freeze goban
-  return $ stonesAndLibertiesHeu fcg (chains state)
+makeStonesAndLibertyHeuristic :: GameState -> KurtConfig
+                              -> UCTHeuristic Move
+makeStonesAndLibertyHeuristic (GameState goban state) config =
+  stonesAndLibertiesHeu (chains state)
 
   where
     captureWeight = hCaptureWeight config
@@ -313,9 +325,8 @@ makeStonesAndLibertyHeuristic (GameStateST goban state) config = do
     chainCountWeight = hChainCountWeight config
     centerWeight = hCenterWeight config
 
-    stonesAndLibertiesHeu :: ChainIdGoban -> ChainMap
-                          -> UCTHeuristic Move
-    stonesAndLibertiesHeu cg cm (Move stone@(Stone (x, y) _color)) =
+    stonesAndLibertiesHeu :: ChainMap -> UCTHeuristic Move
+    stonesAndLibertiesHeu cm (Move stone@(Stone (x, y) _color)) =
         -- trace ("stonesAndLibertiesHeu " ++ show (stone, (h, (stoneH, libertyMinH, libertyAvgH)), result))
         result
         where
@@ -362,7 +373,7 @@ makeStonesAndLibertyHeuristic (GameStateST goban state) config = do
           -- libertyAvgH = (ourLAvg - otherLAvg) / fromIntegral (n ^ (2 :: Int))
 
           (captureC, chainC, ourMinL, otherMinL, ourTotalL, otherTotalL) =
-              stonesAndLiberties cg cm stone
+              stonesAndLiberties goban cm stone
 
 
           -- must be between -0.5 and 0.5
@@ -375,7 +386,7 @@ makeStonesAndLibertyHeuristic (GameStateST goban state) config = do
           l = length $ moveHistory state
 
 
-    stonesAndLibertiesHeu _ _ _ = (0.01, 1)
+    stonesAndLibertiesHeu _ _ = (0.01, 1)
 
     n = boardsize state
 

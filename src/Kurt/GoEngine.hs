@@ -42,7 +42,7 @@ import Data.Tree.Zipper (tree, fromTree, findChild, hasChildren)
 import Kurt.Config
 import Data.Goban.Types (Move(..), Stone(..), Color(..), Vertex, Score)
 import Data.Goban.Utils (winningScore, rateScore)
-import Data.Goban.GameState (GameState(..), GameStateST(..), GameStateStuff, newGameState, scoreGameState, scoreGameStateST, updateGameState, updateGameStateST, getLeafGameStateST, makeStonesAndLibertyHeuristic, nextMoveColor, nextMoves, nextMovesST, isSaneMoveST, freeVertices)
+import Data.Goban.GameState (GameState(..), GameStateST(..), GameStateStuff, newGameState, freezeGameStateST, scoreGameState, scoreGameStateST, updateGameState, updateGameStateST, getLeafGameStateST, makeStonesAndLibertyHeuristic, nextMoveColor, nextMoves, nextMovesST, isSaneMoveST, freeVertices)
 
 
 import Data.Tree.UCT.GameTree (MoveNode(..), UCTTreeLoc, RaveMap, newRaveMap, newMoveNode)
@@ -214,16 +214,17 @@ runUCT initLoc rootGameState initRaveMap config rGen deadline  =
                         (policyRaveUCB1 (uctExplorationPercent config) (raveWeight config) raveMap) loc
                         -- (policyUCB1 (uctExploration config)) loc
 
-        leafGameState <- stToIO $ getLeafGameStateST rootGameState path
+        leafGameStateST <- stToIO $ getLeafGameStateST rootGameState path
 
-        slHeu <- stToIO $ makeStonesAndLibertyHeuristic leafGameState config
+        leafGameState <- stToIO $ freezeGameStateST leafGameStateST
+        let slHeu = makeStonesAndLibertyHeuristic leafGameState config
 
-        moves <- stToIO $ nextMovesST leafGameState $ nextMoveColor $ getStateST leafGameState
+        moves <- stToIO $ nextMovesST leafGameStateST $ nextMoveColor $ getStateST leafGameStateST
 
         let loc'' = expandNode loc' slHeu moves
         -- let loc'' = expandNode loc' constantHeuristic moves
 
-        (oneState, playedMoves) <- stToIO $ runOneRandom leafGameState rGen
+        (oneState, playedMoves) <- stToIO $ runOneRandom leafGameStateST rGen
 
         score <- stToIO $ scoreGameStateST oneState
 

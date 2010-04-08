@@ -18,7 +18,7 @@ module Kurt.MainLoop ( startLoop
     
 
 import Control.Arrow ((&&&))
-import Control.Monad.ST (stToIO, RealWorld)
+import Control.Monad.ST (RealWorld)
 import System.IO
 import Text.Parsec.String (Parser)
 import Data.List
@@ -26,12 +26,11 @@ import qualified Data.Map as M (assocs)
 import Data.Tree (rootLabel, subForest)
 import Data.Tree.Zipper (tree)
 import Text.Printf (printf)
-import Data.Array.MArray (thaw)
 
 
 import Network.GoTextProtocol2.Server.Parser
 import Network.GoTextProtocol2.Types
-import Data.Goban.GameState (GameState(..), GameStateST(..), GameStateStuff(..), newGameState, showGameState, scoreGameState, makeStonesAndLibertyHeuristic, nextMoves, nextMoveColor, thisMoveColor)
+import Data.Goban.GameState (GameState(..), GameStateStuff(..), newGameState, showGameState, scoreGameState, makeStonesAndLibertyHeuristic, nextMoves, nextMoveColor, thisMoveColor)
 import Data.Goban.Types (gtpShowMove, gtpShowVertex, moveColor, isStoneMove, Color(..))
 import Data.Goban.Utils (influenceFromWinrate)
 import Data.Goban.Incremental (allStones)
@@ -351,11 +350,7 @@ cmd_kurt_heuristic_total _ _ = error "cmd_kurt_heuristic_total called with illeg
 make_cmd_kurt_heuristic :: (KurtConfig -> KurtConfig) -> CommandHandler RealWorld
 make_cmd_kurt_heuristic fConfig [] state = do
   let moves = nextMoves gState color
-  slHeu <- stToIO $ do
-             gobanST <- thaw $ getGoban gState
-             let gStateST = GameStateST { getGobanST = gobanST
-                                        , getStateST = getState gState }
-             makeStonesAndLibertyHeuristic gStateST config'
+  let slHeu = makeStonesAndLibertyHeuristic gState config'
   let str = concatMap
             (\move
                  -> " " ++ gtpShowMove move
