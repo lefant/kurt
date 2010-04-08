@@ -306,8 +306,9 @@ cmd_time_settings [TimeSettingsArgument maintime byotime stones] state =
     return
     $ Right ("", state { getConfig = (getConfig state) { maxTime = ms'' } } )
     where
-      ms'' = ms' - 300
-      ms' =
+      ms'' = max 1 (ms' - 300)
+      ms' = seconds * 1000
+      seconds =
           if maintime > byotime
           then maintime `div` (movesLeft + 1)
           else byotime `div` (stones + 1)
