@@ -45,7 +45,8 @@ type UCTTreeLoc a = TreeLoc (MoveNode a)
 type UCTTree a = Tree (MoveNode a)
 type UCTForest a = Forest (MoveNode a)
 
-type Value = Double
+type Value = Float
+-- type Value = Double
 type Count = Int
 
 
