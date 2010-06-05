@@ -26,7 +26,8 @@ module Kurt.GoEngine ( genMove
 import Control.Arrow (second)
 import Control.Monad (liftM)
 import Control.Monad.ST (ST, RealWorld, stToIO)
-import System.Random.MWC (Gen, uniform, withSystemRandom, save, restore)
+import Control.Monad.Primitive (PrimState)
+import System.Random.MWC (Gen, Seed, uniform, withSystemRandom, save, restore)
 import Data.Time.Clock ( UTCTime(..)
                        , picosecondsToDiffTime
                        , getCurrentTime
@@ -126,7 +127,7 @@ genMove eState color = do
        then return $ (Pass color, eState)
        else return $ (Resign color, eState)
    else (do
-          seed <- withSystemRandom save
+          seed <- withSystemRandom (save :: Gen (PrimState IO) -> IO Seed)
           rGen <- stToIO $ restore seed
 
 
@@ -244,7 +245,7 @@ runUCT initLoc rootGameState initRaveMap config rGen deadline  =
 
 simulatePlayout :: GameState -> IO [Move]
 simulatePlayout gState = do
-  seed <- withSystemRandom save
+  seed <- withSystemRandom (save :: Gen (PrimState IO) -> IO Seed)
   rGen <- stToIO $ restore seed
 
   gState' <- stToIO $ getLeafGameStateST gState []

@@ -34,6 +34,7 @@ library
                  ,haskell98
                  ,random
                  ,mwc-random
+                 ,primitive
                  ,containers >= 0.3
                  ,rosezipper
                  ,array
