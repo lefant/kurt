@@ -114,7 +114,7 @@ newGameState n initKomi =
                                  }
               }
   where
-    initFreeVertices = S.fromList $ [(x, y) | x <- [1 .. n], y <- [1 .. n]]
+    initFreeVertices = S.fromList $ allVertices n
 
 
 freezeGameStateST :: GameStateST s -> ST s GameState

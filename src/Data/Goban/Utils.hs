@@ -110,3 +110,4 @@ winningScore color thisScore =
 influenceFromWinrate :: Color -> Value -> String
 influenceFromWinrate color v =
     printf " %.2f" $ (if color == Black then id else negate) $ ((v - 0.5) * 2)
+

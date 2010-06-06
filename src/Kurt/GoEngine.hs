@@ -67,6 +67,7 @@ data EngineState = EngineState {
 
 newEngineState :: KurtConfig -> EngineState
 newEngineState config =
+    -- TODO: initialize zobrist hashmap here
     EngineState { getGameState =
                       newGameState (initialBoardsize config) (initialKomi config)
                 , getUctTree = newUctTree

@@ -76,12 +76,13 @@ instance Show Stone where
 
 -- this should be some kind of enum instance
 -- so we can do toEnum / fromEnum instead of stateToWord in Goban implementations
-data VertexState = Colored Color | Empty | Border
-                 deriving (Eq)
+data VertexState = Colored Color | Empty | EmptyKoBlocked | Border
+                 deriving (Eq, Ord)
 
 instance Show VertexState where
     show (Colored color) = showColorForBoard color
     show Empty = "."
+    show EmptyKoBlocked = "K"
     show Border = " "
 
 

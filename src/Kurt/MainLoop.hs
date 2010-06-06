@@ -212,7 +212,7 @@ cmd_clear_board [] state =
                             , getRaveMap = newRaveMap
                             })
 cmd_clear_board _ _ = error "cmd_clear_board called with illegal argument type"
-
+ 
 cmd_komi :: CommandHandler
 cmd_komi [FloatArgument f] state =
     return $
@@ -230,6 +230,7 @@ cmd_komi _ _ = error "cmd_komi called with illegal argument type"
 
 cmd_boardsize :: CommandHandler
 cmd_boardsize [IntArgument n] state =
+    -- TODO: initialize zobrist hashmap here
     return $ Right ("",
                     state { getGameState = newGameState n (getKomi state)
                           , boardSize = n } )
