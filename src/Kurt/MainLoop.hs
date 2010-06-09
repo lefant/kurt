@@ -230,7 +230,6 @@ cmd_komi _ _ = error "cmd_komi called with illegal argument type"
 
 cmd_boardsize :: CommandHandler
 cmd_boardsize [IntArgument n] state =
-    -- TODO: initialize zobrist hashmap here
     return $ Right ("",
                     state { getGameState = newGameState n (getKomi state)
                           , boardSize = n } )

@@ -370,6 +370,7 @@ vertexStone cg p = do
   return $ case s of
              Colored color -> Just $ Stone p color
              Empty -> Nothing
+             EmptyKoBlocked -> Nothing
              Border -> Nothing
 
 vertexState :: ChainIdGobanST s -> Vertex -> ST s VertexState

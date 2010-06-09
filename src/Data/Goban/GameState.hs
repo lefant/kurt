@@ -55,6 +55,8 @@ import Data.Tree.UCT.GameTree (Value)
 import Data.Goban.Utils
 -- import Data.Goban.STVectorGoban (STGoban(..), showGoban, newGoban, copyGoban, addStone, deleteStones)
 import Data.Goban.Incremental
+import Data.Goban.ZobristHash (ZHash, updateHash)
+
 
 import Debug.TraceOrId (trace)
 
@@ -76,6 +78,7 @@ data GameStateStuff = GameStateStuff { chains          :: !ChainMap
                                      , komi            :: !Score
                                      , blackStones     :: !Int
                                      , whiteStones     :: !Int
+                                     , zHash           :: !ZHash
                                      }
 
 showGameState :: GameState -> String
@@ -87,6 +90,7 @@ showGameState gState@(GameState goban state) =
                       ,"   komi: " ++ show (komi state)
                       ,"   koBlocked: " ++ showKoBlocked (koBlocked state)
                       ,"   score: " ++ show score
+                      ,"   zHash: " ++ show (zHash state)
                       ] ++ repeat ""
           -- ++ " moveHistory: " ++ show (moveHistory state)
           -- ++ "\n"
@@ -111,6 +115,7 @@ newGameState n initKomi =
                                  , komi = initKomi
                                  , blackStones = 0
                                  , whiteStones = 0
+                                 , zHash = 0
                                  }
               }
   where
@@ -235,7 +240,14 @@ updateStuff state move@(Move (Stone p c)) dead chains' =
               S.fromList (map stoneVertex dead)
                    `S.union`
                    S.delete p (freeVerticesSet state)
+          , zHash =
+              case dead of
+                [Stone k _] -> updateHash zHash' (k, EmptyKoBlocked)
+                _ -> zHash'
           }
+    where
+      zHash' = foldl f (updateHash (zHash state) (p, Colored c)) dead
+      f h (Stone p' c') = updateHash h (p', Colored c')
 
             -- str <- showGameStateST state'
             -- trace ("updateGameState" ++ str) $ return ()

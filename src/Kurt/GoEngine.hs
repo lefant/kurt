@@ -45,7 +45,6 @@ import Data.Goban.Types (Move(..), Stone(..), Color(..), Vertex, Score)
 import Data.Goban.Utils (winningScore, rateScore)
 import Data.Goban.GameState (GameState(..), GameStateST(..), GameStateStuff, newGameState, freezeGameStateST, scoreGameState, scoreGameStateST, updateGameState, updateGameStateST, getLeafGameStateST, makeStonesAndLibertyHeuristic, nextMoveColor, nextMoves, nextMovesST, isSaneMoveST, freeVertices)
 
-
 import Data.Tree.UCT.GameTree (MoveNode(..), UCTTreeLoc, RaveMap, newRaveMap, newMoveNode)
 import Data.Tree.UCT
 
@@ -67,7 +66,6 @@ data EngineState = EngineState {
 
 newEngineState :: KurtConfig -> EngineState
 newEngineState config =
-    -- TODO: initialize zobrist hashmap here
     EngineState { getGameState =
                       newGameState (initialBoardsize config) (initialKomi config)
                 , getUctTree = newUctTree

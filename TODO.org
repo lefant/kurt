@@ -1,6 +1,16 @@
 #+STARTUP: showall hidestars
 
-* Roadmap march:
+* Roadmap june:
+** transposition tables via zobrist hashes
+*** init zobrist hashmap, hash per node
+*** keep hash updated after moves (husk! koblocked!)
+*** track hash with all nodes in tree
+*** track parent nodes via set of hashes in tree
+*** do updates via map of hashes instead of tree
+**** maybe in parallel with extra check at first?
+*** garbage collection of unreachable nodes in hashmap on move
+**** maybe optional in initial implementation
+
 
 * heuristic
 ** capture needs to dominate everything
