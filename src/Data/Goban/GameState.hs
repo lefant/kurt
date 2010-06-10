@@ -217,8 +217,15 @@ updateGameStateST gState@(GameStateST goban state) move = do
 idStuff :: GameStateStuff -> Move -> GameStateStuff
 idStuff state move =
     state { moveHistory = moveHistory state ++ [move]
-          , koBlocked = Nothing }
-    
+          , koBlocked = Nothing
+          , zHash = zHash'
+          }
+    where
+      zHash' =
+          case (koBlocked state) of
+            Just p -> updateHash oldZHash (p, EmptyKoBlocked)
+            _ -> oldZHash
+      oldZHash = zHash state
 
 updateStuff :: GameStateStuff -> Move -> [Stone] -> ChainMap -> GameStateStuff
 updateStuff state move@(Move (Stone p c)) dead chains' =
@@ -242,12 +249,17 @@ updateStuff state move@(Move (Stone p c)) dead chains' =
                    S.delete p (freeVerticesSet state)
           , zHash =
               case dead of
-                [Stone k _] -> updateHash zHash' (k, EmptyKoBlocked)
-                _ -> zHash'
+                [Stone k _] -> updateHash zHash'' (k, EmptyKoBlocked)
+                _ -> zHash''
           }
     where
-      zHash' = foldl f (updateHash (zHash state) (p, Colored c)) dead
+      zHash'' = foldl f (updateHash zHash' (p, Colored c)) dead
       f h (Stone p' c') = updateHash h (p', Colored c')
+      zHash' =
+          case (koBlocked state) of
+            Just k -> updateHash oldZHash (k, EmptyKoBlocked)
+            _ -> oldZHash
+      oldZHash = zHash state
 
             -- str <- showGameStateST state'
             -- trace ("updateGameState" ++ str) $ return ()
