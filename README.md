@@ -3,19 +3,20 @@
 
 Kurt is a [Computer Go][1] program written in Haskell.
 
-It is named after the logician [Kurt Gödel[2] and written by
-[Fabian Linzberger][2].
+It is named after the logician [Kurt Gödel][2] and written by
+[Fabian Linzberger][3].
 
 
-Source code is [available online on github][3].
+Source code is [available online on github][4].
 
 Comments and contributions always welcome!
 
 
-It is also playing online on the Kiseido go server ([KGS][4]) with the
-nick "kurtBot".
+It is also playing online on the Kiseido go server ([KGS][5]) with the
+nick "kurtBot". So far it is only playing on 9x9 and its strength
+there is about 25 kyu.
 
-KGS also provides an archive of [all of kurtBots games][5].
+KGS also provides an archive of [all of kurtBots games][6].
 
 
 
