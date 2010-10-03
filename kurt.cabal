@@ -36,10 +36,10 @@ library
                  ,mwc-random
                  ,primitive
                  ,containers >= 0.3
-                 ,rosezipper
+                 ,rosezipper < 0.2
                  ,array
                  ,time
-                 ,cmdargs
+                 ,cmdargs < 0.2
   ghc-options: -O1
   ghc-prof-options: -auto-all
 
@@ -53,9 +53,9 @@ executable kurt
                  ,random
                  ,mwc-random
                  ,containers >= 0.3
-                 ,rosezipper
+                 ,rosezipper < 0.2
                  ,time
-                 ,cmdargs
+                 ,cmdargs < 0.2
   ghc-options: -O1
   ghc-prof-options: -auto-all -caf-all
 
