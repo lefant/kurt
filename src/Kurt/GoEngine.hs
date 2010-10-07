@@ -102,8 +102,8 @@ selectSubtree loc move =
     where
       loc'' = fromTree $ tree $ loc'
       loc' =
-          fromMaybe (error ("selectSubtree unable to find move: " ++ show move))
-                        $ findChild ((move ==) . nodeMove . rootLabel) loc
+          fromMaybe newUctTree
+          $ findChild ((move ==) . nodeMove . rootLabel) loc
 
 
 
