@@ -28,6 +28,8 @@ import Control.Monad (liftM)
 import Control.Monad.ST (ST, RealWorld, stToIO)
 import Control.Monad.Primitive (PrimState)
 import System.Random.MWC (Gen, Seed, uniform, withSystemRandom, save, restore)
+import Control.Concurrent.Chan.Strict (Chan)
+import Control.Concurrent (forkIO)
 import Data.Time.Clock ( UTCTime(..)
                        , picosecondsToDiffTime
                        , getCurrentTime
@@ -203,6 +205,33 @@ runUCT initLoc rootGameState initRaveMap config rGen deadline  =
     uctLoop initLoc initRaveMap 0
 
     where
+      -- strategy:
+      --
+      -- check if time is up or n >= (maxPlayouts config)
+      --   flush return queue using updateTree
+      --   return
+      -- check if there is a pending result
+      --   flush return queue using updateTree
+      --   loop
+      -- check if maxThread reached
+      --   sleep 10ms
+      --   loop
+      -- compute job, enqueue
+      
+      -- functions:
+      -- controller thread
+      -- updateTree :: (UCTTreeLoc Move, RaveMap Move) -> Result
+      --               -> (UCTTreeLoc Move, RaveMap Move)
+      
+      -- worker thread
+      -- runOneRandomIO leafGameStateST path = do
+      --   rGen <- somehowgenerate
+      --   oneState, playedMoves) <- stToIO $ runOneRandom leafGameStateST rGen
+      --   score <- stToIO $ scoreGameStateST oneState
+      --   return (score, playedMoves, path)
+        
+      -- Result: (score, playedMoves, path)
+
       uctLoop            :: UCTTreeLoc Move -> RaveMap Move -> Int
                          -> IO (UCTTreeLoc Move, RaveMap Move)
       uctLoop !loc !raveMap n
@@ -210,6 +239,8 @@ runUCT initLoc rootGameState initRaveMap config rGen deadline  =
           | otherwise    = do
         let done = False
 
+        
+        
         (loc', path) <- return $ selectLeafPath
                         (policyRaveUCB1 (uctExplorationPercent config) (raveWeight config) raveMap) loc
                         -- (policyUCB1 (uctExploration config)) loc
@@ -223,15 +254,20 @@ runUCT initLoc rootGameState initRaveMap config rGen deadline  =
 
         let loc'' = expandNode loc' slHeu moves
         -- let loc'' = expandNode loc' constantHeuristic moves
-
+        
+        
+        -- this should be done by worker thread via runOneRandomIO
         (oneState, playedMoves) <- stToIO $ runOneRandom leafGameStateST rGen
-
         score <- stToIO $ scoreGameStateST oneState
+        
 
+
+        -- this should be done on receipt of result message
         let raveMap' = updateRaveMap raveMap (rateScore score) $ drop (length playedMoves `div` 3) playedMoves
-
         let loc''' = backpropagate (rateScore score) loc''
-
+        
+        
+        
         now <- getCurrentTime
         let timeIsUp = (now > deadline)
         (if done || timeIsUp
