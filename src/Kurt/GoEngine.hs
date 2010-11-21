@@ -241,13 +241,11 @@ runUCT initLoc rootGameState initRaveMap config rGen deadline = do
         where
           updateTree :: (UCTTreeLoc Move, RaveMap Move) -> Result
                     -> (UCTTreeLoc Move, RaveMap Move)
-          updateTree (loc, raveMap) (score, moves, path) =
-            (loc, raveMap)
-            --  this should be done on receipt of result message
-            -- let raveMap' = updateRaveMap raveMap (rateScore score) $ drop (length playedMoves `div` 3) playedMoves
-
-            -- FIXME: really need to walk down the tree along path to reach the original loc!
-            -- let loc''' = backpropagate (rateScore score) loc''
+          updateTree (loc, raveMap) (score, playedMoves, path) =
+            (loc', raveMap')
+            where
+              raveMap' = updateRaveMap raveMap (rateScore score) $ drop (length playedMoves `div` 3) playedMoves
+              loc' = backpropagate (rateScore score) $ getLeaf loc path
 
           nextNode :: UCTTreeLoc Move -> RaveMap Move -> IO (UCTTreeLoc Move, [Move], GameStateST RealWorld)
           nextNode loc raveMap = do
