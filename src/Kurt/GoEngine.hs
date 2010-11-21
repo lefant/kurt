@@ -266,16 +266,13 @@ runUCT initLoc rootGameState initRaveMap config rGen deadline = do
             return (loc'', path, leafGameStateST)
 
 
-          runOneRandomIO :: GameStateST RealWorld -> [Move] -> Chan Result -> IO ()
-          runOneRandomIO gameStateST path resultQ = do
-            rGen <- error "FIXME: somehowgenerate rGen value"
-            (endState, playedMoves) <- stToIO $ runOneRandom gameStateST rGen
-            score <- stToIO $ scoreGameStateST endState
-            writeChan resultQ (score, playedMoves, path)
-
-            -- this should be done by worker thread via runOneRandomIO
-            -- (oneState, playedMoves) <- stToIO $ runOneRandom leafGameStateST rGen
-            -- score <- stToIO $ scoreGameStateST oneState
+runOneRandomIO :: GameStateST RealWorld -> [Move] -> Chan Result -> IO ()
+runOneRandomIO gameStateST path resultQ = do
+  seed <- withSystemRandom (save :: Gen (PrimState IO) -> IO Seed)
+  rGen <- stToIO $ restore seed
+  (endState, playedMoves) <- stToIO $ runOneRandom gameStateST rGen
+  score <- stToIO $ scoreGameStateST endState
+  writeChan resultQ (score, playedMoves, path)
 
 
 simulatePlayout :: GameState -> IO [Move]
