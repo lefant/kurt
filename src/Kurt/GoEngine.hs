@@ -28,18 +28,18 @@ import Control.Monad (liftM)
 import Control.Monad.ST (ST, RealWorld, stToIO)
 import Control.Monad.Primitive (PrimState)
 import System.Random.MWC (Gen, Seed, uniform, withSystemRandom, save, restore)
-import Control.Concurrent.Chan.Strict (Chan)
-import Control.Concurrent (forkIO)
+import Control.Concurrent.Chan.Strict (Chan, newChan, writeChan, getChanContents)
+import Control.Concurrent (forkIO, threadDelay)
 import Data.Time.Clock ( UTCTime(..)
                        , picosecondsToDiffTime
                        , getCurrentTime
                        )
-import Data.List ((\\))
+import Data.List ((\\), foldl')
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as M
 -- import qualified Data.Map as M (empty, insert)
 import Data.Tree (rootLabel)
-import Data.Tree.Zipper (tree, fromTree, findChild, hasChildren)
+import Data.Tree.Zipper (tree, fromTree, findChild, hasChildren, root)
 
 
 import Kurt.Config
@@ -63,6 +63,8 @@ data EngineState = EngineState {
     , getConfig       :: !KurtConfig
     }
 
+-- result from playout thread: score, playedMoves, path to startnode in tree
+type Result = (Score, [Move], [Move])
 
 
 
@@ -201,9 +203,9 @@ runUCT :: UCTTreeLoc Move
        -> Gen RealWorld
        -> UTCTime
        -> IO (UCTTreeLoc Move, RaveMap Move)
-runUCT initLoc rootGameState initRaveMap config rGen deadline  =
-    uctLoop initLoc initRaveMap 0
-
+runUCT initLoc rootGameState initRaveMap config rGen deadline = do
+  resultQ <- newChan
+  uctLoop initLoc initRaveMap 0 0 resultQ
     where
       -- strategy:
       --
@@ -217,65 +219,65 @@ runUCT initLoc rootGameState initRaveMap config rGen deadline  =
       --   sleep 10ms
       --   loop
       -- compute job, enqueue
-      
-      -- functions:
-      -- controller thread
-      -- updateTree :: (UCTTreeLoc Move, RaveMap Move) -> Result
-      --               -> (UCTTreeLoc Move, RaveMap Move)
-      
-      -- worker thread
-      -- runOneRandomIO leafGameStateST path = do
-      --   rGen <- somehowgenerate
-      --   oneState, playedMoves) <- stToIO $ runOneRandom leafGameStateST rGen
-      --   score <- stToIO $ scoreGameStateST oneState
-      --   return (score, playedMoves, path)
-        
-      -- Result: (score, playedMoves, path)
 
-      uctLoop            :: UCTTreeLoc Move -> RaveMap Move -> Int
+      uctLoop            :: UCTTreeLoc Move -> RaveMap Move -> Int -> Int -> Chan Result
                          -> IO (UCTTreeLoc Move, RaveMap Move)
-      uctLoop !loc !raveMap n
-          | n >= (maxPlayouts config) = return (loc, raveMap)
-          | otherwise    = do
-        let done = False
-
-        
-        
-        (loc', path) <- return $ selectLeafPath
-                        (policyRaveUCB1 (uctExplorationPercent config) (raveWeight config) raveMap) loc
-                        -- (policyUCB1 (uctExploration config)) loc
-
-        leafGameStateST <- stToIO $ getLeafGameStateST rootGameState path
-
-        leafGameState <- stToIO $ freezeGameStateST leafGameStateST
-        let slHeu = makeStonesAndLibertyHeuristic leafGameState config
-
-        moves <- stToIO $ nextMovesST leafGameStateST $ nextMoveColor $ getStateST leafGameStateST
-
-        let loc'' = expandNode loc' slHeu moves
-        -- let loc'' = expandNode loc' constantHeuristic moves
-        
-        
-        -- this should be done by worker thread via runOneRandomIO
-        (oneState, playedMoves) <- stToIO $ runOneRandom leafGameStateST rGen
-        score <- stToIO $ scoreGameStateST oneState
-        
-
-
-        -- this should be done on receipt of result message
-        let raveMap' = updateRaveMap raveMap (rateScore score) $ drop (length playedMoves `div` 3) playedMoves
-        let loc''' = backpropagate (rateScore score) loc''
-        
-        
-        
+      uctLoop !loc !raveMap n threadCount resultQ = do
+        results <- getChanContents resultQ
+        let (loc', raveMap') = foldl' updateTree (loc, raveMap) results
+        let maxRuns = n >= (maxPlayouts config)
         now <- getCurrentTime
         let timeIsUp = (now > deadline)
-        (if done || timeIsUp
-         then return (loc''', raveMap')
-         else uctLoop loc''' raveMap' (n + 1))
+        (if maxRuns || timeIsUp
+         then return (loc', raveMap')
+         else
+           (do
+               (loc'', path, leafGameState) <- nextNode loc' raveMap'
+
+               forkIO $ runOneRandomIO leafGameState path resultQ
+               threadDelay 10000
+               uctLoop loc'' raveMap' (n + 1) threadCount resultQ))
+
+        where
+          updateTree :: (UCTTreeLoc Move, RaveMap Move) -> Result
+                    -> (UCTTreeLoc Move, RaveMap Move)
+          updateTree (loc, raveMap) (score, moves, path) =
+            (loc, raveMap)
+            --  this should be done on receipt of result message
+            -- let raveMap' = updateRaveMap raveMap (rateScore score) $ drop (length playedMoves `div` 3) playedMoves
+
+            -- FIXME: really need to walk down the tree along path to reach the original loc!
+            -- let loc''' = backpropagate (rateScore score) loc''
+
+          nextNode :: UCTTreeLoc Move -> RaveMap Move -> IO (UCTTreeLoc Move, [Move], GameStateST RealWorld)
+          nextNode loc raveMap = do
+            (loc', path) <- return $ selectLeafPath
+                            (policyRaveUCB1 (uctExplorationPercent config) (raveWeight config) raveMap) loc
+                            -- (policyUCB1 (uctExploration config)) loc
+
+            leafGameStateST <- stToIO $ getLeafGameStateST rootGameState path
+
+            leafGameState <- stToIO $ freezeGameStateST leafGameStateST
+            let slHeu = makeStonesAndLibertyHeuristic leafGameState config
+
+            moves <- stToIO $ nextMovesST leafGameStateST $ nextMoveColor $ getStateST leafGameStateST
+
+            let loc'' = root $ expandNode loc' slHeu moves
+            -- let loc'' = expandNode loc' constantHeuristic moves
+
+            return (loc'', path, leafGameStateST)
 
 
+          runOneRandomIO :: GameStateST RealWorld -> [Move] -> Chan Result -> IO ()
+          runOneRandomIO gameStateST path resultQ = do
+            rGen <- error "FIXME: somehowgenerate rGen value"
+            (endState, playedMoves) <- stToIO $ runOneRandom gameStateST rGen
+            score <- stToIO $ scoreGameStateST endState
+            writeChan resultQ (score, playedMoves, path)
 
+            -- this should be done by worker thread via runOneRandomIO
+            -- (oneState, playedMoves) <- stToIO $ runOneRandom leafGameStateST rGen
+            -- score <- stToIO $ scoreGameStateST oneState
 
 
 simulatePlayout :: GameState -> IO [Move]
@@ -348,5 +350,3 @@ pick :: [Vertex] -> Gen s -> ST s Vertex
 pick as rGen = do
   i <- liftM (`mod` (length as)) $ uniform rGen
   return $ as !! i
-
-
