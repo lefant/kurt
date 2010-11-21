@@ -22,6 +22,7 @@ module Data.Tree.UCT ( selectLeafPath
                      , constantHeuristic
                      , backpropagate
                      , updateRaveMap
+                     , getLeaf
                      , UCTHeuristic
                      , UCTEvaluator
                      ) where
@@ -32,7 +33,7 @@ import Data.List (unfoldr, maximumBy, foldl')
 import qualified Data.Map as M
 import Data.Ord (comparing)
 import Data.Tree (Tree(..))
-import Data.Tree.Zipper (TreeLoc, tree, hasChildren, parent, getChild, modifyTree, modifyLabel)
+import Data.Tree.Zipper (TreeLoc, tree, hasChildren, parent, getChild, findChild, modifyTree, modifyLabel)
 
 -- import Debug.TraceOrId (trace)
 
@@ -160,12 +161,17 @@ pathToLeaf initLoc =
     where
       path = reverse $ unfoldr f initLoc
       f loc =
-          case parent loc of
-            Just loc' ->
-                Just (rootLabel $ tree loc, loc')
-            Nothing ->
-                Nothing
+        fmap (\loc' -> (rootLabel $ tree loc, loc')) $ parent loc
 
+getLeaf :: UCTMove a => UCTTreeLoc a -> [a] -> UCTTreeLoc a
+getLeaf root moves =
+  foldl' chooseChild root moves
+  where
+    chooseChild loc move =
+      case findChild ((move ==) . nodeMove . rootLabel) loc of
+        Just loc' -> loc'
+        Nothing -> error ("selectChild failed to find move at loc: " ++
+                          show (move, loc))
 
 -- expansion
 ----------------------------------
