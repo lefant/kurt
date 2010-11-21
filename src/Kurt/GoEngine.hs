@@ -221,12 +221,17 @@ runUCT initLoc rootGameState initRaveMap config _rGen deadline = do
         (if maxRuns || timeIsUp
          then uctLoopFlusher state' tCount' resultQ
          else
-           (do
-               (loc'', path, leafGameState) <- nextNode state'
+           if tCount < (maxPlayouts config)
+           then
+             (do
+                 (loc'', path, leafGameState) <- nextNode state'
+                 _tId <- forkIO $ runOneRandomIO leafGameState path resultQ
+                 uctLoop (loc'', raveMap') (n + 1) (tCount + 1) resultQ)
+           else
+             (do
+                 threadDelay 10000
+                 uctLoop state' n tCount resultQ))
 
-               _tId <- forkIO $ runOneRandomIO leafGameState path resultQ
-               threadDelay 10000
-               uctLoop (loc'', raveMap') (n + 1) (tCount + 1) resultQ))
 
       nextNode :: LoopState -> IO (UCTTreeLoc Move, [Move], GameStateST RealWorld)
       nextNode (loc, raveMap) = do
@@ -273,6 +278,7 @@ runOneRandomIO gameStateST path resultQ = do
   (endState, playedMoves) <- stToIO $ runOneRandom gameStateST rGen
   score <- stToIO $ scoreGameStateST endState
   writeChan resultQ (score, playedMoves, path)
+
 
 
 simulatePlayout :: GameState -> IO [Move]

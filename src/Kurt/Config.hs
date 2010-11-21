@@ -26,6 +26,7 @@ import Data.Goban.Types (Score)
 
 data KurtConfig = KurtConfig { maxPlayouts           :: Int
                              , maxTime               :: Int
+                             , maxThreads            :: Int
                              , uctExplorationPercent :: Int
                              , raveWeight            :: Int
                              , hCaptureWeight        :: Int
@@ -45,6 +46,8 @@ kurtDefaultConfig = mode $ KurtConfig {
                              & text "Max simulations run during move generation"
              , maxTime = 5000 &= typ "INT"
                          & text "Max time used during move generation (ms)"
+             , maxThreads = 10 &= typ "INT"
+                         & text "Max number of threads spawned for playouts"
              , uctExplorationPercent = 10 &= typ "INT"
                                 & text "Exploration constant used in UCT formula (percent)"
              , raveWeight = 20 &= typ "INT"
