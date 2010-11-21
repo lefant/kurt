@@ -66,6 +66,7 @@ data EngineState = EngineState {
 -- result from playout thread: score, playedMoves, path to startnode in tree
 type Result = (Score, [Move], [Move])
 
+type LoopState = (UCTTreeLoc Move, RaveMap Move)
 
 
 newEngineState :: KurtConfig -> EngineState
@@ -202,68 +203,67 @@ runUCT :: UCTTreeLoc Move
        -> KurtConfig
        -> Gen RealWorld
        -> UTCTime
-       -> IO (UCTTreeLoc Move, RaveMap Move)
-runUCT initLoc rootGameState initRaveMap config rGen deadline = do
+       -> IO LoopState
+runUCT initLoc rootGameState initRaveMap config _rGen deadline = do
   resultQ <- newChan
-  uctLoop initLoc initRaveMap 0 0 resultQ
+  uctLoop (initLoc, initRaveMap) 0 0 resultQ
     where
-      -- strategy:
-      --
-      -- check if time is up or n >= (maxPlayouts config)
-      --   flush return queue using updateTree
-      --   return
-      -- check if there is a pending result
-      --   flush return queue using updateTree
-      --   loop
-      -- check if maxThread reached
-      --   sleep 10ms
-      --   loop
-      -- compute job, enqueue
-
-      uctLoop            :: UCTTreeLoc Move -> RaveMap Move -> Int -> Int -> Chan Result
-                         -> IO (UCTTreeLoc Move, RaveMap Move)
-      uctLoop !loc !raveMap n threadCount resultQ = do
+      uctLoop :: LoopState -> Int -> Int -> Chan Result
+                 -> IO LoopState
+      uctLoop !state n tCount resultQ = do
         results <- getChanContents resultQ
-        let (loc', raveMap') = foldl' updateTree (loc, raveMap) results
+        let state'@(_loc', raveMap') = updateTree state results
+        let tCount' = tCount - (length results)
+
         let maxRuns = n >= (maxPlayouts config)
         now <- getCurrentTime
         let timeIsUp = (now > deadline)
         (if maxRuns || timeIsUp
-         then return (loc', raveMap')
+         then uctLoopFlusher state' tCount' resultQ
          else
            (do
-               (loc'', path, leafGameState) <- nextNode loc' raveMap'
+               (loc'', path, leafGameState) <- nextNode state'
 
-               forkIO $ runOneRandomIO leafGameState path resultQ
+               _tId <- forkIO $ runOneRandomIO leafGameState path resultQ
                threadDelay 10000
-               uctLoop loc'' raveMap' (n + 1) threadCount resultQ))
+               uctLoop (loc'', raveMap') (n + 1) (tCount + 1) resultQ))
 
-        where
-          updateTree :: (UCTTreeLoc Move, RaveMap Move) -> Result
-                    -> (UCTTreeLoc Move, RaveMap Move)
-          updateTree (loc, raveMap) (score, playedMoves, path) =
-            (loc', raveMap')
-            where
-              raveMap' = updateRaveMap raveMap (rateScore score) $ drop (length playedMoves `div` 3) playedMoves
-              loc' = backpropagate (rateScore score) $ getLeaf loc path
+      nextNode :: LoopState -> IO (UCTTreeLoc Move, [Move], GameStateST RealWorld)
+      nextNode (loc, raveMap) = do
+        (loc', path) <- return $ selectLeafPath
+                        (policyRaveUCB1 (uctExplorationPercent config) (raveWeight config) raveMap) loc
+                        -- (policyUCB1 (uctExploration config)) loc
 
-          nextNode :: UCTTreeLoc Move -> RaveMap Move -> IO (UCTTreeLoc Move, [Move], GameStateST RealWorld)
-          nextNode loc raveMap = do
-            (loc', path) <- return $ selectLeafPath
-                            (policyRaveUCB1 (uctExplorationPercent config) (raveWeight config) raveMap) loc
-                            -- (policyUCB1 (uctExploration config)) loc
+        leafGameStateST <- stToIO $ getLeafGameStateST rootGameState path
 
-            leafGameStateST <- stToIO $ getLeafGameStateST rootGameState path
+        leafGameState <- stToIO $ freezeGameStateST leafGameStateST
+        let slHeu = makeStonesAndLibertyHeuristic leafGameState config
 
-            leafGameState <- stToIO $ freezeGameStateST leafGameStateST
-            let slHeu = makeStonesAndLibertyHeuristic leafGameState config
+        moves <- stToIO $ nextMovesST leafGameStateST $ nextMoveColor $ getStateST leafGameStateST
 
-            moves <- stToIO $ nextMovesST leafGameStateST $ nextMoveColor $ getStateST leafGameStateST
+        let loc'' = root $ expandNode loc' slHeu moves
+        -- let loc'' = expandNode loc' constantHeuristic moves
 
-            let loc'' = root $ expandNode loc' slHeu moves
-            -- let loc'' = expandNode loc' constantHeuristic moves
+        return (loc'', path, leafGameStateST)
 
-            return (loc'', path, leafGameStateST)
+uctLoopFlusher :: LoopState -> Int -> Chan Result -> IO LoopState
+uctLoopFlusher !state 0 _resultQ = return state
+uctLoopFlusher !state tCount resultQ = do
+  results <- getChanContents resultQ
+  let state' = updateTree state results
+  let tCount' = tCount - (length results)
+  uctLoopFlusher state' tCount' resultQ
+
+
+updateTree :: LoopState -> [Result] -> LoopState
+updateTree = foldl' updateTreeResult
+
+updateTreeResult :: LoopState -> Result -> LoopState
+updateTreeResult (loc, raveMap) (score, playedMoves, path) =
+  (loc', raveMap')
+    where
+      raveMap' = updateRaveMap raveMap (rateScore score) $ drop (length playedMoves `div` 3) playedMoves
+      loc' = backpropagate (rateScore score) $ getLeaf loc path
 
 
 runOneRandomIO :: GameStateST RealWorld -> [Move] -> Chan Result -> IO ()
