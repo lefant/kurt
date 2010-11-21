@@ -41,6 +41,7 @@ library
                  ,time
                  ,cmdargs < 0.2
                  ,strict-concurrency
+                 ,deepseq
   ghc-options: -O1
   ghc-prof-options: -auto-all
 
@@ -58,6 +59,7 @@ executable kurt
                  ,time
                  ,cmdargs < 0.2
                  ,strict-concurrency
+                 ,deepseq
   ghc-options: -O1
   ghc-prof-options: -auto-all -caf-all
 
