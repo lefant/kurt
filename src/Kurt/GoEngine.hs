@@ -28,13 +28,13 @@ import Control.Monad (liftM)
 import Control.Monad.ST (ST, RealWorld, stToIO)
 import Control.Monad.Primitive (PrimState)
 import System.Random.MWC (Gen, Seed, uniform, withSystemRandom, save, restore)
-import Control.Concurrent.Chan.Strict (Chan, newChan, writeChan, getChanContents)
+import Control.Concurrent.Chan.Strict (Chan, newChan, writeChan, readChan, isEmptyChan)
 import Control.Concurrent (forkIO, threadDelay)
 import Data.Time.Clock ( UTCTime(..)
                        , picosecondsToDiffTime
                        , getCurrentTime
                        )
-import Data.List ((\\), foldl')
+import Data.List ((\\))
 import Data.Maybe (fromMaybe)
 import qualified Data.Map as M
 -- import qualified Data.Map as M (empty, insert)
@@ -211,9 +211,7 @@ runUCT initLoc rootGameState initRaveMap config _rGen deadline = do
       uctLoop :: LoopState -> Int -> Int -> Chan Result
                  -> IO LoopState
       uctLoop !state n tCount resultQ = do
-        results <- getChanContents resultQ
-        let state'@(_loc', raveMap') = updateTree state results
-        let tCount' = tCount - (length results)
+        (state'@(_loc', raveMap'), tCount') <- flushResult state tCount resultQ
 
         let maxRuns = n >= (maxPlayouts config)
         now <- getCurrentTime
@@ -254,14 +252,20 @@ runUCT initLoc rootGameState initRaveMap config _rGen deadline = do
 uctLoopFlusher :: LoopState -> Int -> Chan Result -> IO LoopState
 uctLoopFlusher !state 0 _resultQ = return state
 uctLoopFlusher !state tCount resultQ = do
-  results <- getChanContents resultQ
-  let state' = updateTree state results
-  let tCount' = tCount - (length results)
+  (state', tCount') <- flushResult state tCount resultQ
+  threadDelay 10000
   uctLoopFlusher state' tCount' resultQ
 
-
-updateTree :: LoopState -> [Result] -> LoopState
-updateTree = foldl' updateTreeResult
+flushResult :: LoopState -> Int -> Chan Result -> IO (LoopState, Int)
+flushResult !state tCount resultQ = do
+  empty <- isEmptyChan resultQ
+  (if empty
+   then return (state, tCount)
+   else (do
+            result <- readChan resultQ
+            let state' = updateTreeResult state result
+            let tCount' = tCount - 1
+            flushResult state' tCount' resultQ))
 
 updateTreeResult :: LoopState -> Result -> LoopState
 updateTreeResult (loc, raveMap) (score, playedMoves, path) =
