@@ -22,6 +22,8 @@ module Data.Tree.UCT ( selectLeafPath
                      , constantHeuristic
                      , backpropagate
                      , updateRaveMap
+                     , updateNodeVisits
+                     , updateNodeValue
                      , getLeaf
                      , UCTHeuristic
                      , UCTEvaluator
@@ -211,8 +213,8 @@ constantHeuristic _move = (0.5, 1)
 
 
 -- updates node with a new value
-updateNodeValue :: UCTMove a => Value -> MoveNode a -> MoveNode a
-updateNodeValue value node =
+updateNode :: UCTMove a => Value -> MoveNode a -> MoveNode a
+updateNode value node =
     -- trace ("updateNodeValue "
     --        ++ show (node, node', value)
     --       )
@@ -228,11 +230,26 @@ updateNodeValue value node =
       newVisits = succ oldVisits
       oldVisits = nodeVisits node
 
+updateNodeValue :: UCTMove a => Value -> MoveNode a -> MoveNode a
+updateNodeValue value node =
+    node'
+    where
+      node' = node { nodeValue = newValue }
+      newValue = ((oldValue * fromIntegral oldVisits) + value)
+                       / fromIntegral newVisits
+      oldValue = nodeValue node
+      oldVisits = pred newVisits
+      newVisits = nodeVisits node
+
+updateNodeVisits :: UCTMove a => Value -> MoveNode a -> MoveNode a
+updateNodeVisits _value node = node { nodeVisits = succ $ nodeVisits node }
+
 
 type UCTEvaluator a = a -> Value
+type UCTUpdater a = Value -> MoveNode a -> MoveNode a
 
-backpropagate :: UCTMove a => UCTEvaluator a -> UCTTreeLoc a -> UCTTreeLoc a
-backpropagate evaluator loc =
+backpropagate :: UCTMove a => UCTEvaluator a -> UCTUpdater a -> UCTTreeLoc a -> UCTTreeLoc a
+backpropagate evaluator updater loc =
     case parent loc' of
       Nothing ->
           -- trace "backpropagate reached root node"
@@ -240,9 +257,9 @@ backpropagate evaluator loc =
       Just parentLoc ->
           -- trace ("backpropagate "
           --        ++ show ((nodeMove $ rootLabel $ tree loc), value))
-          backpropagate evaluator parentLoc
+          backpropagate evaluator updater parentLoc
     where
-      loc' = modifyLabel (updateNodeValue value) loc
+      loc' = modifyLabel (updater value) loc
       value = evaluator (nodeMove $ rootLabel $ tree loc)
 
 

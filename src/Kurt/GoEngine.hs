@@ -39,7 +39,7 @@ import Data.Maybe (fromMaybe)
 import qualified Data.Map as M
 -- import qualified Data.Map as M (empty, insert)
 import Data.Tree (rootLabel)
-import Data.Tree.Zipper (tree, fromTree, findChild, hasChildren, root)
+import Data.Tree.Zipper (tree, fromTree, findChild, hasChildren)
 
 
 import Kurt.Config
@@ -244,7 +244,7 @@ runUCT initLoc rootGameState initRaveMap config _rGen deadline = do
 
         moves <- stToIO $ nextMovesST leafGameStateST $ nextMoveColor $ getStateST leafGameStateST
 
-        let loc'' = root $ expandNode loc' slHeu moves
+        let loc'' = backpropagate (\_x -> 0) updateNodeVisits $ expandNode loc' slHeu moves
         -- let loc'' = expandNode loc' constantHeuristic moves
 
         return (loc'', path, leafGameStateST)
@@ -272,7 +272,7 @@ updateTreeResult (!loc, !raveMap) (!score, !playedMoves, !path) =
   (loc', raveMap')
     where
       raveMap' = updateRaveMap raveMap (rateScore score) $ drop (length playedMoves `div` 3) playedMoves
-      loc' = backpropagate (rateScore score) $ getLeaf loc path
+      loc' = backpropagate (rateScore score) updateNodeValue $ getLeaf loc path
 
 
 runOneRandomIO :: GameStateST RealWorld -> [Move] -> Chan Result -> IO ()
