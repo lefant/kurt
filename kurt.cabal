@@ -42,8 +42,8 @@ library
                  ,cmdargs < 0.2
                  ,strict-concurrency
                  ,deepseq
-  ghc-options: -O1
-  ghc-prof-options: -auto-all
+  ghc-options: -O2 -threaded
+  ghc-prof-options: -O2 -threaded -auto-all
 
 executable kurt
   main-is:        kurt.hs
@@ -60,8 +60,8 @@ executable kurt
                  ,cmdargs < 0.2
                  ,strict-concurrency
                  ,deepseq
-  ghc-options: -O1
-  ghc-prof-options: -auto-all -caf-all
+  ghc-options: -O2 -threaded
+  ghc-prof-options: -O2 -threaded -auto-all -caf-all
 
 source-repository head
   type:     git
