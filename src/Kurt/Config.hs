@@ -19,7 +19,7 @@ module Kurt.Config ( KurtConfig(..)
                    ) where
 
 
-import System.Console.CmdArgs
+import System.Console.CmdArgs.Implicit
 
 import Data.Goban.Types (Score)
 
@@ -39,29 +39,32 @@ data KurtConfig = KurtConfig { maxPlayouts           :: Int
                   deriving (Show, Eq, Data, Typeable)
 
 
-kurtDefaultConfig :: Mode KurtConfig
-kurtDefaultConfig = mode $ KurtConfig {
-               maxPlayouts = 100000 &= typ "INT"
-                             & text "Max simulations run during move generation"
-             , maxTime = 5000 &= typ "INT"
-                         & text "Max time used during move generation (ms)"
-             , uctExplorationPercent = 10 &= typ "INT"
-                                & text "Exploration constant used in UCT formula (percent)"
-             , raveWeight = 20 &= typ "INT"
-                                & text "Weight used for RAVE in UCT-RAVE formula"
-             , hCaptureWeight = 25 &= typ "INT"
-                                & text "Weight used for captures in heuristic"
-             , hMinLibertiesWeight = 7 &= typ "INT"
-                                & text "Weight used for minimum liberties in heuristic"
-             , hLibertiesWeight = 3 &= typ "INT"
-                                & text "Weight used for liberties in heuristic"
-             , hChainCountWeight = 1 &= typ "INT"
-                                & text "Weight used for group count in heuristic"
-             , hCenterWeight = 5 &= typ "INT"
-                                & text "Weight used for center moves in heuristic"
-             , initialKomi = 7.5 &= typ "FLOAT"
-                             & text "Initial komi value (usually overridden via GTP)"
-             , initialBoardsize = 9 &= typ "INT"
-                             & text "Initial boardsize (usually overridden via GTP)"
-             } &= prog "kurt" & text "Computer Go program. Implemented as a GTP server to be run from a GTP client like gogui or kgsGTP."
+kurtDefaultConfig :: KurtConfig
+kurtDefaultConfig = KurtConfig {
+               maxPlayouts = def &= typ "INT" &= opt (100000 :: Int)
+                             &= help "Max simulations run during move generation"
+             , maxTime = def &= typ "INT" &= opt (5000 :: Int)
+                         &= help "Max time used during move generation (ms)"
+             , uctExplorationPercent = def &= typ "INT" &= opt (10 :: Int)
+                                &= help "Exploration constant used in UCT formula (percent)"
+             , raveWeight = def &= typ "INT" &= opt (20 :: Int)
+                                &= help "Weight used for RAVE in UCT-RAVE formula"
+             , hCaptureWeight = def &= typ "INT" &= opt (25 :: Int)
+                                &= help "Weight used for captures in heuristic"
+             , hMinLibertiesWeight = def &= typ "INT" &= opt (7 :: Int)
+                                &= help "Weight used for minimum liberties in heuristic"
+             , hLibertiesWeight = def &= typ "INT" &= opt (3 :: Int)
+                                &= help "Weight used for liberties in heuristic"
+             , hChainCountWeight = def &= typ "INT" &= opt (1 :: Int)
+                                &= help "Weight used for group count in heuristic"
+             , hCenterWeight = def &= typ "INT" &= opt (5 :: Int)
+                                &= help "Weight used for center moves in heuristic"
+             , initialKomi = def &= typ "FLOAT" &= opt (7.5 :: Float)
+                             &= help "Initial komi value (usually overridden via GTP)"
+             , initialBoardsize = def &= typ "INT" &= opt (9 :: Int)
+                             &= help "Initial boardsize (usually overridden via GTP)"
+             } &= summary "Kurt - Computer Go program. Implemented as a GTP server to be run from a GTP client like gogui or kgsGTP."
+
+
+--             } &= prog "kurt" &= help "Computer Go program. Implemented as a GTP server to be run from a GTP client like gogui or kgsGTP."
 

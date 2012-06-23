@@ -25,5 +25,6 @@ import Kurt.MainLoop (startLoop)
 
 main :: IO ()
 main = do
-  kurtConfig <- cmdArgs "kurt version 0.0.1, (C) Fabian Linzberger 2010" [kurtDefaultConfig]
+  -- "kurt version 0.0.1, (C) Fabian Linzberger 2010" [kurtDefaultConfig]
+  kurtConfig <- cmdArgs kurtDefaultConfig
   startLoop kurtConfig
