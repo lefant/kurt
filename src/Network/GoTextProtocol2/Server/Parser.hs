@@ -28,7 +28,7 @@ module Network.GoTextProtocol2.Server.Parser ( pureParseCommand
 import Text.ParserCombinators.Parsec
 -- import Text.Parsec.Char
 import Data.Char (toLower)
-import Monad (liftM)
+import Control.Monad (liftM)
 
 import Network.GoTextProtocol2.Types
 import Data.Goban.Types ( Move(..)

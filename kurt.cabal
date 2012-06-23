@@ -31,7 +31,6 @@ library
   build-depends:
                   base >= 3 && < 5
                  ,parsec >= 3
-                 ,haskell98
                  ,random
                  ,mwc-random
                  ,primitive
@@ -39,7 +38,7 @@ library
                  ,rosezipper < 0.2
                  ,array
                  ,time
-                 ,cmdargs < 0.2
+                 ,cmdargs
   ghc-options: -O1
   ghc-prof-options: -auto-all
 
@@ -49,13 +48,12 @@ executable kurt
   build-depends:
                   base >= 3 && < 5
                  ,parsec >= 3
-                 ,haskell98
                  ,random
                  ,mwc-random
                  ,containers >= 0.3
                  ,rosezipper < 0.2
                  ,time
-                 ,cmdargs < 0.2
+                 ,cmdargs
   ghc-options: -O1
   ghc-prof-options: -auto-all -caf-all
 
