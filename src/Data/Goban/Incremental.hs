@@ -245,6 +245,27 @@ showChainIdGoban goban =
       (_, (n1, _)) = UA.bounds goban
 
 
+newGobanMap :: Boardsize -> GobanMap
+newGobanMap n =
+  H.fromList $ zip (borderVertices n) $ repeat borderChainId
+
+
+showGobanMap :: GobanMap -> String
+showGobanMap goban =
+    unlines $ reverse
+                ([xLegend]
+                 ++ zipWith (++) ys
+                        (zipWith (++) (map (unwords . (map show)) ls) ys)
+                 ++ [xLegend])
+    where
+      ls = transpose $ unfoldr nLines $ map idState chainIds
+      nLines xs = if null xs then Nothing else Just $ splitAt n xs
+      ys = map (printf " %2d ") [1 .. n]
+      xLegend = "    " ++ unwords (map ((: []) . xToLetter) [1 .. n])
+      n = n1 - 1
+      chainIds = filter (/= borderChainId) $ map lookupVertex $ allVertices n1
+      lookupVertex v = H.lookupDefault noChainId v goban
+      (n1, _) = maximum $ H.keys goban
 
 
 isSuicide :: ChainIdGobanST s -> ChainMap -> Stone -> ST s Bool
