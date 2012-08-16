@@ -47,6 +47,7 @@ import qualified Data.Set as S
 import qualified Data.Array.ST as STUA
 import qualified Data.Array.Unboxed as UA
 
+import qualified Data.HashMap.Strict as H
 
 -- import Debug.TraceOrId (trace)
 
@@ -86,11 +87,11 @@ showChainMap cm =
     concatMap (\(k, v) -> show k ++ " " ++ show v ++ "\n") $ M.toList cm
 
 
--- try this instead of Vector this time
 type ChainIdGobanST s = STUA.STUArray s Vertex ChainId
-
 type ChainIdGoban = UA.UArray Vertex ChainId
+type GobanMap = H.HashMap Vertex ChainId
 
+-- should really be M.IntMap ChainId, why duplicate all groups as neighbours?!?
 type ChainNeighbours = M.IntMap VertexSet
 
 
