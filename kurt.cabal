@@ -39,7 +39,8 @@ library
                  ,array
                  ,time
                  ,cmdargs
-  ghc-options: -O1
+                 ,unordered-containers
+  ghc-options: -O2
   ghc-prof-options: -auto-all
 
 executable kurt
@@ -54,9 +55,10 @@ executable kurt
                  ,rosezipper < 0.2
                  ,time
                  ,cmdargs
-  ghc-options: -O1
+                 ,unordered-containers
+  ghc-options: -O2
   ghc-prof-options: -auto-all -caf-all
 
 source-repository head
   type:     git
-  location: git://git.lefant.net/kurt.git
+  location: git://github.com/lefant/kurt
