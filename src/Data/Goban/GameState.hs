@@ -1,4 +1,4 @@
-{-# OPTIONS -O2 -Wall -Werror -Wwarn #-}
+{-# OPTIONS -Wall -Werror -Wwarn #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 
@@ -45,7 +45,8 @@ module Data.Goban.GameState ( GameState(..)
 import Control.Monad (filterM, foldM)
 import Control.Monad.ST (ST, runST)
 -- import Data.Array.IArray (Array)
-import Data.Array.MArray (thaw, freeze, unsafeFreeze)
+import Data.Array.MArray (thaw, freeze)
+import Data.Array.Unsafe (unsafeFreeze)
 import qualified Data.Set as S
 
 import Kurt.Config
