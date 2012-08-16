@@ -1,4 +1,4 @@
-{-# OPTIONS -O2 -Wall -Werror -Wwarn #-}
+{-# OPTIONS -Wall -Werror -Wwarn #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 {-# LANGUAGE BangPatterns, DeriveDataTypeable #-}
 
@@ -43,7 +43,7 @@ import Data.Tree.Zipper (tree, fromTree, findChild, hasChildren)
 import Kurt.Config
 import Data.Goban.Types (Move(..), Stone(..), Color(..), Vertex, Score)
 import Data.Goban.Utils (winningScore, rateScore)
-import Data.Goban.GameState (GameState(..), GameStateST(..), GameStateStuff, newGameState, freezeGameStateST, scoreGameState, scoreGameStateST, updateGameState, updateGameStateST, getLeafGameStateST, makeStonesAndLibertyHeuristic, nextMoveColor, nextMoves, nextMovesST, isSaneMoveST, freeVertices)
+import Data.Goban.GameState
 
 import Data.Tree.UCT.GameTree (MoveNode(..), UCTTreeLoc, RaveMap, newRaveMap, newMoveNode)
 import Data.Tree.UCT
@@ -66,14 +66,14 @@ data EngineState = EngineState {
 
 newEngineState :: KurtConfig -> EngineState
 newEngineState config =
-    EngineState { getGameState =
-                      newGameState (initialBoardsize config) (initialKomi config)
-                , getUctTree = newUctTree
-                , getRaveMap = newRaveMap
-                , boardSize = initialBoardsize config
-                , getKomi = initialKomi config
-                , getConfig = config
-                }
+  EngineState { getGameState =
+                   newGameState (initialBoardsize config) (initialKomi config)
+              , getUctTree = newUctTree
+              , getRaveMap = newRaveMap
+              , boardSize = initialBoardsize config
+              , getKomi = initialKomi config
+              , getConfig = config
+              }
 
 newUctTree :: UCTTreeLoc Move
 newUctTree =
@@ -200,34 +200,31 @@ runUCT :: UCTTreeLoc Move
        -> Gen RealWorld
        -> UTCTime
        -> IO (UCTTreeLoc Move, RaveMap Move)
-runUCT initLoc rootGameState initRaveMap config rGen deadline  =
-    uctLoop initLoc initRaveMap 0
-
-    where
-      uctLoop            :: UCTTreeLoc Move -> RaveMap Move -> Int
-                         -> IO (UCTTreeLoc Move, RaveMap Move)
-      uctLoop !loc !raveMap n
-          | n >= maxPlayouts config = return (loc, raveMap)
-          | otherwise    = do
+runUCT initLoc rootGameState initRaveMap config rGen deadline =
+  uctLoop initLoc initRaveMap 0
+  where
+    uctLoop :: UCTTreeLoc Move -> RaveMap Move -> Int
+               -> IO (UCTTreeLoc Move, RaveMap Move)
+    uctLoop !loc !raveMap n
+      | n >= maxPlayouts config = return (loc, raveMap)
+      | otherwise = do
         let done = False
 
         (loc', path) <- return $ selectLeafPath
                         (policyRaveUCB1 (uctExplorationPercent config) (raveWeight config) raveMap) loc
                         -- (policyUCB1 (uctExploration config)) loc
 
-        leafGameStateST <- stToIO $ getLeafGameStateST rootGameState path
-
-        leafGameState <- stToIO $ freezeGameStateST leafGameStateST
+        let leafGameState = getLeafGameState rootGameState path
         let slHeu = makeStonesAndLibertyHeuristic leafGameState config
 
-        moves <- stToIO $ nextMovesST leafGameStateST $ nextMoveColor $ getStateST leafGameStateST
+        let moves = nextMoves leafGameState $ nextMoveColor $ getState leafGameState
 
         let loc'' = expandNode loc' slHeu moves
         -- let loc'' = expandNode loc' constantHeuristic moves
 
-        (oneState, playedMoves) <- stToIO $ runOneRandom leafGameStateST rGen
+        (oneState, playedMoves) <- stToIO $ runOneRandom leafGameState rGen
 
-        score <- stToIO $ scoreGameStateST oneState
+        let score = scoreGameState oneState
 
         let raveMap' = updateRaveMap raveMap (rateScore score) $ drop (length playedMoves `div` 3) playedMoves
 
@@ -248,10 +245,10 @@ simulatePlayout gState = do
   seed <- withSystemRandom (save :: Gen (PrimState IO) -> IO Seed)
   rGen <- stToIO $ restore seed
 
-  gState' <- stToIO $ getLeafGameStateST gState []
+  let gState' = getLeafGameState gState []
 
   (oneState, playedMoves) <- stToIO $ runOneRandom gState' rGen
-  score <- stToIO $ scoreGameStateST oneState
+  let score = scoreGameState oneState
 
   trace ("simulatePlayout " ++ show score) $ return ()
 
@@ -259,19 +256,19 @@ simulatePlayout gState = do
 
 
 
-runOneRandom :: GameStateST s -> Gen s -> ST s (GameStateST s, [Move])
+runOneRandom :: GameState -> Gen s -> ST s (GameState, [Move])
 runOneRandom initState rGenInit =
     run initState 0 rGenInit []
     where
-      run :: GameStateST s -> Int -> Gen s -> [Move] -> ST s (GameStateST s, [Move])
+      run :: GameState -> Int -> Gen s -> [Move] -> ST s (GameState, [Move])
       run state 1000 _ moves = return (trace ("runOneRandom not done after 1000 moves " ++ show moves) state, [])
       run state runCount rGen moves = do
         move <- genMoveRand state rGen
-        state' <- updateGameStateST state move
+        let state' = updateGameState state move
         case move of
           (Pass passColor) -> do
                     move' <- genMoveRand state' rGen
-                    state'' <- updateGameStateST state' move'
+                    let state'' = updateGameState state' move'
                     case move' of
                       (Pass _) ->
                           return (state'', moves)
@@ -286,32 +283,29 @@ runOneRandom initState rGenInit =
 
 
 
-genMoveRand :: GameStateST s -> Gen s -> ST s Move
+genMoveRand :: GameState -> Gen s -> ST s Move
 genMoveRand state rGen =
-    pickSane $ freeVertices $ getStateST state
+    pickSane $ freeVertices $ getState state
     where
       pickSane [] =
            return $ Pass color
       pickSane [p] = do
         let stone = Stone p color
-        sane <- isSaneMoveST state stone
+        let sane = isSaneMove state stone
         return (if sane
                 then Move stone
                 else Pass color)
       pickSane ps = do
         p <- pick ps rGen
         let stone = Stone p color
-        sane <- isSaneMoveST state stone
+        let sane = isSaneMove state stone
         (if sane
          then return $ Move stone
          else pickSane (ps \\ [p]))
-
-      color = nextMoveColor $ getStateST state
+      color = nextMoveColor $ getState state
 
 
 pick :: [Vertex] -> Gen s -> ST s Vertex
 pick as rGen = do
   i <- liftM (`mod` length as) $ uniform rGen
   return $ as !! i
-
-
