@@ -40,6 +40,7 @@ import Text.Printf (printf)
 
 
 import qualified Data.IntMap as M
+import qualified Data.IntSet as IS
 import qualified Data.Set as S
 
 import qualified Data.HashMap.Strict as H
@@ -63,7 +64,7 @@ instance Show Chain where
                ++ "\nns: "
                ++ concatMap (\(k, v) -> show k ++ " "
                               ++ unwords (map gtpShowVertex (S.elems v))
-                              ++ "; ") (M.toList ns)
+                              ++ "; ") (IS.toList ns)
                ++ "\n"
 
 type ChainId = Int
@@ -84,8 +85,7 @@ showChainMap cm =
 
 type GobanMap = H.HashMap Vertex ChainId
 
--- should really be M.IntMap ChainId, why duplicate all groups as neighbours?!?
-type ChainNeighbours = M.IntMap VertexSet
+type ChainNeighbours = IS.IntSet
 
 
 
@@ -171,14 +171,14 @@ stonesAndLiberties cg cm s@(Stone p color) =
               js ->
                   mapFoldChains cm1 (sort (j : js)) p
               where
-                (cm1, j) = mapAddChain cm s adjFrees neighs
+                (cm1, j) = mapAddChain cm s adjFrees neighIds
 
 
       adjFrees = S.fromList $ map snd adjFreePs
       -- list of adjacent same color chain ids
       ourIds = nub $ map fst ourIdPs
       -- ChainNeighbour type neighbour id - vertex map
-      neighIds = nub $ map fst neighIdPs
+      neighIds = IS.fromList $ map fst neighIdPs
       neighs = M.fromListWith S.union $ map (second S.singleton) neighIdPs
 
       -- partition friend and foe
@@ -253,7 +253,7 @@ addStone cg cm s@(Stone p color) =
 
     -- add new chain with played stone and
     -- merge chains becoming connected if necessary
-    (cm1, j) = mapAddChain cm s adjFrees neighs
+    (cm1, j) = mapAddChain cm s adjFrees neighIds
     (cg2, cm3, i) = case ourIds of
                  [] -> (cg, cm1, j)
                  js -> (cg1, cm2, i0)
@@ -291,9 +291,7 @@ addStone cg cm s@(Stone p color) =
     -- list of adjacent same color chain ids
     ourIds = nub $ map fst ourIdPs
     -- ChainNeighbour type neighbour id - vertex map
-    neighIds = nub $ map fst neighIdPs
-    -- neighs
-    neighs = M.fromListWith S.union $ map (second S.singleton) neighIdPs
+    neighIds = IS.fromList $ map fst neighIdPs
 
     readPairWithKey ap = (vertexId cg ap, ap)
 
@@ -373,17 +371,17 @@ idState i
 
 
 
-removeNeighbourLiberties :: ChainMap -> Vertex -> [ChainId]
+removeNeighbourLiberties :: ChainMap -> Vertex -> ChainNeighbours
                          -> (ChainMap, [ChainId])
 removeNeighbourLiberties initCm p neighIds =
     (cm', dead)
     where
-      dead = nub $ filter isDeadChain neighIds
+      dead = IS.toList $ IS.filter isDeadChain neighIds
 
       isDeadChain :: ChainId -> Bool
       isDeadChain i = S.null $ chainLiberties $ idChain "isDeadChain" cm' i
 
-      cm' = foldl' updateCM initCm neighIds
+      cm' = IS.foldl' updateCM initCm neighIds
 
       updateCM :: ChainMap -> ChainId -> ChainMap
       updateCM cm i = M.adjust updateNC i cm
@@ -399,7 +397,7 @@ mapAddChain :: ChainMap -> Stone -> VertexSet -> ChainNeighbours
 mapAddChain cm (Stone p color) adjFrees neighs =
     (cm'' , i)
     where
-      cm'' = mapAddChainNeighbours cm' i (S.singleton p) neighs
+      cm'' = mapAddChainNeighbours cm' i neighs
       cm' = M.insert i c cm
       c = Chain { chainColor = color
                 , chainLiberties = adjFrees
@@ -408,17 +406,17 @@ mapAddChain cm (Stone p color) adjFrees neighs =
                 }
       i = nextChainId cm color
 
-mapAddChainNeighbours :: ChainMap -> ChainId -> VertexSet -> ChainNeighbours
+mapAddChainNeighbours :: ChainMap -> ChainId -> ChainNeighbours
                       -> ChainMap
-mapAddChainNeighbours initCm i vs neighs =
-    foldl' updateCM initCm $ M.keys neighs
+mapAddChainNeighbours initCm i neighs =
+    foldl' updateCM initCm $ IS.toList neighs
     where
       updateCM :: ChainMap -> ChainId -> ChainMap
       updateCM cm ni = M.adjust updateNC ni cm
 
       updateNC :: Chain -> Chain
       updateNC c =
-          c { chainNeighbours = M.insert i vs $ chainNeighbours c }
+          c { chainNeighbours = IS.insert i $ chainNeighbours c }
 
 
 mapFoldChains :: ChainMap -> [ChainId] -> Vertex -> ChainMap
