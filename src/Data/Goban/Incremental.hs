@@ -337,7 +337,7 @@ vertexState cg v = idState $ vertexId cg v
 
 vertexId :: GobanMap -> Vertex -> Int
 vertexId cg p = H.lookupDefault noChainId p cg
-
+{-# INLINE vertexId #-}
 
 
 
