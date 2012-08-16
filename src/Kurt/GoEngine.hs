@@ -82,6 +82,7 @@ newUctTree =
              (Move (Stone (25,25) White)))
             (0.5, 1)
 
+
 updateEngineState :: EngineState -> Move -> EngineState
 updateEngineState eState move =
     eState { getGameState = gState', getUctTree = loc' }
@@ -100,7 +101,7 @@ selectSubtree :: UCTTreeLoc Move -> Move -> UCTTreeLoc Move
 selectSubtree loc move =
     loc''
     where
-      loc'' = fromTree $ tree $ loc'
+      loc'' = fromTree $ tree loc'
       loc' =
           fromMaybe newUctTree
           $ findChild ((move ==) . nodeMove . rootLabel) loc
@@ -123,8 +124,8 @@ genMove eState color = do
   (if null moves
    then
        if winningScore color score
-       then return $ (Pass color, eState)
-       else return $ (Resign color, eState)
+       then return (Pass color, eState)
+       else return (Resign color, eState)
    else (do
           seed <- withSystemRandom (save :: Gen (PrimState IO) -> IO Seed)
           rGen <- stToIO $ restore seed
@@ -140,7 +141,7 @@ genMove eState color = do
           -- (getUctC eState) (getRaveWeight eState) (getHeuWeights eState) rGen deadline (maxRuns eState)
           let eState' = eState { getUctTree = loc', getRaveMap = raveMap' }
 
-          return $ (bestMoveFromLoc loc' (getState gState) score, eState')))
+          return (bestMoveFromLoc loc' (getState gState) score, eState')))
 
 
     where
@@ -206,7 +207,7 @@ runUCT initLoc rootGameState initRaveMap config rGen deadline  =
       uctLoop            :: UCTTreeLoc Move -> RaveMap Move -> Int
                          -> IO (UCTTreeLoc Move, RaveMap Move)
       uctLoop !loc !raveMap n
-          | n >= (maxPlayouts config) = return (loc, raveMap)
+          | n >= maxPlayouts config = return (loc, raveMap)
           | otherwise    = do
         let done = False
 
@@ -275,7 +276,7 @@ runOneRandom initState rGenInit =
                       (Pass _) ->
                           return (state'', moves)
                       sm@(Move _) ->
-                          run state'' (runCount + 1) rGen (sm : (Pass passColor) : moves)
+                          run state'' (runCount + 1) rGen (sm : Pass passColor : moves)
                       (Resign _) ->
                           error "runOneRandom encountered Resign"
           sm@(Move _) ->
@@ -310,7 +311,7 @@ genMoveRand state rGen =
 
 pick :: [Vertex] -> Gen s -> ST s Vertex
 pick as rGen = do
-  i <- liftM (`mod` (length as)) $ uniform rGen
+  i <- liftM (`mod` length as) $ uniform rGen
   return $ as !! i
 
 
