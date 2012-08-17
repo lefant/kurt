@@ -12,6 +12,8 @@
 
 Incrementally updated stone chains including liberty count for goban.
 
+TODO: idChain is a mess, clean up
+
 -}
 
 module Data.Goban.Incremental ( Chain(..)
@@ -61,10 +63,7 @@ instance Show Chain where
     show (Chain c ls vs ns) =
         show c ++ " vs:" ++ unwords (map gtpShowVertex (S.elems vs))
                ++ " ls:" ++ unwords (map gtpShowVertex (S.elems ls))
-               ++ "\nns: "
-               ++ concatMap (\(k, v) -> show k ++ " "
-                              ++ unwords (map gtpShowVertex (S.elems v))
-                              ++ "; ") (IS.toList ns)
+               ++ "\nns: " ++ show ns
                ++ "\n"
 
 type ChainId = Int
@@ -460,19 +459,21 @@ mapDeleteChain :: ChainMap -> ChainId -> ChainMap
 mapDeleteChain initCm i =
     M.delete i
          $ foldl' updateCM initCm
-               $ M.keys $ chainNeighbours
+               $ IS.toList $ chainNeighbours
                      $ idChain "mapDeleteChain" initCm i
     where
       updateCM :: ChainMap -> ChainId -> ChainMap
-      updateCM cm nId =
-          M.adjust updateNC nId cm
+      updateCM cm nId = M.adjust updateNC nId cm
       updateNC :: Chain -> Chain
       updateNC c =
-          c { chainLiberties = chainLiberties c `S.union` vs
-            , chainNeighbours = M.delete i neighs
+          c { chainLiberties = chainLiberties c `S.union` newLiberties
+            , chainNeighbours = IS.delete i neighs
             }
           where
-            vs = fromMaybe (error ("mapDeleteChain vs lookup Nothing"
-                            ++ show (i, neighs)))
-                 $ M.lookup i neighs
             neighs = chainNeighbours c
+            newLiberties = removedStones `S.intersection` allAdjsPs
+            allAdjsPs = S.fromList $ concatMap adjacentVertices $ S.toList $ chainVertices c
+      removedStones = chainVertices $
+                      fromMaybe (error ("mapDeleteChain vs lookup Nothing"
+                                        ++ show (i, initCm))) $
+                      M.lookup i initCm
