@@ -139,10 +139,10 @@ borderVertices n =
     [(x, y) | x <- [0, n + 1], y <- [0 .. n + 1] ]
     ++ [(x, y) | x <- [1 .. n], y <- [0, n + 1] ]
 
-{-# INLINE adjacentVertices #-}
 adjacentVertices :: Vertex -> [Vertex]
 adjacentVertices (x, y) =
     [(x,y-1),(x-1,y),(x+1,y),(x,y+1)]
+{-# INLINE adjacentVertices #-}
 
 
 -- {-# INLINE adjacentVerticesInBounds #-}
