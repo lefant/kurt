@@ -168,7 +168,7 @@ stonesAndLiberties cg cm s@(Stone p color) =
       cm2 = case ourIds of
               [] -> cm1
               js ->
-                  mapFoldChains cm1 (sort (j : js)) p
+                  mergeChains cm1 (sort (j : js)) p
               where
                 (cm1, j) = mapAddChain cm s adjFrees neighIds
 
@@ -258,7 +258,7 @@ addStone cg cm s@(Stone p color) =
                  js -> (cg1, cm2, i0)
                    where
                      is@(i0 : _) = sort (j : js)
-                     cm2 = mapFoldChains cm1 is p
+                     cm2 = mergeChains cm1 is p
                      cg1 = foldl' (\g p' -> H.insert p' i0 g) cg $
                            S.elems $ chainVertices $
                            idChain "addStone merge" cm2 i0
@@ -418,41 +418,39 @@ mapAddChainNeighbours initCm i neighs =
           c { chainNeighbours = IS.insert i $ chainNeighbours c }
 
 
-mapFoldChains :: ChainMap -> [ChainId] -> Vertex -> ChainMap
-mapFoldChains cm ois@(i : is) p =
-    -- trace ("mapFoldChains cm''': " ++ show cm''')
-    cm'''
+mergeChains :: ChainMap -> [ChainId] -> Vertex -> ChainMap
+mergeChains cm ois@(i : is) p =
+    -- trace ("mergeChains cm''': " ++ show cm''')
+    cm3
     where
-      cm''' = mapFoldChainsNeighbours cm'' ois neighs
-      cm'' = M.insert i c' cm'
-      cm' = foldl' (flip M.delete) cm is
+      cm3 = mergeChainsNeighbours cm2 ois neighs
+      cm2 = M.insert i c' cm1
+      cm1 = foldl' (flip M.delete) cm is
       c' = c { chainLiberties = S.delete p $ S.unions $ map chainLiberties cs
              , chainVertices = S.unions $ map chainVertices cs
              , chainNeighbours = neighs
              }
-      neighs = M.unionsWith S.union $ map chainNeighbours cs
-      cs = c : map (idChain "mapFoldChains2" cm) is
-      c = idChain "mapFoldChains1" cm i
-mapFoldChains _ [] _ = error "mapFoldChains called with empty list"
+      neighs = IS.unions $ map chainNeighbours cs
+      cs = c : map (idChain "mergeChains2" cm) is
+      c = idChain "mergeChains1" cm i
+mergeChains _ [] _ = error "mergeChains called with []"
 
-mapFoldChainsNeighbours :: ChainMap -> [ChainId] -> ChainNeighbours
+mergeChainsNeighbours :: ChainMap -> [ChainId] -> ChainNeighbours
                         -> ChainMap
-mapFoldChainsNeighbours initCm (i : is) neighs =
-    foldl' updateCM initCm $ M.keys neighs
+mergeChainsNeighbours initCm (i : is) neighs =
+    foldl' updateCM initCm $ IS.toList neighs
     where
       updateCM :: ChainMap -> ChainId -> ChainMap
       updateCM cm ni = M.adjust updateNC ni cm
 
       updateNC :: Chain -> Chain
       updateNC c =
-          c { chainNeighbours = nNeighs''' }
+          c { chainNeighbours = nNeighs2 }
           where
-            nNeighs''' = foldl' (flip M.delete) nNeighs'' is
-            nNeighs'' = M.adjust (nvs `S.union`) i nNeighs'
-            nNeighs' = M.insertWith S.union i S.empty nNeighs
-            nvs = S.unions $ mapMaybe (`M.lookup` nNeighs) is
+            nNeighs2 = IS.insert i nNeighs1
+            nNeighs1 = nNeighs `IS.difference` (IS.fromList is)
             nNeighs = chainNeighbours c
-mapFoldChainsNeighbours _ [] _ = error "mapFoldChainsNeighbours called with empty list"
+mergeChainsNeighbours _ [] _ = error "mergeChainsNeighbours called with []"
 
 
 mapDeleteChain :: ChainMap -> ChainId -> ChainMap
