@@ -35,8 +35,7 @@ module Data.Goban.Incremental ( Chain(..)
 
 
 
-import Control.Arrow (second)
-import Data.Maybe (fromMaybe, mapMaybe, catMaybes)
+import Data.Maybe (fromMaybe, catMaybes)
 import Data.List (foldl', partition, unfoldr, transpose, nub, sort)
 import Text.Printf (printf)
 
@@ -178,7 +177,6 @@ stonesAndLiberties cg cm s@(Stone p color) =
       ourIds = nub $ map fst ourIdPs
       -- ChainNeighbour type neighbour id - vertex map
       neighIds = IS.fromList $ map fst neighIdPs
-      neighs = M.fromListWith S.union $ map (second S.singleton) neighIdPs
 
       -- partition friend and foe
       (ourIdPs, neighIdPs) = partition ((color ==) . chainColor . idChain "stonesAndLiberties partition " cm . fst) adjIdPs
