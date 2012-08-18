@@ -37,7 +37,7 @@ executable kurt
                  ,unordered-containers
                  ,strict-concurrency
                  ,deepseq
-  ghc-options: -O2 -threaded
+  ghc-options: -O2 -threaded -rtsopts
   ghc-prof-options: -auto-all -caf-all
 
 source-repository head
