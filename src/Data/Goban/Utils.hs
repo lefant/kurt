@@ -1,4 +1,4 @@
-{-# OPTIONS -O2 -Wall -Werror -Wwarn #-}
+{-# OPTIONS -Wall -Werror -Wwarn #-}
 
 {- |
    Module     : Data.Goban.Utils
@@ -22,12 +22,12 @@ module Data.Goban.Utils ( maxSet
 
 
 -- import Data.List ((\\))
-import qualified Data.Set as S
-import Text.Printf (printf)
+import qualified Data.Set               as S
+import           Text.Printf            (printf)
 
-import Data.Goban.Types
-import Data.Tree.UCT (UCTEvaluator)
-import Data.Tree.UCT.GameTree (Value)
+import           Data.Goban.Types
+import           Data.Tree.UCT          (UCTEvaluator)
+import           Data.Tree.UCT.GameTree (Value)
 
 -- import Debug.TraceOrId (trace)
 

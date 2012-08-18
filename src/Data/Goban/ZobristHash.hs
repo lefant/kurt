@@ -1,4 +1,4 @@
-{-# OPTIONS -O2 -Wall -Werror -Wwarn #-}
+{-# OPTIONS -Wall -Werror -Wwarn #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
 {- |
@@ -21,13 +21,13 @@ module Data.Goban.ZobristHash ( ZHash
                               ) where
 
 
-import Data.Maybe (fromJust)
-import Data.Map as M (Map, empty, insert, lookup, fromList)
-import Data.Bits (xor)
-import System.Random (randomIO)
-import Control.Monad (foldM)
+import           Control.Monad    (foldM)
+import           Data.Bits        (xor)
+import           Data.Map         as M (Map, empty, fromList, insert, lookup)
+import           Data.Maybe       (fromJust)
+import           System.Random    (randomIO)
 
-import Data.Goban.Types
+import           Data.Goban.Types
 
 -- type Hash = Int64
 type ZHash = Int
@@ -47,7 +47,7 @@ initMap n =
       f m x = do
         y <- randomIO
         return $ M.insert x y m
-          
+
 updateHash :: ZHash -> VState -> ZHash
 updateHash h v =
     h `xor` (fromJust $ M.lookup v m)

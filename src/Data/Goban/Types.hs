@@ -1,4 +1,4 @@
-{-# OPTIONS -O2 -Wall -Werror -Wwarn #-}
+{-# OPTIONS -Wall -Werror -Wwarn #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
 {- |
@@ -43,9 +43,9 @@ module Data.Goban.Types ( Move(..)
                         ) where
 
 
-import Data.Char (chr, ord, toUpper)
-import Data.Set (Set)
-import Data.Tree.UCT.GameTree (UCTMove)
+import           Data.Char              (chr, ord, toUpper)
+import           Data.Set               (Set)
+import           Data.Tree.UCT.GameTree (UCTMove)
 
 
 

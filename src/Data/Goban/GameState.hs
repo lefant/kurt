@@ -36,19 +36,19 @@ module Data.Goban.GameState ( GameState(..)
                             ) where
 
 
-import qualified Data.Set as S
-import qualified Data.List as L (foldl')
+import qualified Data.List              as L (foldl')
+import qualified Data.Set               as S
 
-import Kurt.Config
-import Data.Goban.Types
-import Data.Tree.UCT (UCTHeuristic)
-import Data.Tree.UCT.GameTree (Value)
-import Data.Goban.Utils
-import Data.Goban.Incremental
-import Data.Goban.ZobristHash (ZHash, updateHash)
+import           Data.Goban.Incremental
+import           Data.Goban.Types
+import           Data.Goban.Utils
+import           Data.Goban.ZobristHash (ZHash, updateHash)
+import           Data.Tree.UCT          (UCTHeuristic)
+import           Data.Tree.UCT.GameTree (Value)
+import           Kurt.Config
 
 
-import Debug.TraceOrId (trace)
+import           Debug.TraceOrId        (trace)
 
 
 
@@ -223,7 +223,7 @@ emptyStrings state =
   emptyStrings' initFrees []
 
     where
-      emptyStrings' frees xs 
+      emptyStrings' frees xs
           | S.null frees = xs
           | otherwise =
               emptyStrings' frees'' (S.toList iMax : xs)
