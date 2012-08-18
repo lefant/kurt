@@ -1,4 +1,4 @@
-{-# OPTIONS -O2 -Wall -Werror -Wwarn #-}
+{-# OPTIONS -Wall -Werror -Wwarn #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 
@@ -19,9 +19,9 @@ module Kurt.Config ( KurtConfig(..)
                    ) where
 
 
-import System.Console.CmdArgs.Implicit
+import           System.Console.CmdArgs.Implicit
 
-import Data.Goban.Types (Score)
+import           Data.Goban.Types                (Score)
 
 
 data KurtConfig = KurtConfig { maxPlayouts           :: Int

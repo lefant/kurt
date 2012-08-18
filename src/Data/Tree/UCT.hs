@@ -1,4 +1,4 @@
-{-# OPTIONS -O2 -Wall -Werror -Wwarn #-}
+{-# OPTIONS -Wall -Werror -Wwarn #-}
 {-# LANGUAGE FlexibleInstances #-}
 
 {- |
@@ -27,16 +27,17 @@ module Data.Tree.UCT ( selectLeafPath
                      ) where
 
 
-import Data.Maybe (fromMaybe, fromJust)
-import Data.List (unfoldr, maximumBy, foldl')
-import qualified Data.Map as M
-import Data.Ord (comparing)
-import Data.Tree (Tree(..))
-import Data.Tree.Zipper (TreeLoc, tree, hasChildren, parent, getChild, modifyTree, modifyLabel)
+import           Data.List              (foldl', maximumBy, unfoldr)
+import qualified Data.Map               as M
+import           Data.Maybe             (fromJust, fromMaybe)
+import           Data.Ord               (comparing)
+import           Data.Tree              (Tree (..))
+import           Data.Tree.Zipper       (TreeLoc, getChild, hasChildren,
+                                         modifyLabel, modifyTree, parent, tree)
 
 -- import Debug.TraceOrId (trace)
 
-import Data.Tree.UCT.GameTree
+import           Data.Tree.UCT.GameTree
 
 
 

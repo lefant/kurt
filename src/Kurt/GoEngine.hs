@@ -1,6 +1,7 @@
 {-# OPTIONS -Wall -Werror -Wwarn #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
-{-# LANGUAGE BangPatterns, DeriveDataTypeable #-}
+{-# LANGUAGE BangPatterns       #-}
+{-# LANGUAGE DeriveDataTypeable #-}
 
 {- |
    Module     : Kurt.GoEngine
@@ -23,32 +24,34 @@ module Kurt.GoEngine ( genMove
                      ) where
 
 
-import Control.Arrow (second)
-import Control.Monad (liftM)
-import Control.Monad.ST (ST, RealWorld, stToIO)
-import Control.Monad.Primitive (PrimState)
-import System.Random.MWC (Gen, Seed, uniform, withSystemRandom, save, restore)
-import Data.Time.Clock ( UTCTime(..)
-                       , picosecondsToDiffTime
-                       , getCurrentTime
-                       )
-import Data.List ((\\))
-import Data.Maybe (fromMaybe)
-import qualified Data.Map as M
+import           Control.Arrow           (second)
+import           Control.Monad           (liftM)
+import           Control.Monad.Primitive (PrimState)
+import           Control.Monad.ST        (RealWorld, ST, stToIO)
+import           Data.List               ((\\))
+import qualified Data.Map                as M
+import           Data.Maybe              (fromMaybe)
+import           Data.Time.Clock         (UTCTime (..), getCurrentTime,
+                                          picosecondsToDiffTime)
+import           System.Random.MWC       (Gen, Seed, restore, save, uniform,
+                                          withSystemRandom)
 -- import qualified Data.Map as M (empty, insert)
-import Data.Tree (rootLabel)
-import Data.Tree.Zipper (tree, fromTree, findChild, hasChildren)
+import           Data.Tree               (rootLabel)
+import           Data.Tree.Zipper        (findChild, fromTree, hasChildren,
+                                          tree)
 
 
-import Kurt.Config
-import Data.Goban.Types (Move(..), Stone(..), Color(..), Vertex, Score)
-import Data.Goban.Utils (winningScore, rateScore)
-import Data.Goban.GameState
+import           Data.Goban.GameState
+import           Data.Goban.Types        (Color (..), Move (..), Score,
+                                          Stone (..), Vertex)
+import           Data.Goban.Utils        (rateScore, winningScore)
+import           Kurt.Config
 
-import Data.Tree.UCT.GameTree (MoveNode(..), UCTTreeLoc, RaveMap, newRaveMap, newMoveNode)
-import Data.Tree.UCT
+import           Data.Tree.UCT
+import           Data.Tree.UCT.GameTree  (MoveNode (..), RaveMap, UCTTreeLoc,
+                                          newMoveNode, newRaveMap)
 
-import Debug.TraceOrId (trace)
+import           Debug.TraceOrId         (trace)
 
 -- import Data.Tree (drawTree)
 
