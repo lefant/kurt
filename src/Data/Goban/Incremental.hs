@@ -35,8 +35,7 @@ module Data.Goban.Incremental ( Chain(..)
 
 
 
-import           Data.List           (foldl', nub, partition, sort, transpose,
-                                      unfoldr)
+import           Data.List           (foldl', nub, partition, sort, unfoldr)
 import           Data.Maybe          (fromMaybe, mapMaybe)
 import           Text.Printf         (printf)
 
@@ -207,10 +206,9 @@ newGobanMap n =
 
 showGobanMap :: GobanMap -> String
 showGobanMap goban =
-    unlines $ ([xLegend]
-                 ++ zipWith (++) ys
-                        (zipWith (++) (map (unwords . map show) ls) ys)
-                 ++ [xLegend])
+    unlines ([xLegend] ++
+             zipWith (++) ys (zipWith (++) (map (unwords . map show) ls) ys) ++
+             [xLegend])
     where
       ls = unfoldr nLines $ map idState chainIds
       nLines xs = if null xs then Nothing else Just $ splitAt n xs
@@ -443,11 +441,8 @@ mergeChains _ [] _ = error "mergeChains called with []"
 mergeChainsNeighbours :: ChainMap -> [ChainId] -> ChainNeighIds
                         -> ChainMap
 mergeChainsNeighbours initCm (i : is) neighs =
-    foldl' updateCM initCm $ IS.toList neighs
+    foldChains updateNC initCm $ IS.toList neighs
     where
-      updateCM :: ChainMap -> ChainId -> ChainMap
-      updateCM cm ni = M.adjust updateNC ni cm
-
       updateNC :: Chain -> Chain
       updateNC c =
           c { chainNeighIds = nNeighs2 }
@@ -460,13 +455,10 @@ mergeChainsNeighbours _ [] _ = error "mergeChainsNeighbours called with []"
 
 mapDeleteChain :: ChainMap -> ChainId -> ChainMap
 mapDeleteChain initCm i =
-    M.delete i
-         $ foldl' updateCM initCm
-               $ IS.toList $ chainNeighIds
-                     $ idChain "mapDeleteChain" initCm i
+    M.delete i $
+     foldChains updateNC initCm $
+                IS.toList $ chainNeighIds $ idChain "mapDeleteChain" initCm i
     where
-      updateCM :: ChainMap -> ChainId -> ChainMap
-      updateCM cm nId = M.adjust updateNC nId cm
       updateNC :: Chain -> Chain
       updateNC c =
           c { chainNeighIds = IS.delete i $ chainNeighIds c
@@ -480,3 +472,8 @@ mapDeleteChain initCm i =
                       fromMaybe (error ("mapDeleteChain vs lookup Nothing"
                                         ++ show (i, initCm))) $
                       M.lookup i initCm
+
+
+foldChains :: (Chain -> Chain) -> ChainMap -> [ChainId] -> ChainMap
+foldChains adjF = foldl (flip (M.adjust adjF))
+
