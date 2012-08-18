@@ -20,7 +20,6 @@ module Data.Goban.Types ( Move(..)
                         , Stone(..)
                         , Color(..)
                         , Vertex
-                        , Coord1
                         , Boardsize
                         , Score
 
@@ -105,7 +104,6 @@ type VertexSet = Set Vertex
 type Vertex = (Coord, Coord)
 
 type Coord = Int
-type Coord1 = Int
 
 type Boardsize = Int
 
