@@ -55,7 +55,7 @@ import Data.Goban.Types
 data Chain = Chain { chainColor           :: !Color
                    , chainLiberties       :: !VertexSet
                    , chainVertices        :: !VertexSet
-                   , chainNeighbours      :: !ChainNeighbours
+                   , chainNeighIds        :: !ChainNeighIds
                    }
 
 instance Show Chain where
@@ -83,7 +83,7 @@ showChainMap cm =
 
 type GobanMap = H.HashMap Vertex ChainId
 
-type ChainNeighbours = IS.IntSet
+type ChainNeighIds = IS.IntSet
 
 
 
@@ -368,7 +368,7 @@ idState i
 
 
 
-removeNeighbourLiberties :: ChainMap -> Vertex -> ChainNeighbours
+removeNeighbourLiberties :: ChainMap -> Vertex -> ChainNeighIds
                          -> (ChainMap, [ChainId])
 removeNeighbourLiberties initCm p neighIds =
     (cm', dead)
@@ -389,23 +389,23 @@ removeNeighbourLiberties initCm p neighIds =
 
 
 
-mapAddChain :: ChainMap -> Stone -> VertexSet -> ChainNeighbours
+mapAddChain :: ChainMap -> Stone -> VertexSet -> ChainNeighIds
             -> (ChainMap, ChainId)
 mapAddChain cm (Stone p color) adjFrees neighs =
     (cm'' , i)
     where
-      cm'' = mapAddChainNeighbours cm' i neighs
+      cm'' = mapAddChainNeighIds cm' i neighs
       cm' = M.insert i c cm
       c = Chain { chainColor = color
                 , chainLiberties = adjFrees
                 , chainVertices = S.singleton p
-                , chainNeighbours = neighs
+                , chainNeighIds = neighs
                 }
       i = nextChainId cm color
 
-mapAddChainNeighbours :: ChainMap -> ChainId -> ChainNeighbours
+mapAddChainNeighIds :: ChainMap -> ChainId -> ChainNeighIds
                       -> ChainMap
-mapAddChainNeighbours initCm i neighs =
+mapAddChainNeighIds initCm i neighs =
     foldl' updateCM initCm $ IS.toList neighs
     where
       updateCM :: ChainMap -> ChainId -> ChainMap
@@ -413,7 +413,7 @@ mapAddChainNeighbours initCm i neighs =
 
       updateNC :: Chain -> Chain
       updateNC c =
-          c { chainNeighbours = IS.insert i $ chainNeighbours c }
+          c { chainNeighIds = IS.insert i $ chainNeighIds c }
 
 
 mergeChains :: ChainMap -> [ChainId] -> Vertex -> ChainMap
@@ -426,14 +426,14 @@ mergeChains cm ois@(i : is) p =
       cm1 = foldl' (flip M.delete) cm is
       c' = c { chainLiberties = S.delete p $ S.unions $ map chainLiberties cs
              , chainVertices = S.unions $ map chainVertices cs
-             , chainNeighbours = neighs
+             , chainNeighIds = neighs
              }
-      neighs = IS.unions $ map chainNeighbours cs
+      neighs = IS.unions $ map chainNeighIds cs
       cs = c : map (idChain "mergeChains2" cm) is
       c = idChain "mergeChains1" cm i
 mergeChains _ [] _ = error "mergeChains called with []"
 
-mergeChainsNeighbours :: ChainMap -> [ChainId] -> ChainNeighbours
+mergeChainsNeighbours :: ChainMap -> [ChainId] -> ChainNeighIds
                         -> ChainMap
 mergeChainsNeighbours initCm (i : is) neighs =
     foldl' updateCM initCm $ IS.toList neighs
@@ -443,11 +443,11 @@ mergeChainsNeighbours initCm (i : is) neighs =
 
       updateNC :: Chain -> Chain
       updateNC c =
-          c { chainNeighbours = nNeighs2 }
+          c { chainNeighIds = nNeighs2 }
           where
             nNeighs2 = IS.insert i nNeighs1
-            nNeighs1 = nNeighs `IS.difference` (IS.fromList is)
-            nNeighs = chainNeighbours c
+            nNeighs1 = nNeighs `IS.difference` IS.fromList is
+            nNeighs = chainNeighIds c
 mergeChainsNeighbours _ [] _ = error "mergeChainsNeighbours called with []"
 
 
@@ -455,7 +455,7 @@ mapDeleteChain :: ChainMap -> ChainId -> ChainMap
 mapDeleteChain initCm i =
     M.delete i
          $ foldl' updateCM initCm
-               $ IS.toList $ chainNeighbours
+               $ IS.toList $ chainNeighIds
                      $ idChain "mapDeleteChain" initCm i
     where
       updateCM :: ChainMap -> ChainId -> ChainMap
@@ -463,10 +463,10 @@ mapDeleteChain initCm i =
       updateNC :: Chain -> Chain
       updateNC c =
           c { chainLiberties = chainLiberties c `S.union` newLiberties
-            , chainNeighbours = IS.delete i neighs
+            , chainNeighIds = IS.delete i neighs
             }
           where
-            neighs = chainNeighbours c
+            neighs = chainNeighIds c
             newLiberties = removedStones `S.intersection` allAdjsPs
             allAdjsPs = S.fromList $ concatMap adjacentVertices $ S.toList $ chainVertices c
       removedStones = chainVertices $
