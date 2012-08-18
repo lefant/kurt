@@ -29,7 +29,7 @@ import           Control.Concurrent.Chan.Strict (Chan, isEmptyChan, newChan,
                                                  readChan, writeChan)
 import           Control.Monad                  (liftM)
 import           Control.Monad.Primitive        (PrimState)
-import           Control.Monad.ST               (RealWorld, ST, stToIO)
+import           Control.Monad.ST               (ST, stToIO)
 import           Data.List                      ((\\))
 import qualified Data.Map                       as M
 import           Data.Maybe                     (fromMaybe)
@@ -37,7 +37,6 @@ import           Data.Time.Clock                (UTCTime (..), getCurrentTime,
                                                  picosecondsToDiffTime)
 import           System.Random.MWC              (Gen, Seed, restore, save,
                                                  uniform, withSystemRandom)
-
 
 -- import qualified Data.Map as M (empty, insert)
 import           Data.Tree                      (rootLabel)
@@ -138,17 +137,13 @@ genMove eState color = do
        then return (Pass color, eState)
        else return (Resign color, eState)
    else (do
-          seed <- withSystemRandom (save :: Gen (PrimState IO) -> IO Seed)
-          rGen <- stToIO $ restore seed
-
-
           -- -- initialize rave map with random values to avoid all moves
           -- -- ranked equal in some situation
           -- initRaveMap <- stToIO $ foldM (u rGen) M.empty
           --                [ Move (Stone p c) | p <- (allVertices (boardsize gState)), c <- [Black, White]]
 
 
-          (loc', raveMap') <- runUCT loc gState raveMap config rGen deadline
+          (loc', raveMap') <- runUCT loc gState raveMap config deadline
           -- (getUctC eState) (getRaveWeight eState) (getHeuWeights eState) rGen deadline (maxRuns eState)
           let eState' = eState { getUctTree = loc', getRaveMap = raveMap' }
 
@@ -208,15 +203,13 @@ runUCT :: UCTTreeLoc Move
        -> GameState
        -> RaveMap Move
        -> KurtConfig
-       -> Gen RealWorld
        -> UTCTime
        -> IO LoopState
-runUCT initLoc rootGameState initRaveMap config _rGen deadline = do
+runUCT initLoc rootGameState initRaveMap config deadline = do
   resultQ <- newChan
   uctLoop (initLoc, initRaveMap) 0 0 resultQ
     where
-      uctLoop :: LoopState -> Int -> Int -> Chan Result
-                 -> IO LoopState
+      uctLoop :: LoopState -> Int -> Int -> Chan Result -> IO LoopState
       uctLoop !state !n !tCount resultQ = do
         (state'@(_loc', raveMap'), tCount') <- flushResult state tCount resultQ
 
@@ -283,8 +276,7 @@ updateTreeResult (!loc, !raveMap) (!score, !playedMoves, !path) =
 runOneRandomIO :: GameState -> [Move] -> Chan Result -> IO ()
 runOneRandomIO !gameState !path !resultQ = do
   seed <- withSystemRandom (save :: Gen (PrimState IO) -> IO Seed)
-  rGen <- stToIO $ restore seed
-  (endState, playedMoves) <- stToIO $ runOneRandom gameState rGen
+  (endState, playedMoves) <- stToIO $ runOneRandom gameState seed
   score <- return $ scoreGameState endState
   writeChan resultQ (score, playedMoves, path)
 
@@ -293,22 +285,18 @@ runOneRandomIO !gameState !path !resultQ = do
 simulatePlayout :: GameState -> IO [Move]
 simulatePlayout gState = do
   seed <- withSystemRandom (save :: Gen (PrimState IO) -> IO Seed)
-  rGen <- stToIO $ restore seed
-
   let gState' = getLeafGameState gState []
-
-  (oneState, playedMoves) <- stToIO $ runOneRandom gState' rGen
+  (oneState, playedMoves) <- stToIO $ runOneRandom gState' seed
   let score = scoreGameState oneState
-
   trace ("simulatePlayout " ++ show score) $ return ()
-
   return $ reverse playedMoves
 
 
 
-runOneRandom :: GameState -> Gen s -> ST s (GameState, [Move])
-runOneRandom initState rGenInit =
-    run initState 0 rGenInit []
+runOneRandom :: GameState -> Seed -> ST s (GameState, [Move])
+runOneRandom initState seed = do
+  rGen <- restore seed
+  run initState 0 rGen []
     where
       run :: GameState -> Int -> Gen s -> [Move] -> ST s (GameState, [Move])
       run state 1000 _ moves = return (trace ("runOneRandom not done after 1000 moves " ++ show moves) state, [])
