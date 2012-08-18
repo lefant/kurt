@@ -21,28 +21,6 @@ extra-source-files:
   COPYING
   README
 
-
-library
-  hs-source-dirs: src
-  exposed-modules:
-                  Kurt.MainLoop
-                 ,Kurt.GoEngine
-                 ,Data.Tree.UCT
-  build-depends:
-                  base >= 3 && < 5
-                 ,parsec >= 3
-                 ,random
-                 ,mwc-random
-                 ,primitive
-                 ,containers >= 0.3
-                 ,rosezipper < 0.2
-                 ,array
-                 ,time
-                 ,cmdargs
-                 ,unordered-containers
-  ghc-options: -O2
-  ghc-prof-options: -auto-all
-
 executable kurt
   main-is:        kurt.hs
   hs-source-dirs: src
@@ -51,12 +29,13 @@ executable kurt
                  ,parsec >= 3
                  ,random
                  ,mwc-random
+                 ,primitive
                  ,containers >= 0.3
                  ,rosezipper < 0.2
                  ,time
                  ,cmdargs
                  ,unordered-containers
-  ghc-options: -O2
+  ghc-options: -O2 -rtsopts
   ghc-prof-options: -auto-all -caf-all
 
 source-repository head
