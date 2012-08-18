@@ -1,4 +1,4 @@
-{-# OPTIONS -O2 -Wall -Werror -Wwarn #-}
+{-# OPTIONS -Wall -Werror -Wwarn #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 {-# LANGUAGE DeriveDataTypeable #-}
 
@@ -19,9 +19,8 @@ module Kurt.Config ( KurtConfig(..)
                    ) where
 
 
-import System.Console.CmdArgs
-
-import Data.Goban.Types (Score)
+import           Data.Goban.Types                (Score)
+import           System.Console.CmdArgs.Implicit
 
 
 data KurtConfig = KurtConfig { maxPlayouts           :: Int
@@ -39,32 +38,32 @@ data KurtConfig = KurtConfig { maxPlayouts           :: Int
                              }
                   deriving (Show, Eq, Data, Typeable)
 
-
-kurtDefaultConfig :: Mode KurtConfig
-kurtDefaultConfig = mode $ KurtConfig {
-               maxPlayouts = 100000 &= typ "INT"
-                             & text "Max simulations run during move generation"
-             , maxTime = 5000 &= typ "INT"
-                         & text "Max time used during move generation (ms)"
-             , maxThreads = 10 &= typ "INT"
-                         & text "Max number of threads spawned for playouts"
-             , uctExplorationPercent = 10 &= typ "INT"
-                                & text "Exploration constant used in UCT formula (percent)"
-             , raveWeight = 20 &= typ "INT"
-                                & text "Weight used for RAVE in UCT-RAVE formula"
-             , hCaptureWeight = 25 &= typ "INT"
-                                & text "Weight used for captures in heuristic"
-             , hMinLibertiesWeight = 7 &= typ "INT"
-                                & text "Weight used for minimum liberties in heuristic"
-             , hLibertiesWeight = 3 &= typ "INT"
-                                & text "Weight used for liberties in heuristic"
-             , hChainCountWeight = 1 &= typ "INT"
-                                & text "Weight used for group count in heuristic"
-             , hCenterWeight = 5 &= typ "INT"
-                                & text "Weight used for center moves in heuristic"
-             , initialKomi = 7.5 &= typ "FLOAT"
-                             & text "Initial komi value (usually overridden via GTP)"
-             , initialBoardsize = 9 &= typ "INT"
-                             & text "Initial boardsize (usually overridden via GTP)"
-             } &= prog "kurt" & text "Computer Go program. Implemented as a GTP server to be run from a GTP client like gogui or kgsGTP."
-
+kurtDefaultConfig :: KurtConfig
+kurtDefaultConfig = KurtConfig {
+               maxPlayouts = (100000 :: Int) &= typ "INT"
+                             &= help "Max simulations run during move generation"
+             , maxThreads = (10 :: Int) &= typ "INT"
+                         &= help "Max number of threads spawned for playouts"
+             , maxTime = (5000 :: Int) &= typ "INT"
+                         &= help "Max time used during move generation (ms)"
+             , uctExplorationPercent = def &= opt (10 :: Int) &= typ "INT"
+                                       &= help "Exploration constant used in UCT formula (percent)"
+             , raveWeight = (20 :: Int) &= typ "INT"
+                                &= help "Weight used for RAVE in UCT-RAVE formula"
+             , hCaptureWeight = (25 :: Int) &= typ "INT"
+                                &= help "Weight used for captures in heuristic"
+             , hMinLibertiesWeight = (7 :: Int) &= typ "INT"
+                                &= help "Weight used for minimum liberties in heuristic"
+             , hLibertiesWeight = (3 :: Int) &= typ "INT"
+                                &= help "Weight used for liberties in heuristic"
+             , hChainCountWeight = (1 :: Int) &= typ "INT"
+                                &= help "Weight used for group count in heuristic"
+             , hCenterWeight = (5 :: Int) &= typ "INT"
+                                &= help "Weight used for center moves in heuristic"
+             , initialKomi = (7.5 :: Float) &= typ "FLOAT"
+                             &= help "Initial komi value (usually overridden via GTP)"
+             , initialBoardsize = (9 :: Int) &= typ "INT"
+                             &= help "Initial boardsize (usually overridden via GTP)"
+             }
+                    &= program "kurt"
+                    &= summary "Computer Go program. Implemented as a GTP server to be run from a GTP client like gogui or kgsGTP."

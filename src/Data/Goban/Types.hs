@@ -1,4 +1,4 @@
-{-# OPTIONS -O2 -Wall -Werror -Wwarn #-}
+{-# OPTIONS -Wall -Werror -Wwarn #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 
 {- |
@@ -20,7 +20,6 @@ module Data.Goban.Types ( Move(..)
                         , Stone(..)
                         , Color(..)
                         , Vertex
-                        , Coord1
                         , Boardsize
                         , Score
 
@@ -43,10 +42,10 @@ module Data.Goban.Types ( Move(..)
                         ) where
 
 
-import Data.Char (chr, ord, toUpper)
-import Data.Set (Set)
-import Data.Tree.UCT.GameTree (UCTMove)
-import Control.DeepSeq (NFData)
+import           Control.DeepSeq        (NFData)
+import           Data.Char              (chr, ord, toUpper)
+import           Data.Set               (Set)
+import           Data.Tree.UCT.GameTree (UCTMove)
 
 
 data Move = Move Stone
@@ -106,7 +105,6 @@ type VertexSet = Set Vertex
 type Vertex = (Coord, Coord)
 
 type Coord = Int
-type Coord1 = Int
 
 type Boardsize = Int
 
@@ -140,10 +138,10 @@ borderVertices n =
     [(x, y) | x <- [0, n + 1], y <- [0 .. n + 1] ]
     ++ [(x, y) | x <- [1 .. n], y <- [0, n + 1] ]
 
-{-# INLINE adjacentVertices #-}
 adjacentVertices :: Vertex -> [Vertex]
 adjacentVertices (x, y) =
     [(x,y-1),(x-1,y),(x+1,y),(x,y+1)]
+{-# INLINE adjacentVertices #-}
 
 
 -- {-# INLINE adjacentVerticesInBounds #-}

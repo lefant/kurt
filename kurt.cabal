@@ -31,7 +31,6 @@ library
   build-depends:
                   base >= 3 && < 5
                  ,parsec >= 3
-                 ,haskell98
                  ,random
                  ,mwc-random
                  ,primitive
@@ -39,11 +38,12 @@ library
                  ,rosezipper < 0.2
                  ,array
                  ,time
-                 ,cmdargs < 0.2
+                 ,cmdargs
+                 ,unordered-containers
                  ,strict-concurrency
                  ,deepseq
-  ghc-options: -O2 -threaded
-  ghc-prof-options: -O2 -threaded -auto-all
+  ghc-options: -O2
+  ghc-prof-options: -auto-all
 
 executable kurt
   main-is:        kurt.hs
@@ -51,18 +51,18 @@ executable kurt
   build-depends:
                   base >= 3 && < 5
                  ,parsec >= 3
-                 ,haskell98
                  ,random
                  ,mwc-random
                  ,containers >= 0.3
                  ,rosezipper < 0.2
                  ,time
-                 ,cmdargs < 0.2
+                 ,cmdargs
+                 ,unordered-containers
                  ,strict-concurrency
                  ,deepseq
-  ghc-options: -O2 -threaded
-  ghc-prof-options: -O2 -threaded -auto-all -caf-all
+  ghc-options: -O2
+  ghc-prof-options: -auto-all -caf-all
 
 source-repository head
   type:     git
-  location: git://git.lefant.net/kurt.git
+  location: git://github.com/lefant/kurt

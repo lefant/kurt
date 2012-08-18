@@ -1,4 +1,4 @@
-{-# OPTIONS -O2 -Wall -Werror -Wwarn #-}
+{-# OPTIONS -Wall -Werror -Wwarn #-}
 
 {- |
    Module     : Kurt.MainLoop
@@ -15,31 +15,46 @@ this module runs the main gtp handling loop via startLoop.
 
 module Kurt.MainLoop ( startLoop
                      ) where
-    
-
-import Control.Arrow ((&&&))
-import System.IO
-import Text.Parsec.String (Parser)
-import Data.List
-import qualified Data.Map as M (assocs)
-import Data.Tree (rootLabel, subForest)
-import Data.Tree.Zipper (tree)
-import Text.Printf (printf)
 
 
-import Network.GoTextProtocol2.Server.Parser
-import Network.GoTextProtocol2.Types
-import Data.Goban.GameState (GameState(..), GameStateStuff(..), newGameState, showGameState, scoreGameState, makeStonesAndLibertyHeuristic, nextMoves, nextMoveColor, thisMoveColor)
-import Data.Goban.Types (gtpShowMove, gtpShowVertex, moveColor, isStoneMove, Color(..))
-import Data.Goban.Utils (influenceFromWinrate)
-import Data.Goban.Incremental (allStones)
-
-import Kurt.Config
-import Kurt.GoEngine (EngineState(..), newEngineState, updateEngineState, newUctTree, genMove, simulatePlayout)
-import Data.Tree.UCT.GameTree (MoveNode(..), newRaveMap)
+import           Control.Arrow                         ((&&&))
+import           Data.List
+import qualified Data.Map                              as M (assocs)
+import           Data.Tree                             (rootLabel, subForest)
+import           Data.Tree.Zipper                      (tree)
+import           System.IO
+import           Text.Parsec.String                    (Parser)
+import           Text.Printf                           (printf)
 
 
-import Debug.TraceOrId (trace)
+import           Data.Goban.GameState                  (GameState (..),
+                                                        GameStateStuff (..),
+                                                        makeStonesAndLibertyHeuristic,
+                                                        newGameState,
+                                                        nextMoveColor,
+                                                        nextMoves,
+                                                        scoreGameState,
+                                                        showGameState,
+                                                        thisMoveColor)
+import           Data.Goban.Incremental                (allStones)
+import           Data.Goban.Types                      (Color (..), gtpShowMove,
+                                                        gtpShowVertex,
+                                                        isStoneMove, moveColor)
+import           Data.Goban.Utils                      (influenceFromWinrate)
+import           Network.GoTextProtocol2.Server.Parser
+import           Network.GoTextProtocol2.Types
+
+import           Data.Tree.UCT.GameTree                (MoveNode (..),
+                                                        newRaveMap)
+import           Kurt.Config
+import           Kurt.GoEngine                         (EngineState (..),
+                                                        genMove, newEngineState,
+                                                        newUctTree,
+                                                        simulatePlayout,
+                                                        updateEngineState)
+
+
+import           Debug.TraceOrId                       (trace)
 
 
 type CommandHandler = [Argument] -> EngineState -> IO (Either String (String, EngineState))
@@ -212,7 +227,7 @@ cmd_clear_board [] state =
                             , getRaveMap = newRaveMap
                             })
 cmd_clear_board _ _ = error "cmd_clear_board called with illegal argument type"
- 
+
 cmd_komi :: CommandHandler
 cmd_komi [FloatArgument f] state =
     return $

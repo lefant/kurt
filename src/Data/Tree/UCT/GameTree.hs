@@ -1,4 +1,4 @@
-{-# OPTIONS -O2 -Wall -Werror -Wwarn #-}
+{-# OPTIONS -Wall -Werror -Wwarn #-}
 {-# OPTIONS_GHC -funbox-strict-fields #-}
 {-# LANGUAGE FlexibleInstances #-}
 
@@ -32,10 +32,10 @@ module Data.Tree.UCT.GameTree ( UCTTreeLoc
                               ) where
 
 
-import Data.Tree (Tree(..), Forest)
-import Data.Tree.Zipper (TreeLoc)
-import qualified Data.Map as M
-import Text.Printf (printf)
+import qualified Data.Map         as M
+import           Data.Tree        (Forest, Tree (..))
+import           Data.Tree.Zipper (TreeLoc)
+import           Text.Printf      (printf)
 
 -- import Debug.TraceOrId (trace)
 
