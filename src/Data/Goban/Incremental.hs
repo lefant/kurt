@@ -207,15 +207,14 @@ newGobanMap n =
 
 showGobanMap :: GobanMap -> String
 showGobanMap goban =
-    unlines $ reverse
-                ([xLegend]
+    unlines $ ([xLegend]
                  ++ zipWith (++) ys
                         (zipWith (++) (map (unwords . map show) ls) ys)
                  ++ [xLegend])
     where
-      ls = transpose $ unfoldr nLines $ map idState chainIds
+      ls = unfoldr nLines $ map idState chainIds
       nLines xs = if null xs then Nothing else Just $ splitAt n xs
-      ys = map (printf " %2d ") [1 .. n]
+      ys = map (printf " %2d ") $ reverse [1 .. n]
       xLegend = "    " ++ unwords (map ((: []) . xToLetter) [1 .. n])
       n = n1 - 1
       chainIds = filter (/= borderChainId) $ map lookupVertex $ allVertices n1
