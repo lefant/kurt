@@ -35,7 +35,7 @@ module Data.Goban.Incremental ( Chain(..)
 
 
 
-import Data.Maybe (fromMaybe, catMaybes)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.List (foldl', partition, unfoldr, transpose, nub, sort)
 import Text.Printf (printf)
 
@@ -92,10 +92,9 @@ type ChainNeighIds = IS.IntSet
 
 isPotentialFullEye :: GobanMap -> Stone -> Bool
 isPotentialFullEye g (Stone p color) =
-  if all isSameColorOrBorder as
-  then (opponentDiagonalCount == 0) ||
-       ((opponentDiagonalCount == 1) && (borderDiagonalCount == 0))
-  else False
+  all isSameColorOrBorder as &&
+          ((opponentDiagonalCount == 0) ||
+           ((opponentDiagonalCount == 1) && (borderDiagonalCount == 0)))
   where
     opponentDiagonalCount = length $ filter isOtherColor ds
     borderDiagonalCount = length $ filter isBorder ds
@@ -129,7 +128,7 @@ adjacentStones :: GobanMap -> Vertex -> [Stone]
 adjacentStones g p = verticesToStones g $ adjacentVertices p
 
 verticesToStones :: GobanMap -> [Vertex] -> [Stone]
-verticesToStones g ps = catMaybes $ map (vertexStone g) ps
+verticesToStones g = mapMaybe (vertexStone g)
 
 
 
@@ -208,7 +207,7 @@ showGobanMap goban =
     unlines $ reverse
                 ([xLegend]
                  ++ zipWith (++) ys
-                        (zipWith (++) (map (unwords . (map show)) ls) ys)
+                        (zipWith (++) (map (unwords . map show) ls) ys)
                  ++ [xLegend])
     where
       ls = transpose $ unfoldr nLines $ map idState chainIds
@@ -217,16 +216,16 @@ showGobanMap goban =
       xLegend = "    " ++ unwords (map ((: []) . xToLetter) [1 .. n])
       n = n1 - 1
       chainIds = filter (/= borderChainId) $ map lookupVertex $ allVertices n1
-      lookupVertex v = vertexId goban v
+      lookupVertex = vertexId goban
       (n1, _) = maximum $ H.keys goban
 
 
 isSuicide :: GobanMap -> ChainMap -> Stone -> Bool
 isSuicide cg cm (Stone p color) =
-  (null adjFrees
-   && all (S.null . S.delete p . chainLiberties . idChain "isSuicide ourIds" cm) ourIds'
-   && all (not . S.null . S.delete p . chainLiberties . idChain "isSuicide neighIds" cm) neighIds')
-  where
+    null adjFrees &&
+         all (S.null . S.delete p . chainLiberties . idChain "isSuicide ourIds" cm) ourIds' &&
+             all (not . S.null . S.delete p . chainLiberties . idChain "isSuicide neighIds" cm) neighIds'
+    where
     adjPs = filter (/= borderChainId) $ map (vertexId cg) $ adjacentVertices p
 
     -- partition out free vertices
