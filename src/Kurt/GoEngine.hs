@@ -24,26 +24,20 @@ module Kurt.GoEngine ( genMove
                      ) where
 
 import           Control.Arrow               (second)
---import           Control.Concurrent             (forkIO, threadDelay)
---import           Control.Concurrent.Chan.Strict (Chan, isEmptyChan, newChan,
---                                                 readChan, writeChan)
 import           Control.Monad               (liftM)
 import           Control.Monad.Primitive     (PrimState)
-import           Control.Monad.ST            (ST, stToIO)
-import           Control.Parallel.Strategies (parBuffer, rdeepseq, using)
+import           Control.Monad.ST            (ST, runST, stToIO)
+import           Control.Parallel.Strategies (parMap, rdeepseq)
 import           Data.List                   ((\\))
-import qualified Data.Map                    as M
+import qualified Data.Map                    as M (map)
 import           Data.Maybe                  (fromMaybe)
 import           Data.Time.Clock             (UTCTime (..), getCurrentTime,
                                               picosecondsToDiffTime)
-import           System.Random.MWC           (Gen, Seed, restore, save, uniform,
-                                              withSystemRandom)
-
--- import qualified Data.Map as M (empty, insert)
 import           Data.Tree                   (rootLabel)
 import           Data.Tree.Zipper            (findChild, fromTree, hasChildren,
                                               tree)
-
+import           System.Random.MWC           (Gen, Seed, restore, save, uniform,
+                                              withSystemRandom)
 
 import           Data.Goban.GameState
 import           Data.Goban.Types            (Color (..), Move (..), Score,
