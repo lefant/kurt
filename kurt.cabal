@@ -24,19 +24,18 @@ extra-source-files:
 executable kurt
   main-is:        kurt.hs
   hs-source-dirs: src
-  build-depends:
-                  base >= 3 && < 5
-                 ,parsec >= 3
-                 ,random
-                 ,mwc-random
-                 ,primitive
-                 ,containers >= 0.3
-                 ,rosezipper < 0.2
-                 ,time
-                 ,cmdargs
-                 ,unordered-containers
-                 ,strict-concurrency
-                 ,deepseq
+  build-depends: base >= 3 && < 5
+               , cmdargs
+               , containers >= 0.3
+               , deepseq
+               , mwc-random
+               , parallel
+               , parsec >= 3
+               , primitive
+               , random
+               , rosezipper < 0.2
+               , time
+               , unordered-containers
   ghc-options: -O2 -threaded -rtsopts
   ghc-prof-options: -auto-all -caf-all
 
