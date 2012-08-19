@@ -222,29 +222,27 @@ runUCT initLoc rootGameState initRaveMap config deadline = do
            if tCount' < (maxThreads config)
            then
              (do
-                 (loc'', path, leafGameState) <- nextNode state'
-                 _tId <- forkIO $ runOneRandomIO leafGameState path resultQ
-                 uctLoop (loc'', raveMap') (n + 1) (tCount' + 1) resultQ)
+               let (loc'', path, leafGameState) = nextNode state'
+               _tId <- forkIO $ runOneRandomIO leafGameState path resultQ
+               uctLoop (loc'', raveMap') (n + 1) (tCount' + 1) resultQ)
            else
              (do
-                 threadDelay 10000
-                 uctLoop state' n tCount' resultQ))
+               threadDelay 10000
+               uctLoop state' n tCount' resultQ))
 
-      nextNode :: LoopState -> IO (UCTTreeLoc Move, [Move], GameState)
-      nextNode (!loc, !raveMap) = do
-        (loc', path) <- return $ selectLeafPath
-                        (policyRaveUCB1 (uctExplorationPercent config) (raveWeight config) raveMap) loc
-                        -- (policyUCB1 (uctExploration config)) loc
+      nextNode :: LoopState -> (UCTTreeLoc Move, [Move], GameState)
+      nextNode (!loc, !raveMap) =
+          (loc'', path, leafGameState)
+          where
+            loc'' = backpropagate (\_x -> 0) updateNodeVisits $ expandNode loc' slHeu moves
+            moves = nextMoves leafGameState $ nextMoveColor $ getState leafGameState
+            leafGameState = getLeafGameState rootGameState path
+            (loc', path) = selectLeafPath policy loc
+            policy = policyRaveUCB1 (uctExplorationPercent config) (raveWeight config) raveMap
+            slHeu = makeStonesAndLibertyHeuristic leafGameState config
 
-        let leafGameState = getLeafGameState rootGameState path
-        let slHeu = makeStonesAndLibertyHeuristic leafGameState config
 
-        let moves = nextMoves leafGameState $ nextMoveColor $ getState leafGameState
 
-        let loc'' = backpropagate (\_x -> 0) updateNodeVisits $ expandNode loc' slHeu moves
-        -- let loc'' = expandNode loc' constantHeuristic moves
-
-        return (loc'', path, leafGameState)
 
 uctLoopFlusher :: LoopState -> Int -> Chan Result -> IO LoopState
 uctLoopFlusher !state 0 _resultQ = return state
