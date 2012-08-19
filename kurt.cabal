@@ -35,7 +35,9 @@ executable kurt
                  ,time
                  ,cmdargs
                  ,unordered-containers
-  ghc-options: -O2 -rtsopts
+                 ,strict-concurrency
+                 ,deepseq
+  ghc-options: -O2 -threaded -rtsopts
   ghc-prof-options: -auto-all -caf-all
 
 source-repository head

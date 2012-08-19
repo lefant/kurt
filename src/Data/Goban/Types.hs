@@ -42,10 +42,10 @@ module Data.Goban.Types ( Move(..)
                         ) where
 
 
+import           Control.DeepSeq        (NFData)
 import           Data.Char              (chr, ord, toUpper)
 import           Data.Set               (Set)
 import           Data.Tree.UCT.GameTree (UCTMove)
-
 
 
 data Move = Move Stone
@@ -60,6 +60,7 @@ instance Show Move where
 
 instance UCTMove Move
 
+instance NFData Move
 
 
 data Stone = Stone { stoneVertex :: !Vertex

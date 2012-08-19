@@ -22,6 +22,9 @@ module Data.Tree.UCT ( selectLeafPath
                      , constantHeuristic
                      , backpropagate
                      , updateRaveMap
+                     , updateNodeVisits
+                     , updateNodeValue
+                     , getLeaf
                      , UCTHeuristic
                      , UCTEvaluator
                      ) where
@@ -32,8 +35,9 @@ import qualified Data.Map               as M
 import           Data.Maybe             (fromJust, fromMaybe)
 import           Data.Ord               (comparing)
 import           Data.Tree              (Tree (..))
-import           Data.Tree.Zipper       (TreeLoc, getChild, hasChildren,
-                                         modifyLabel, modifyTree, parent, tree)
+import           Data.Tree.Zipper       (TreeLoc, findChild, getChild,
+                                         hasChildren, modifyLabel, modifyTree,
+                                         parent, tree)
 
 -- import Debug.TraceOrId (trace)
 
@@ -161,12 +165,17 @@ pathToLeaf initLoc =
     where
       path = reverse $ unfoldr f initLoc
       f loc =
-          case parent loc of
-            Just loc' ->
-                Just (rootLabel $ tree loc, loc')
-            Nothing ->
-                Nothing
+        fmap (\loc' -> (rootLabel $ tree loc, loc')) $ parent loc
 
+getLeaf :: UCTMove a => UCTTreeLoc a -> [a] -> UCTTreeLoc a
+getLeaf root moves =
+  foldl' chooseChild root moves
+  where
+    chooseChild loc move =
+      case findChild ((move ==) . nodeMove . rootLabel) loc of
+        Just loc' -> loc'
+        Nothing -> error ("selectChild failed to find move at loc: " ++
+                          show (move, loc))
 
 -- expansion
 ----------------------------------
@@ -206,8 +215,8 @@ constantHeuristic _move = (0.5, 1)
 
 
 -- updates node with a new value
-updateNodeValue :: UCTMove a => Value -> MoveNode a -> MoveNode a
-updateNodeValue value node =
+updateNode :: UCTMove a => Value -> MoveNode a -> MoveNode a
+updateNode value node =
     -- trace ("updateNodeValue "
     --        ++ show (node, node', value)
     --       )
@@ -223,11 +232,26 @@ updateNodeValue value node =
       newVisits = succ oldVisits
       oldVisits = nodeVisits node
 
+updateNodeValue :: UCTMove a => Value -> MoveNode a -> MoveNode a
+updateNodeValue value node =
+    node'
+    where
+      node' = node { nodeValue = newValue }
+      newValue = ((oldValue * fromIntegral oldVisits) + value)
+                       / fromIntegral newVisits
+      oldValue = nodeValue node
+      oldVisits = pred newVisits
+      newVisits = nodeVisits node
+
+updateNodeVisits :: UCTMove a => Value -> MoveNode a -> MoveNode a
+updateNodeVisits _value node = node { nodeVisits = succ $ nodeVisits node }
+
 
 type UCTEvaluator a = a -> Value
+type UCTUpdater a = Value -> MoveNode a -> MoveNode a
 
-backpropagate :: UCTMove a => UCTEvaluator a -> UCTTreeLoc a -> UCTTreeLoc a
-backpropagate evaluator loc =
+backpropagate :: UCTMove a => UCTEvaluator a -> UCTUpdater a -> UCTTreeLoc a -> UCTTreeLoc a
+backpropagate evaluator updater loc =
     case parent loc' of
       Nothing ->
           -- trace "backpropagate reached root node"
@@ -235,9 +259,9 @@ backpropagate evaluator loc =
       Just parentLoc ->
           -- trace ("backpropagate "
           --        ++ show ((nodeMove $ rootLabel $ tree loc), value))
-          backpropagate evaluator parentLoc
+          backpropagate evaluator updater parentLoc
     where
-      loc' = modifyLabel (updateNodeValue value) loc
+      loc' = modifyLabel (updater value) loc
       value = evaluator (nodeMove $ rootLabel $ tree loc)
 
 

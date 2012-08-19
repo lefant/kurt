@@ -19,13 +19,13 @@ module Kurt.Config ( KurtConfig(..)
                    ) where
 
 
-import           System.Console.CmdArgs.Implicit
-
 import           Data.Goban.Types                (Score)
+import           System.Console.CmdArgs.Implicit
 
 
 data KurtConfig = KurtConfig { maxPlayouts           :: Int
                              , maxTime               :: Int
+                             , maxThreads            :: Int
                              , uctExplorationPercent :: Int
                              , raveWeight            :: Int
                              , hCaptureWeight        :: Int
@@ -38,11 +38,12 @@ data KurtConfig = KurtConfig { maxPlayouts           :: Int
                              }
                   deriving (Show, Eq, Data, Typeable)
 
-
 kurtDefaultConfig :: KurtConfig
 kurtDefaultConfig = KurtConfig {
                maxPlayouts = (100000 :: Int) &= typ "INT"
                              &= help "Max simulations run during move generation"
+             , maxThreads = (10 :: Int) &= typ "INT"
+                         &= help "Max number of threads spawned for playouts"
              , maxTime = (5000 :: Int) &= typ "INT"
                          &= help "Max time used during move generation (ms)"
              , uctExplorationPercent = def &= opt (10 :: Int) &= typ "INT"

@@ -23,35 +23,39 @@ module Kurt.GoEngine ( genMove
                      , newUctTree
                      ) where
 
+import           Control.Arrow                  (second)
+import           Control.Concurrent             (forkIO, threadDelay)
+import           Control.Concurrent.Chan.Strict (Chan, isEmptyChan, newChan,
+                                                 readChan, writeChan)
+import           Control.Monad                  (liftM)
+import           Control.Monad.Primitive        (PrimState)
+import           Control.Monad.ST               (ST, stToIO)
+import           Data.List                      ((\\))
+import qualified Data.Map                       as M
+import           Data.Maybe                     (fromMaybe)
+import           Data.Time.Clock                (UTCTime (..), getCurrentTime,
+                                                 picosecondsToDiffTime)
+import           System.Random.MWC              (Gen, Seed, restore, save,
+                                                 uniform, withSystemRandom)
 
-import           Control.Arrow           (second)
-import           Control.Monad           (liftM)
-import           Control.Monad.Primitive (PrimState)
-import           Control.Monad.ST        (RealWorld, ST, stToIO)
-import           Data.List               ((\\))
-import qualified Data.Map                as M
-import           Data.Maybe              (fromMaybe)
-import           Data.Time.Clock         (UTCTime (..), getCurrentTime,
-                                          picosecondsToDiffTime)
-import           System.Random.MWC       (Gen, Seed, restore, save, uniform,
-                                          withSystemRandom)
 -- import qualified Data.Map as M (empty, insert)
-import           Data.Tree               (rootLabel)
-import           Data.Tree.Zipper        (findChild, fromTree, hasChildren,
-                                          tree)
+import           Data.Tree                      (rootLabel)
+import           Data.Tree.Zipper               (findChild, fromTree,
+                                                 hasChildren, tree)
 
 
 import           Data.Goban.GameState
-import           Data.Goban.Types        (Color (..), Move (..), Score,
-                                          Stone (..), Vertex)
-import           Data.Goban.Utils        (rateScore, winningScore)
+import           Data.Goban.Types               (Color (..), Move (..), Score,
+                                                 Stone (..), Vertex)
+import           Data.Goban.Utils               (rateScore, winningScore)
 import           Kurt.Config
 
 import           Data.Tree.UCT
-import           Data.Tree.UCT.GameTree  (MoveNode (..), RaveMap, UCTTreeLoc,
-                                          newMoveNode, newRaveMap)
+import           Data.Tree.UCT.GameTree         (MoveNode (..), RaveMap,
+                                                 UCTTreeLoc, newMoveNode,
+                                                 newRaveMap)
 
-import           Debug.TraceOrId         (trace)
+import           Debug.TraceOrId                (trace)
 
 -- import Data.Tree (drawTree)
 
@@ -64,7 +68,10 @@ data EngineState = EngineState {
     , getConfig       :: !KurtConfig
     }
 
+-- result from playout thread: score, playedMoves, path to startnode in tree
+type Result = (Score, [Move], [Move])
 
+type LoopState = (UCTTreeLoc Move, RaveMap Move)
 
 
 newEngineState :: KurtConfig -> EngineState
@@ -130,17 +137,13 @@ genMove eState color = do
        then return (Pass color, eState)
        else return (Resign color, eState)
    else (do
-          seed <- withSystemRandom (save :: Gen (PrimState IO) -> IO Seed)
-          rGen <- stToIO $ restore seed
-
-
           -- -- initialize rave map with random values to avoid all moves
           -- -- ranked equal in some situation
           -- initRaveMap <- stToIO $ foldM (u rGen) M.empty
           --                [ Move (Stone p c) | p <- (allVertices (boardsize gState)), c <- [Black, White]]
 
 
-          (loc', raveMap') <- runUCT loc gState raveMap config rGen deadline
+          (loc', raveMap') <- runUCT loc gState raveMap config deadline
           -- (getUctC eState) (getRaveWeight eState) (getHeuWeights eState) rGen deadline (maxRuns eState)
           let eState' = eState { getUctTree = loc', getRaveMap = raveMap' }
 
@@ -200,19 +203,35 @@ runUCT :: UCTTreeLoc Move
        -> GameState
        -> RaveMap Move
        -> KurtConfig
-       -> Gen RealWorld
        -> UTCTime
-       -> IO (UCTTreeLoc Move, RaveMap Move)
-runUCT initLoc rootGameState initRaveMap config rGen deadline =
-  uctLoop initLoc initRaveMap 0
-  where
-    uctLoop :: UCTTreeLoc Move -> RaveMap Move -> Int
-               -> IO (UCTTreeLoc Move, RaveMap Move)
-    uctLoop !loc !raveMap n
-      | n >= maxPlayouts config = return (loc, raveMap)
-      | otherwise = do
-        let done = False
+       -> IO LoopState
+runUCT initLoc rootGameState initRaveMap config deadline = do
+  resultQ <- newChan
+  uctLoop (initLoc, initRaveMap) 0 0 resultQ
+    where
+      uctLoop :: LoopState -> Int -> Int -> Chan Result -> IO LoopState
+      uctLoop !state !n !tCount resultQ = do
+        (state'@(_loc', raveMap'), tCount') <- flushResult state tCount resultQ
 
+        let maxRuns = n >= (maxPlayouts config)
+        now <- getCurrentTime
+        let timeIsUp = (now > deadline)
+        (if maxRuns || timeIsUp
+         then uctLoopFlusher state' tCount' resultQ
+         else
+           if tCount' < (maxThreads config)
+           then
+             (do
+                 (loc'', path, leafGameState) <- nextNode state'
+                 _tId <- forkIO $ runOneRandomIO leafGameState path resultQ
+                 uctLoop (loc'', raveMap') (n + 1) (tCount' + 1) resultQ)
+           else
+             (do
+                 threadDelay 10000
+                 uctLoop state' n tCount' resultQ))
+
+      nextNode :: LoopState -> IO (UCTTreeLoc Move, [Move], GameState)
+      nextNode (!loc, !raveMap) = do
         (loc', path) <- return $ selectLeafPath
                         (policyRaveUCB1 (uctExplorationPercent config) (raveWeight config) raveMap) loc
                         -- (policyUCB1 (uctExploration config)) loc
@@ -222,46 +241,62 @@ runUCT initLoc rootGameState initRaveMap config rGen deadline =
 
         let moves = nextMoves leafGameState $ nextMoveColor $ getState leafGameState
 
-        let loc'' = expandNode loc' slHeu moves
+        let loc'' = backpropagate (\_x -> 0) updateNodeVisits $ expandNode loc' slHeu moves
         -- let loc'' = expandNode loc' constantHeuristic moves
 
-        (oneState, playedMoves) <- stToIO $ runOneRandom leafGameState rGen
+        return (loc'', path, leafGameState)
 
-        let score = scoreGameState oneState
+uctLoopFlusher :: LoopState -> Int -> Chan Result -> IO LoopState
+uctLoopFlusher !state 0 _resultQ = return state
+uctLoopFlusher !state !tCount resultQ = do
+  _ <- return $ trace ("uctLoopFlusher remaining threads " ++ show tCount)
+  (state', tCount') <- flushResult state tCount resultQ
+  threadDelay 10000
+  uctLoopFlusher state' tCount' resultQ
 
-        let raveMap' = updateRaveMap raveMap (rateScore score) $ drop (length playedMoves `div` 3) playedMoves
+flushResult :: LoopState -> Int -> Chan Result -> IO (LoopState, Int)
+flushResult !state !tCount resultQ = do
+  empty <- isEmptyChan resultQ
+  (if empty
+   then return (state, tCount)
+   else (do
+            result <- readChan resultQ
+            let state' = updateTreeResult state result
+            flushResult state' (tCount - 1) resultQ))
 
-        let loc''' = backpropagate (rateScore score) loc''
 
-        now <- getCurrentTime
-        let timeIsUp = (now > deadline)
-        (if done || timeIsUp
-         then return (loc''', raveMap')
-         else uctLoop loc''' raveMap' (n + 1))
+updateTreeResult :: LoopState -> Result -> LoopState
+updateTreeResult (!loc, !raveMap) (!score, !playedMoves, !path) =
+  (loc', raveMap')
+    where
+      raveMap' = updateRaveMap raveMap (rateScore score) $ drop (length playedMoves `div` 3) playedMoves
+      loc' = backpropagate (rateScore score) updateNodeValue $ getLeaf loc path
 
 
+runOneRandomIO :: GameState -> [Move] -> Chan Result -> IO ()
+runOneRandomIO !gameState !path !resultQ = do
+  seed <- withSystemRandom (save :: Gen (PrimState IO) -> IO Seed)
+  (endState, playedMoves) <- stToIO $ runOneRandom gameState seed
+  score <- return $ scoreGameState endState
+  writeChan resultQ (score, playedMoves, path)
 
 
 
 simulatePlayout :: GameState -> IO [Move]
 simulatePlayout gState = do
   seed <- withSystemRandom (save :: Gen (PrimState IO) -> IO Seed)
-  rGen <- stToIO $ restore seed
-
   let gState' = getLeafGameState gState []
-
-  (oneState, playedMoves) <- stToIO $ runOneRandom gState' rGen
+  (oneState, playedMoves) <- stToIO $ runOneRandom gState' seed
   let score = scoreGameState oneState
-
   trace ("simulatePlayout " ++ show score) $ return ()
-
   return $ reverse playedMoves
 
 
 
-runOneRandom :: GameState -> Gen s -> ST s (GameState, [Move])
-runOneRandom initState rGenInit =
-    run initState 0 rGenInit []
+runOneRandom :: GameState -> Seed -> ST s (GameState, [Move])
+runOneRandom initState seed = do
+  rGen <- restore seed
+  run initState 0 rGen []
     where
       run :: GameState -> Int -> Gen s -> [Move] -> ST s (GameState, [Move])
       run state 1000 _ moves = return (trace ("runOneRandom not done after 1000 moves " ++ show moves) state, [])
