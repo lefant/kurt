@@ -63,11 +63,12 @@ data EngineState = EngineState {
     , getConfig       :: !KurtConfig
     }
 
--- result from playout thread: score, playedMoves, path to startnode in tree
-type Result = (Score, [Move], [Move])
-
 type LoopState = (UCTTreeLoc Move, RaveMap Move)
 
+-- result from playout: score, playedMoves, path to startnode in tree
+type Result = (Score, [Move], [Move])
+-- request for playout: gamestate, path to startnode in tree, seed
+type Request = (GameState, [Move], Seed)
 
 
 newEngineState :: KurtConfig -> EngineState
