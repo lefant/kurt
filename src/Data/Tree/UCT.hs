@@ -212,26 +212,6 @@ constantHeuristic _move = (0.5, 1)
 -- backpropagation section
 -----------------------------------
 
-
-
--- updates node with a new value
-updateNode :: UCTMove a => Value -> MoveNode a -> MoveNode a
-updateNode value node =
-    -- trace ("updateNodeValue "
-    --        ++ show (node, node', value)
-    --       )
-    node'
-    where
-      node' =
-          node { nodeVisits = newVisits
-               , nodeValue = newValue
-               }
-      newValue = ((oldValue * fromIntegral oldVisits) + value)
-                       / fromIntegral newVisits
-      oldValue = nodeValue node
-      newVisits = succ oldVisits
-      oldVisits = nodeVisits node
-
 updateNodeValue :: UCTMove a => Value -> MoveNode a -> MoveNode a
 updateNodeValue value node =
     node'
