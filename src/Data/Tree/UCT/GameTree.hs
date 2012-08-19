@@ -32,6 +32,7 @@ module Data.Tree.UCT.GameTree ( UCTTreeLoc
                               ) where
 
 
+import           Control.DeepSeq  (NFData)
 import qualified Data.Map         as M
 import           Data.Tree        (Forest, Tree (..))
 import           Data.Tree.Zipper (TreeLoc)
@@ -57,6 +58,9 @@ data MoveNode a = MoveNode { nodeMove   :: !a
                            , nodeValue  :: !Value
                            , nodeVisits :: !Count
                            }
+
+instance UCTMove a => NFData (MoveNode a)
+instance UCTMove a => NFData (TreeLoc (MoveNode a))
 
 instance (UCTMove a) => Show (MoveNode a) where
     show node =
