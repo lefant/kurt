@@ -173,86 +173,76 @@ bestMoveFromLoc loc state score =
 
 
 
-
 runUCT :: UCTTreeLoc Move
        -> GameState
        -> RaveMap Move
        -> KurtConfig
        -> UTCTime
+       -> Seed
        -> IO LoopState
-runUCT initLoc rootGameState initRaveMap config deadline = do
-  resultQ <- newChan
-  uctLoop (initLoc, initRaveMap) 0 0 resultQ
+runUCT initLoc rootGameState initRaveMap config deadline seed00 = do
+  uctLoop stateStream0 0
     where
-      uctLoop :: LoopState -> Int -> Int -> Chan Result -> IO LoopState
-      uctLoop !state !n !tCount resultQ = do
-        (state'@(_loc', raveMap'), tCount') <- flushResult state tCount resultQ
-
+      uctLoop :: [LoopState] -> Int -> IO LoopState
+      uctLoop [] _ = return (initLoc, initRaveMap)
+      uctLoop (st : stateStream) !n = do
+        _ <- return $! st
         let maxRuns = n >= (maxPlayouts config)
         now <- getCurrentTime
         let timeIsUp = (now > deadline)
         (if maxRuns || timeIsUp
-         then uctLoopFlusher state' tCount' resultQ
-         else
-           if tCount' < (maxThreads config)
-           then
-             (do
-               let (loc'', path, leafGameState) = nextNode state'
-               _tId <- forkIO $ runOneRandomIO leafGameState path resultQ
-               uctLoop (loc'', raveMap') (n + 1) (tCount' + 1) resultQ)
-           else
-             (do
-               threadDelay 10000
-               uctLoop state' n tCount' resultQ))
+         then return st
+         else uctLoop stateStream (n + 1))
 
-      nextNode :: LoopState -> (UCTTreeLoc Move, [Move], GameState)
-      nextNode (!loc, !raveMap) =
-          (loc'', path, leafGameState)
+      stateStream0 = loop0 seed00 (initLoc, initRaveMap)
+
+      loop0 :: Seed -> LoopState -> [LoopState]
+      loop0 seed0 st0 =
+          map (\(_, st, _) -> st) $ iterate loop (seed0, st0, [])
           where
-            loc'' = backpropagate (\_x -> 0) updateNodeVisits $ expandNode loc' slHeu moves
-            moves = nextMoves leafGameState $ nextMoveColor $ getState leafGameState
-            leafGameState = getLeafGameState rootGameState path
-            (loc', path) = selectLeafPath policy loc
-            policy = policyRaveUCB1 (uctExplorationPercent config) (raveWeight config) raveMap
-            slHeu = makeStonesAndLibertyHeuristic leafGameState config
+            loop (seed, st, results0) =
+                (seed', st'', results)
+                where
+                  st'' = updater st' r
+                  r : results = results0 ++ (parMap rdeepseq runOne requests)
+                  (st', seed', requests) = requestor st seed reqNeeded
+                  reqNeeded = max 2 $ maxThreads config - length results0
 
+      updater :: LoopState -> Result -> LoopState
+      updater !st !res =
+          updateTreeResult st res
 
+      requestor :: LoopState -> Seed -> Int -> (LoopState, Seed, [Request])
+      requestor !st0 seed0 !n =
+          last $ take n $ iterate r (st0, seed0, [])
+          where
+            r :: (LoopState, Seed, [Request]) -> (LoopState, Seed, [Request])
+            r (!st, seed, rs) = (st', seed', request : rs)
+                where
+                  seed' = incrSeed seed
+                  st' = (loc, raveMap)
+                  (_, raveMap) = st
+                  request = (leafGameState, path, seed)
+                  (loc, (leafGameState, path)) = nextNode st
 
-
-uctLoopFlusher :: LoopState -> Int -> Chan Result -> IO LoopState
-uctLoopFlusher !state 0 _resultQ = return state
-uctLoopFlusher !state !tCount resultQ = do
-  _ <- return $ trace ("uctLoopFlusher remaining threads " ++ show tCount)
-  (state', tCount') <- flushResult state tCount resultQ
-  threadDelay 10000
-  uctLoopFlusher state' tCount' resultQ
-
-flushResult :: LoopState -> Int -> Chan Result -> IO (LoopState, Int)
-flushResult !state !tCount resultQ = do
-  empty <- isEmptyChan resultQ
-  (if empty
-   then return (state, tCount)
-   else (do
-            result <- readChan resultQ
-            let state' = updateTreeResult state result
-            flushResult state' (tCount - 1) resultQ))
+      nextNode :: LoopState -> (UCTTreeLoc Move, (GameState, [Move]))
+      nextNode (!loc, !raveMap) =
+          (loc'', (leafGameState, path))
+              where
+                loc'' = backpropagate (\_x -> 0) updateNodeVisits $ expandNode loc' slHeu moves
+                moves = nextMoves leafGameState $ nextMoveColor $ getState leafGameState
+                leafGameState = getLeafGameState rootGameState path
+                (loc', path) = selectLeafPath policy loc
+                policy = policyRaveUCB1 (uctExplorationPercent config) (raveWeight config) raveMap
+                slHeu = makeStonesAndLibertyHeuristic leafGameState config
 
 
 updateTreeResult :: LoopState -> Result -> LoopState
 updateTreeResult (!loc, !raveMap) (!score, !playedMoves, !path) =
-  (loc', raveMap')
+    (loc', raveMap')
     where
       raveMap' = updateRaveMap raveMap (rateScore score) $ drop (length playedMoves `div` 3) playedMoves
       loc' = backpropagate (rateScore score) updateNodeValue $ getLeaf loc path
-
-
-runOneRandomIO :: GameState -> [Move] -> Chan Result -> IO ()
-runOneRandomIO !gameState !path !resultQ = do
-  seed <- withSystemRandom (save :: Gen (PrimState IO) -> IO Seed)
-  (endState, playedMoves) <- stToIO $ runOneRandom gameState seed
-  score <- return $ scoreGameState endState
-  writeChan resultQ (score, playedMoves, path)
-
 
 
 simulatePlayout :: GameState -> IO [Move]
@@ -265,6 +255,12 @@ simulatePlayout gState = do
   return $ reverse playedMoves
 
 
+runOne :: Request -> Result
+runOne (gameState, path, seed) =
+    (score, playedMoves, path)
+    where
+      score = scoreGameState endState
+      (endState, playedMoves) = runST $ runOneRandom gameState seed
 
 runOneRandom :: GameState -> Seed -> ST s (GameState, [Move])
 runOneRandom initState seed = do
