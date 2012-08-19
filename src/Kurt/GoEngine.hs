@@ -23,39 +23,40 @@ module Kurt.GoEngine ( genMove
                      , newUctTree
                      ) where
 
-import           Control.Arrow                  (second)
-import           Control.Concurrent             (forkIO, threadDelay)
-import           Control.Concurrent.Chan.Strict (Chan, isEmptyChan, newChan,
-                                                 readChan, writeChan)
-import           Control.Monad                  (liftM)
-import           Control.Monad.Primitive        (PrimState)
-import           Control.Monad.ST               (ST, stToIO)
-import           Data.List                      ((\\))
-import qualified Data.Map                       as M
-import           Data.Maybe                     (fromMaybe)
-import           Data.Time.Clock                (UTCTime (..), getCurrentTime,
-                                                 picosecondsToDiffTime)
-import           System.Random.MWC              (Gen, Seed, restore, save,
-                                                 uniform, withSystemRandom)
+import           Control.Arrow               (second)
+--import           Control.Concurrent             (forkIO, threadDelay)
+--import           Control.Concurrent.Chan.Strict (Chan, isEmptyChan, newChan,
+--                                                 readChan, writeChan)
+import           Control.Monad               (liftM)
+import           Control.Monad.Primitive     (PrimState)
+import           Control.Monad.ST            (ST, stToIO)
+import           Control.Parallel.Strategies (parBuffer, rdeepseq, using)
+import           Data.List                   ((\\))
+import qualified Data.Map                    as M
+import           Data.Maybe                  (fromMaybe)
+import           Data.Time.Clock             (UTCTime (..), getCurrentTime,
+                                              picosecondsToDiffTime)
+import           System.Random.MWC           (Gen, Seed, restore, save, uniform,
+                                              withSystemRandom)
 
 -- import qualified Data.Map as M (empty, insert)
-import           Data.Tree                      (rootLabel)
-import           Data.Tree.Zipper               (findChild, fromTree,
-                                                 hasChildren, tree)
+import           Data.Tree                   (rootLabel)
+import           Data.Tree.Zipper            (findChild, fromTree, hasChildren,
+                                              tree)
 
 
 import           Data.Goban.GameState
-import           Data.Goban.Types               (Color (..), Move (..), Score,
-                                                 Stone (..), Vertex)
-import           Data.Goban.Utils               (rateScore, winningScore)
+import           Data.Goban.Types            (Color (..), Move (..), Score,
+                                              Stone (..), Vertex)
+import           Data.Goban.Utils            (rateScore, winningScore)
 import           Kurt.Config
 
 import           Data.Tree.UCT
-import           Data.Tree.UCT.GameTree         (MoveNode (..), RaveMap,
-                                                 UCTTreeLoc, newMoveNode,
-                                                 newRaveMap)
+import           Data.Tree.UCT.GameTree      (MoveNode (..), RaveMap,
+                                              UCTTreeLoc, newMoveNode,
+                                              newRaveMap)
 
-import           Debug.TraceOrId                (trace)
+import           Debug.TraceOrId             (trace)
 
 -- import Data.Tree (drawTree)
 
@@ -72,6 +73,7 @@ data EngineState = EngineState {
 type Result = (Score, [Move], [Move])
 
 type LoopState = (UCTTreeLoc Move, RaveMap Move)
+
 
 
 newEngineState :: KurtConfig -> EngineState
