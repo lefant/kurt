@@ -216,7 +216,7 @@ cmd_quit _ _ =
 
 cmd_version :: CommandHandler
 cmd_version _ state =
-    return $ Right ("0.0.1", state)
+    return $ Right ("0.0.3", state)
 
 
 cmd_clear_board :: CommandHandler
