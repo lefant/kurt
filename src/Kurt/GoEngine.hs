@@ -125,45 +125,23 @@ genMove eState color = do
   now <- getCurrentTime
   let deadline = UTCTime { utctDay = utctDay now
                          , utctDayTime = thinkPicosecs + utctDayTime now }
-
   let moves = nextMoves gState color
   let score = scoreGameState gState
-  -- boardStr <- stToIO $ showGoban $ goban gState
-  -- trace ("genMove" ++ boardStr) $ return ()
-  -- trace ("genMove freeVertices: " ++ show (freeVertices gState)) $ return ()
-  -- trace ("genMove moves: " ++ show moves) $ return ()
-  -- trace ("genMove score: " ++ show score) $ return ()
   (if null moves
    then
        if winningScore color score
        then return (Pass color, eState)
        else return (Resign color, eState)
    else (do
-          -- -- initialize rave map with random values to avoid all moves
-          -- -- ranked equal in some situation
-          -- initRaveMap <- stToIO $ foldM (u rGen) M.empty
-          --                [ Move (Stone p c) | p <- (allVertices (boardsize gState)), c <- [Black, White]]
-
-
-          (loc', raveMap') <- runUCT loc gState raveMap config deadline
-          -- (getUctC eState) (getRaveWeight eState) (getHeuWeights eState) rGen deadline (maxRuns eState)
+          seed <- withSystemRandom (save :: Gen (PrimState IO) -> IO Seed)
+          (loc', raveMap') <- runUCT loc gState raveMap config deadline seed
           let eState' = eState { getUctTree = loc', getRaveMap = raveMap' }
-
           return (bestMoveFromLoc loc' (getState gState) score, eState')))
-
-
     where
       config = getConfig eState
-
       gState = getGameState eState
       loc = getUctTree eState
       raveMap = M.map (second ((1 +) . (`div` 2))) $ getRaveMap eState
-
-      -- u :: Gen RealWorld -> RaveMap Move -> Move -> ST RealWorld (RaveMap Move)
-      -- u rGen' m move = do
-      --   v <- uniform rGen'
-      --   return $ M.insert move ((0.495 + v / 100), 1) m
-
       thinkPicosecs =
           picosecondsToDiffTime
           $ fromIntegral (maxTime config) * 1000000000
