@@ -347,3 +347,12 @@ pick :: [Vertex] -> Gen s -> ST s Vertex
 pick as rGen = do
   i <- liftM (`mod` length as) $ uniform rGen
   return $ as !! i
+
+incrSeed :: Seed -> Seed
+incrSeed !seed =
+    runST $ do
+      gen <- restore seed
+      x <- uniform gen
+      _ <- return $ x + (1 :: Int)
+      seed' <- save gen
+      return $! seed'
