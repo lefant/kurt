@@ -42,7 +42,7 @@ kurtDefaultConfig :: KurtConfig
 kurtDefaultConfig = KurtConfig {
                maxPlayouts = (100000 :: Int) &= typ "INT"
                              &= help "Max simulations run during move generation"
-             , maxThreads = (10 :: Int) &= typ "INT"
+             , maxThreads = (20 :: Int) &= typ "INT"
                          &= help "Max number of threads spawned for playouts"
              , maxTime = (5000 :: Int) &= typ "INT"
                          &= help "Max time used during move generation (ms)"
