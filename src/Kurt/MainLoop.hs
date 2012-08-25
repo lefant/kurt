@@ -44,7 +44,7 @@ import           Data.Goban.Utils                      (influenceFromWinrate)
 import           Network.GoTextProtocol2.Server.Parser
 import           Network.GoTextProtocol2.Types
 
-import           Data.Tree.UCT.GameTree                (MoveNode (..),
+import           Data.Tree.UCT.Types                   (MoveNode (..),
                                                         newRaveMap)
 import           Kurt.Config
 import           Kurt.GoEngine                         (EngineState (..),

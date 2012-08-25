@@ -44,7 +44,7 @@ import           Data.Goban.Types
 import           Data.Goban.Utils
 import           Data.Goban.ZobristHash (ZHash, updateHash)
 import           Data.Tree.UCT          (UCTHeuristic)
-import           Data.Tree.UCT.GameTree (Value)
+import           Data.Tree.UCT.Types    (Value)
 import           Kurt.Config
 
 

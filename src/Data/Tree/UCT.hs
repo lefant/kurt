@@ -39,9 +39,8 @@ import           Data.Tree.Zipper       (TreeLoc, findChild, getChild,
                                          hasChildren, modifyLabel, modifyTree,
                                          parent, tree)
 
--- import Debug.TraceOrId (trace)
-
 import           Data.Tree.UCT.GameTree
+import           Data.Tree.UCT.Types
 
 
 

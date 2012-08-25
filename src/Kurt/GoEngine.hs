@@ -46,8 +46,8 @@ import           Data.Goban.Utils            (rateScore, winningScore)
 import           Kurt.Config
 
 import           Data.Tree.UCT
-import           Data.Tree.UCT.GameTree      (MoveNode (..), RaveMap,
-                                              UCTTreeLoc, newMoveNode,
+import           Data.Tree.UCT.GameTree      (UCTTreeLoc, newMoveNode)
+import           Data.Tree.UCT.Types         (MoveNode (..), RaveMap,
                                               newRaveMap)
 
 import           Debug.TraceOrId             (trace)
