@@ -24,13 +24,19 @@ import qualified Data.HashMap.Lazy   as H
 import           Data.Tree.UCT.Types
 
 
-type UCTMap a = H.HashMap Int (UCTMapEntry a)
-type UCTMapEntry a = (MoveNode a)
+type UCTKey = Int
+type UCTMap a = H.HashMap UCTKey (UCTMapEntry a)
+data UCTMapEntry a = Entry { moveNode :: MoveNode a
+                           , parents  :: [UCTKey]
+                           , children :: [UCTKey]
+                           }
 
-
-newMoveNode :: (UCTMove a) => a -> (Value, Count) -> UCTMapEntry a
-newMoveNode move (value, visits) =
+newMoveNode :: (UCTMove a) => a -> (Value, Count) -> [UCTKey]-> UCTMapEntry a
+newMoveNode move (value, visits) parents0 =
     -- FIXME: incomplete
-    MoveNode { nodeMove = move
+    Entry { moveNode = MoveNode { nodeMove = move
                                 , nodeVisits = visits
                                 , nodeValue = value }
+          , parents = parents0
+          , children = []
+          }
