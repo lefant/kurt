@@ -42,10 +42,10 @@ module Data.Goban.Types ( Move(..)
                         ) where
 
 
-import           Control.DeepSeq        (NFData)
-import           Data.Char              (chr, ord, toUpper)
-import           Data.Set               (Set)
-import           Data.Tree.UCT.GameTree (UCTMove)
+import           Control.DeepSeq     (NFData)
+import           Data.Char           (chr, ord, toUpper)
+import           Data.Set            (Set)
+import           Data.Tree.UCT.Types (UCTMove)
 
 
 data Move = Move Stone
