@@ -41,3 +41,22 @@ newMoveNode move (value, visits) parents0 =
           , parents = parents0
           , children = []
           }
+selectChild :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a -> UCTTreeLoc a
+selectChild policy (TreeLoc (m, k)) =
+    TreeLoc (m, selectNode k)
+    where
+      selectNode k =
+          if null childIds
+          then k
+          else selectedId
+          where
+            childIdPairs = map idToChildIdPair childIds
+            idToChildIdPair id =
+                (child, id)
+                where
+                  child =
+                      moveNode $ H.lookupDefault (error "invalid childId") id m
+            childIds = children currentEntry
+            selectedId = policy parentVisits childIdPairs
+            parentVisits = nodeVisits $ moveNode currentEntry
+            currentEntry = (H.!) m k
