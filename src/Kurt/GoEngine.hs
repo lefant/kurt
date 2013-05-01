@@ -214,7 +214,7 @@ runUCT initLoc rootGameState initRaveMap config deadline seed00 = do
       nextNode (!loc, !raveMap) =
           (loc''', (leafGameState, path))
               where
-                loc''' = backpropagate (\_x -> 0) updateNodeVisits path loc''
+                loc''' = backpropagate id updateNodeVisits path loc''
                 loc'' = expandNode loc' slHeu moves
                 moves = nextMovesWithHash leafGameState $ nextMoveColor $ getState leafGameState
                 leafGameState = getLeafGameState rootGameState path
@@ -228,7 +228,7 @@ updateTreeResult (!loc, !raveMap) (!score, !playedMoves, !path) =
     (loc', raveMap')
     where
       raveMap' = updateRaveMap raveMap (rateScore score) $ drop (length playedMoves `div` 3) playedMoves
-      loc' = backpropagate (rateScore score) updateNodeValue $ getLeaf loc path
+      loc' = backpropagate (rateScore score) updateNodeValue path loc
 
 
 simulatePlayout :: GameState -> IO [Move]
