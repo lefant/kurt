@@ -20,6 +20,7 @@ module Data.Tree.UCT.GameMap ( UCTTree
                              , selectChild
                              , selectLeafPath
                              , expandNode
+                             , backpropagate
                              ) where
 
 
@@ -119,3 +120,18 @@ expandNode (TreeLoc (m, k)) heu moveHashPairs =
                   (value, visits) = heu move
       addParent entry =
           entry { parents = S.insert k $ parents entry }
+
+
+backpropagate :: UCTMove a => (a -> Value)
+              -> (Value -> MoveNode a -> MoveNode a)
+              -> [UCTKey]
+              -> UCTTreeLoc a
+              -> UCTTreeLoc a
+backpropagate evaluator updater path (TreeLoc (m, k)) =
+    TreeLoc (foldl' (flip (H.adjust adjustEntry)) m path, k)
+    where
+      adjustEntry entry =
+          entry { moveNode = updater value mnode }
+          where
+            value = evaluator $ nodeMove mnode
+            mnode = moveNode entry
