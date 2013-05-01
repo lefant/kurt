@@ -41,9 +41,9 @@ import           Data.Tree.UCT.Types
 -- selection section
 -----------------------------------
 
-principalVariation :: (UCTMove a) => UCTTreeLoc a -> [a]
-principalVariation loc =
-    snd $ selectLeafPath policyMaxRobust loc
+-- principalVariation :: (UCTMove a) => UCTTreeLoc a -> [a]
+-- principalVariation loc@(TreeLoc (m, k)) =
+--     snd $ selectLeafPath policyMaxRobust loc
 
 
 policyMaxRobust :: UCTMove a => UCTPolicy a

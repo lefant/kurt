@@ -59,26 +59,25 @@ selectChild policy loc =
     fst $ selectLeafPath policy loc
 
 selectLeafPath :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a
-               -> (UCTTreeLoc a, [a])
-selectLeafPath policy loc =
-    (leaf, path)
+               -> (UCTTreeLoc a, [UCTKey])
+selectLeafPath policy loc@(TreeLoc (m, _k)) =
+    (TreeLoc (m, head rpath), reverse rpath)
     where
-      path = reverse $ map locToMove rpath
-      locToMove (TreeLoc (m, k)) = nodeMove $ moveNode $ (H.!) m k
-      leaf = head rpath
+      -- path = reverse $ map locToMove rpath
+      -- locToMove (TreeLoc (m, k)) = nodeMove $ moveNode $ (H.!) m k
       rpath = unfoldr selector loc
       selector = selectNode2 policy
 
 selectNode2 :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a ->
-               Maybe (UCTTreeLoc a, UCTTreeLoc a)
-selectNode2 policy loc0 =
-    fmap (\loc -> (loc, loc)) $ selectNode policy loc0
+               Maybe (UCTKey, UCTTreeLoc a)
+selectNode2 policy loc@(TreeLoc (m, _k)) =
+    fmap (\k' -> (k', TreeLoc (m, k'))) $ selectNode policy loc
 
-selectNode :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a -> Maybe (UCTTreeLoc a)
+selectNode :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a -> Maybe UCTKey
 selectNode policy (TreeLoc (m, k)) =
     if null childIds
     then Nothing
-    else Just (TreeLoc (m, selectedId))
+    else Just selectedId
     where
       childIdPairs = map idToChildIdPair childIds
       idToChildIdPair childId =

@@ -212,9 +212,10 @@ runUCT initLoc rootGameState initRaveMap config deadline seed00 = do
 
       nextNode :: LoopState -> (UCTTreeLoc Move, (GameState, [Move]))
       nextNode (!loc, !raveMap) =
-          (loc'', (leafGameState, path))
+          (loc''', (leafGameState, path))
               where
-                loc'' = backpropagate (\_x -> 0) updateNodeVisits $ expandNode loc' slHeu moves
+                loc''' = backpropagate (\_x -> 0) updateNodeVisits path loc''
+                loc'' = expandNode loc' slHeu moves
                 moves = nextMovesWithHash leafGameState $ nextMoveColor $ getState leafGameState
                 leafGameState = getLeafGameState rootGameState path
                 (loc', path) = selectLeafPath policy loc
