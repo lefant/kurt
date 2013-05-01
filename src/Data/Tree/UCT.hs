@@ -43,16 +43,6 @@ import           Data.Tree.UCT.GameTree
 import           Data.Tree.UCT.Types
 
 
-
--- rootNode :: (UCTMove a) => [a] -> UCTTreeLoc a
--- rootNode moves =
---     expandNode
---     -- (fromTree $ newMoveNode (error "move at rootNode is undefined") (0.5, 1))
---     (fromTree $ newMoveNode (last moves) (0.5, 1000))
---     constantHeuristic
---     moves
-
-
 -- selection section
 -----------------------------------
 
