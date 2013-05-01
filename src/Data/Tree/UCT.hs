@@ -20,26 +20,21 @@ module Data.Tree.UCT ( selectLeafPath
                      , policyRaveUCB1
                      , expandNode
                      , constantHeuristic
-                     , backpropagate
                      , updateRaveMap
                      , updateNodeVisits
                      , updateNodeValue
-                     , getLeaf
                      , UCTHeuristic
-                     , UCTEvaluator
+                     , backpropagate  -- re-exported
+                     , getLeaf        -- re-exported
                      ) where
 
 
-import           Data.List              (foldl', maximumBy, unfoldr)
-import qualified Data.Map               as M
-import           Data.Maybe             (fromJust, fromMaybe)
-import           Data.Ord               (comparing)
-import           Data.Tree              (Tree (..))
-import           Data.Tree.Zipper       (TreeLoc, findChild, getChild,
-                                         hasChildren, modifyLabel, modifyTree,
-                                         parent, tree)
+import           Data.List             (foldl', maximumBy)
+import qualified Data.Map              as M
+import           Data.Maybe            (fromMaybe)
+import           Data.Ord              (comparing)
 
-import           Data.Tree.UCT.GameTree
+import           Data.Tree.UCT.GameMap
 import           Data.Tree.UCT.Types
 
 
@@ -117,54 +112,12 @@ policyMaker val parentVisits numberedChildren =
             numberedChildren
 
 
--- computes list of moves needed to reach the passed leaf loc from the root
-pathToLeaf :: UCTMove a => UCTTreeLoc a -> [MoveNode a]
-pathToLeaf initLoc =
-    -- trace ("pathToLeaf " ++ show path)
-    path
-    where
-      path = reverse $ unfoldr f initLoc
-      f loc =
-        fmap (\loc' -> (rootLabel $ tree loc, loc')) $ parent loc
-
-getLeaf :: UCTMove a => UCTTreeLoc a -> [a] -> UCTTreeLoc a
-getLeaf root moves =
-  foldl' chooseChild root moves
-  where
-    chooseChild loc move =
-      case findChild ((move ==) . nodeMove . rootLabel) loc of
-        Just loc' -> loc'
-        Nothing -> error ("selectChild failed to find move at loc: " ++
-                          show (move, loc))
 
 -- expansion
 ----------------------------------
 
-type UCTHeuristic a = a -> (Value, Count)
-
-
-expandNode :: UCTMove a => UCTTreeLoc a -> UCTHeuristic a -> [a] -> UCTTreeLoc a
-expandNode loc h children =
-    -- trace ("expandNode " ++ show children)
-    modifyTree expandChildren loc
-    where
-      expandChildren node =
-          n
-          where
-            n = node { subForest = subForestFromMoves children }
-
-      subForestFromMoves =
-          map (\m -> newMoveNode m (h m))
-
 constantHeuristic :: UCTMove a => UCTHeuristic a
 constantHeuristic _move = (0.5, 1)
-
-
-
--- simulation needs to be handled exclusively by game code
------------------------------------
-
-
 
 
 
@@ -187,25 +140,9 @@ updateNodeVisits :: UCTMove a => Value -> MoveNode a -> MoveNode a
 updateNodeVisits _value node = node { nodeVisits = succ $ nodeVisits node }
 
 
-type UCTEvaluator a = a -> Value
-type UCTUpdater a = Value -> MoveNode a -> MoveNode a
 
-backpropagate :: UCTMove a => UCTEvaluator a -> UCTUpdater a -> UCTTreeLoc a -> UCTTreeLoc a
-backpropagate evaluator updater loc =
-    case parent loc' of
-      Nothing ->
-          -- trace "backpropagate reached root node"
-          loc'
-      Just parentLoc ->
-          -- trace ("backpropagate "
-          --        ++ show ((nodeMove $ rootLabel $ tree loc), value))
-          backpropagate evaluator updater parentLoc
-    where
-      loc' = modifyLabel (updater value) loc
-      value = evaluator (nodeMove $ rootLabel $ tree loc)
-
-
-updateRaveMap :: (UCTMove a, Ord a) => RaveMap a -> UCTEvaluator a -> [a] -> RaveMap a
+updateRaveMap :: (UCTMove a, Ord a) =>
+                 RaveMap a -> (a -> Value) -> [a] -> RaveMap a
 updateRaveMap initMap evaluator moves =
     foldl' updateOneMove initMap moves
 
