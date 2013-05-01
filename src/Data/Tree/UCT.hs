@@ -25,7 +25,6 @@ module Data.Tree.UCT ( selectLeafPath
                      , updateNodeValue
                      , UCTHeuristic
                      , backpropagate  -- re-exported
-                     , getLeaf        -- re-exported
                      ) where
 
 
@@ -41,9 +40,8 @@ import           Data.Tree.UCT.Types
 -- selection section
 -----------------------------------
 
--- principalVariation :: (UCTMove a) => UCTTreeLoc a -> [a]
--- principalVariation loc@(TreeLoc (m, k)) =
---     snd $ selectLeafPath policyMaxRobust loc
+principalVariation :: (UCTMove a) => UCTTreeLoc a -> [a]
+principalVariation loc = selectLeafPathMoves policyMaxRobust loc
 
 
 policyMaxRobust :: UCTMove a => UCTPolicy a
