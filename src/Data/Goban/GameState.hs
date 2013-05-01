@@ -21,6 +21,7 @@ module Data.Goban.GameState ( GameState(..)
                             , newGameState
                             , updateGameState
                             , nextMoves
+                            , nextMovesWithHash
                             , scoreGameState
                             , showGameState
 
@@ -108,6 +109,13 @@ newGameState n initKomi =
     initFreeVertices = S.fromList $ allVertices n
 
 
+nextMovesWithHash :: GameState -> Color -> [(Move, ZHash)]
+nextMovesWithHash (GameState goban state) color =
+    map moveToMoveHash moves
+    where
+      moveToMoveHash move =
+          (move, zHash $ getState $ updateGameState state move)
+      moves = nextMoves (GameState goban state) color
 
 nextMoves :: GameState -> Color -> [Move]
 nextMoves (GameState goban state) color =
