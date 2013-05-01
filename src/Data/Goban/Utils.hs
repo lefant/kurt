@@ -26,7 +26,6 @@ import qualified Data.Set            as S
 import           Text.Printf         (printf)
 
 import           Data.Goban.Types
-import           Data.Tree.UCT       (UCTEvaluator)
 import           Data.Tree.UCT.Types (Value)
 
 -- import Debug.TraceOrId (trace)
@@ -71,7 +70,7 @@ maxSet genF filterF p =
 
 
 
-rateScore :: Score -> UCTEvaluator Move
+rateScore :: Score -> (Move -> Value)
 rateScore score move =
     if score == 0
     then 0.5
