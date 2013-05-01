@@ -110,12 +110,12 @@ newGameState n initKomi =
 
 
 nextMovesWithHash :: GameState -> Color -> [(Move, ZHash)]
-nextMovesWithHash (GameState goban state) color =
+nextMovesWithHash state color =
     map moveToMoveHash moves
     where
       moveToMoveHash move =
           (move, zHash $ getState $ updateGameState state move)
-      moves = nextMoves (GameState goban state) color
+      moves = nextMoves state color
 
 nextMoves :: GameState -> Color -> [Move]
 nextMoves (GameState goban state) color =
