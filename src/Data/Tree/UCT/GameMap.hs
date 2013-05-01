@@ -16,7 +16,7 @@ UCT tree search using a zobrist hash keyed HashMap of MoveNodes
 
 module Data.Tree.UCT.GameMap ( UCTMap
                              , UCTMapEntry
-                             , newMoveNode
+                             , newUctTree
                              ) where
 
 
@@ -32,15 +32,18 @@ data Entry a = Entry { moveNode :: MoveNode a
                      , children :: [UCTKey]
                      }
 
-newMoveNode :: (UCTMove a) => a -> (Value, Count) -> [UCTKey]-> UCTMapEntry a
-newMoveNode move (value, visits) parents0 =
-    -- FIXME: incomplete
-    Entry { moveNode = MoveNode { nodeMove = move
-                                , nodeVisits = visits
-                                , nodeValue = value }
-          , parents = parents0
-          , children = []
+newUctTree :: (UCTMove a) => a -> UCTTreeLoc a
+newUctTree fakeMove =
+    TreeLoc (H.singleton 0 entry, 0)
+    where
+      entry =
+          Entry { moveNode = MoveNode { nodeMove = fakeMove
+                                      , nodeVisits = 1
+                                      , nodeValue = 0.5 }
+                , parents = []
+                , children = []
           }
+
 selectChild :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a -> UCTTreeLoc a
 selectChild policy (TreeLoc (m, k)) =
     TreeLoc (m, selectNode k)

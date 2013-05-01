@@ -46,7 +46,7 @@ import           Data.Goban.Utils            (rateScore, winningScore)
 import           Kurt.Config
 
 import           Data.Tree.UCT
-import           Data.Tree.UCT.GameTree      (UCTTreeLoc, newMoveNode)
+import           Data.Tree.UCT.GameMap       (UCTTreeLoc, newUctTree)
 import           Data.Tree.UCT.Types         (MoveNode (..), RaveMap,
                                               newRaveMap)
 
@@ -75,19 +75,15 @@ newEngineState :: KurtConfig -> EngineState
 newEngineState config =
   EngineState { getGameState =
                    newGameState (initialBoardsize config) (initialKomi config)
-              , getUctTree = newUctTree
+              , getUctTree = newUctTree fakeMove
               , getRaveMap = newRaveMap
               , boardSize = initialBoardsize config
               , getKomi = initialKomi config
               , getConfig = config
               }
 
-newUctTree :: UCTTreeLoc Move
-newUctTree =
-    fromTree $ newMoveNode
-            (trace "UCT tree root move accessed"
-             (Move (Stone (25,25) White)))
-            (0.5, 1)
+fakeMove = trace "UCT tree root move accessed"
+                     (Move (Stone (25,25) White))
 
 
 updateEngineState :: EngineState -> Move -> EngineState
