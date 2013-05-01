@@ -19,19 +19,24 @@ module Data.Tree.UCT.GameMap ( UCTTree
                              , newUctTree
                              , selectChild
                              , selectLeafPath
+                             , expandNode
                              ) where
 
 
-import qualified Data.HashMap.Lazy   as H
-import           Data.List           (unfoldr)
+import qualified Data.HashMap.Lazy      as H
+import qualified Data.IntSet            as S
+import           Data.List              (foldl', unfoldr)
+
+import           Data.Goban.ZobristHash (ZHash)
 import           Data.Tree.UCT.Types
+
 
 
 data UCTTreeLoc a = TreeLoc (UCTTree a, UCTKey)
 type UCTKey = Int
 type UCTTree a = H.HashMap UCTKey (Entry a)
 data Entry a = Entry { moveNode :: MoveNode a
-                     , parents  :: [UCTKey]
+                     , parents  :: S.IntSet
                      , children :: [UCTKey]
                      }
 
@@ -43,9 +48,10 @@ newUctTree fakeMove =
           Entry { moveNode = MoveNode { nodeMove = fakeMove
                                       , nodeVisits = 1
                                       , nodeValue = 0.5 }
-                , parents = []
+                , parents = S.empty
                 , children = []
           }
+
 
 
 selectChild :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a -> UCTTreeLoc a
@@ -84,3 +90,33 @@ selectNode policy (TreeLoc (m, k)) =
       selectedId = policy parentVisits childIdPairs
       parentVisits = nodeVisits $ moveNode currentEntry
       currentEntry = (H.!) m k
+
+
+
+expandNode :: UCTMove a => UCTTreeLoc a -> UCTHeuristic a -> [(a, ZHash)]
+           -> UCTTreeLoc a
+expandNode (TreeLoc (m, k)) heu moveHashPairs =
+    TreeLoc (m'', k)
+    where
+      m'' = H.insert k currentEntry' m'
+      currentEntry' = currentEntry { children = map snd moveHashPairs }
+      currentEntry = (H.!) m' k
+      m' = foldl' ensureEntry m moveHashPairs
+      ensureEntry m0 (move, hash) =
+          case H.lookup hash m0 of
+            Nothing ->
+                H.insert hash (childEntry move) m0
+            Just entry ->
+                H.insert hash (addParent entry) m0
+      childEntry move = Entry { moveNode = mNode move
+                              , parents = S.singleton k
+                              , children = [] }
+          where
+            mNode nmove = MoveNode { nodeMove = nmove
+                                   , nodeVisits = visits
+                                   , nodeValue = value
+                                   }
+                where
+                  (value, visits) = heu move
+      addParent entry =
+          entry { parents = S.insert k $ parents entry }
