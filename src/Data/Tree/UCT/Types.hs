@@ -17,6 +17,8 @@ UCT tree search, shared types
 
 module Data.Tree.UCT.Types ( UCTMove
                            , MoveNode(..)
+                           , UCTHeuristic
+                           , UCTPolicy
                            , RaveValue
                            , RaveMap
                            , newRaveMap
@@ -58,6 +60,10 @@ instance (UCTMove a) => Show (MoveNode a) where
 
 instance (UCTMove a) => Eq (MoveNode a) where
     (==) a b = nodeMove a == nodeMove b
+
+
+type UCTPolicy a = (Int -> [MoveNode a] -> [MoveNode a])
+type UCTHeuristic a = a -> (Value, Count)
 
 
 type RaveValue = (Value, Count)
