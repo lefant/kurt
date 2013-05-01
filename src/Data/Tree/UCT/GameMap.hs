@@ -14,13 +14,16 @@ UCT tree search using a zobrist hash keyed HashMap of MoveNodes
 
 -}
 
-module Data.Tree.UCT.GameMap ( UCTMap
-                             , UCTMapEntry
+module Data.Tree.UCT.GameMap ( UCTTree
+                             , UCTTreeLoc
                              , newUctTree
+                             , selectChild
+                             , selectLeafPath
                              ) where
 
 
 import qualified Data.HashMap.Lazy   as H
+import           Data.List           (unfoldr)
 import           Data.Tree.UCT.Types
 
 
@@ -44,22 +47,40 @@ newUctTree fakeMove =
                 , children = []
           }
 
+
 selectChild :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a -> UCTTreeLoc a
-selectChild policy (TreeLoc (m, k)) =
-    TreeLoc (m, selectNode k)
+selectChild policy loc =
+    fst $ selectLeafPath policy loc
+
+selectLeafPath :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a
+               -> (UCTTreeLoc a, [a])
+selectLeafPath policy loc =
+    (leaf, path)
     where
-      selectNode k =
-          if null childIds
-          then k
-          else selectedId
+      path = reverse $ map locToMove rpath
+      locToMove (TreeLoc (m, k)) = nodeMove $ moveNode $ (H.!) m k
+      leaf = head rpath
+      rpath = unfoldr selector loc
+      selector = selectNode2 policy
+
+selectNode2 :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a ->
+               Maybe (UCTTreeLoc a, UCTTreeLoc a)
+selectNode2 policy loc0 =
+    fmap (\loc -> (loc, loc)) $ selectNode policy loc0
+
+selectNode :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a -> Maybe (UCTTreeLoc a)
+selectNode policy (TreeLoc (m, k)) =
+    if null childIds
+    then Nothing
+    else Just (TreeLoc (m, selectedId))
+    where
+      childIdPairs = map idToChildIdPair childIds
+      idToChildIdPair childId =
+          (child, childId)
           where
-            childIdPairs = map idToChildIdPair childIds
-            idToChildIdPair id =
-                (child, id)
-                where
-                  child =
-                      moveNode $ H.lookupDefault (error "invalid childId") id m
-            childIds = children currentEntry
-            selectedId = policy parentVisits childIdPairs
-            parentVisits = nodeVisits $ moveNode currentEntry
-            currentEntry = (H.!) m k
+            child =
+                moveNode $ H.lookupDefault (error "invalid childId") childId m
+      childIds = children currentEntry
+      selectedId = policy parentVisits childIdPairs
+      parentVisits = nodeVisits $ moveNode currentEntry
+      currentEntry = (H.!) m k

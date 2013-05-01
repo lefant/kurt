@@ -56,38 +56,9 @@ import           Data.Tree.UCT.Types
 -- selection section
 -----------------------------------
 
-type UCTPolicy a = (Int -> [(MoveNode a, Int)] -> Int)
--- selects a leaf according to in-tree selection policy
-
-selectLeafPath :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a
-               -> (UCTTreeLoc a, [a])
-selectLeafPath policy loc =
-    -- trace ("selectLeafPath " ++ show (map nodeMove $ pathToLeaf leaf))
-    (leaf, map nodeMove $ pathToLeaf leaf)
-    where
-      leaf = selectChild policy loc
-
-selectChild :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a
-           -> UCTTreeLoc a
-selectChild policy initLoc =
-    selectNode initLoc
-    where
-      selectNode loc =
-          if hasChildren loc
-          then
-              selectNode $ fromJust $ getChild selectedId loc
-          else
-              loc
-          where
-            selectedId = policy parentVisits numberedChildren
-            numberedChildren = zip (map rootLabel $ subForest $ tree loc) [1..]
-            parentVisits = nodeVisits $ rootLabel $ tree loc
-
-
-principalVariation :: (UCTMove a) => UCTTreeLoc a -> [MoveNode a]
+principalVariation :: (UCTMove a) => UCTTreeLoc a -> [a]
 principalVariation loc =
-    -- pathToLeaf $ selectLeaf policyMaxUCTValue loc
-    pathToLeaf $ selectChild policyMaxRobust loc
+    snd $ selectLeafPath policyMaxRobust loc
 
 
 policyMaxRobust :: UCTMove a => UCTPolicy a
