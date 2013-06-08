@@ -16,6 +16,7 @@ UCT tree search using a zobrist hash keyed HashMap of MoveNodes
 
 module Data.Tree.UCT.GameMap ( UCTTree
                              , UCTTreeLoc
+                             , UCTKey
                              , newUctTree
                              , selectChild
                              , selectLeafPath
@@ -77,9 +78,9 @@ selectChild policy loc =
     fst $ selectLeafPath policy loc
 
 selectLeafPath :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a
-               -> (UCTTreeLoc a, [UCTKey])
+               -> (UCTTreeLoc a, [(a, UCTKey)])
 selectLeafPath policy loc@(TreeLoc (m, _k)) =
-    (TreeLoc (m, head rpath), reverse rpath)
+    (TreeLoc (m, snd $ head rpath), reverse rpath)
     where
       -- path = reverse $ map locToMove rpath
       -- locToMove (TreeLoc (m, k)) = nodeMove $ moveNode $ (H.!) m k
@@ -87,15 +88,15 @@ selectLeafPath policy loc@(TreeLoc (m, _k)) =
       selector = selectNode2 policy
 
 selectNode2 :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a ->
-               Maybe (UCTKey, UCTTreeLoc a)
+               Maybe ((a, UCTKey), UCTTreeLoc a)
 selectNode2 policy loc@(TreeLoc (m, _k)) =
-    fmap (\k' -> (k', TreeLoc (m, k'))) $ selectNode policy loc
+    fmap (\(move, k') -> ((move, k'), TreeLoc (m, k'))) $ selectNode policy loc
 
-selectNode :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a -> Maybe UCTKey
+selectNode :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a -> Maybe (a, UCTKey)
 selectNode policy (TreeLoc (m, k)) =
     if null childIds
     then Nothing
-    else Just selectedId
+    else Just (selectedMove, selectedId)
     where
       childIdPairs = map idToChildIdPair childIds
       idToChildIdPair childId =
@@ -104,7 +105,7 @@ selectNode policy (TreeLoc (m, k)) =
             child =
                 moveNode $ H.lookupDefault (error "invalid childId") childId m
       childIds = children currentEntry
-      selectedId = policy parentVisits childIdPairs
+      (selectedMove, selectedId) = policy parentVisits childIdPairs
       parentVisits = nodeVisits $ moveNode currentEntry
       currentEntry = (H.!) m k
 
