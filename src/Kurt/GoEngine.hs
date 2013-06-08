@@ -83,6 +83,7 @@ newEngineState config =
               , getConfig = config
               }
 
+fakeMove :: Move
 fakeMove = trace "UCT tree root move accessed"
                      (Move (Stone (25,25) White))
 
