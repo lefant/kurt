@@ -30,12 +30,8 @@ import           Control.Monad.ST            (ST, runST, stToIO)
 import           Control.Parallel.Strategies (parBuffer, rdeepseq, withStrategy)
 import           Data.List                   (unfoldr, (\\))
 import qualified Data.Map                    as M (map)
-import           Data.Maybe                  (fromMaybe)
 import           Data.Time.Clock             (UTCTime (..), getCurrentTime,
                                               picosecondsToDiffTime)
-import           Data.Tree                   (rootLabel)
-import           Data.Tree.Zipper            (findChild, fromTree, hasChildren,
-                                              tree)
 import           System.Random.MWC           (Gen, Seed, restore, save, uniform,
                                               withSystemRandom)
 
