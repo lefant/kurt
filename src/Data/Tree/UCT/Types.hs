@@ -62,7 +62,8 @@ instance (UCTMove a) => Eq (MoveNode a) where
     (==) a b = nodeMove a == nodeMove b
 
 
-type UCTPolicy a = (Int -> [(MoveNode a, Int)] -> Int)
+type UCTPolicy a =
+    (Int -> [(MoveNode a, Int)] -> (a, Int))
 type UCTHeuristic a = a -> (Value, Count)
 
 
