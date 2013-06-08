@@ -40,8 +40,8 @@ import           Data.Tree.UCT.Types
 -- selection section
 -----------------------------------
 
-principalVariation :: (UCTMove a) => UCTTreeLoc a -> [a]
-principalVariation loc = selectLeafPathMoves policyMaxRobust loc
+principalVariation :: (UCTMove a) => UCTTreeLoc a -> [MoveNode a]
+principalVariation loc = selectLeafPathMoveNodes policyMaxRobust loc
 
 
 policyMaxRobust :: UCTMove a => UCTPolicy a
@@ -105,9 +105,11 @@ ucb1 exploratoryCPercent parentVisits node =
 
 policyMaker :: (Ord b) => (Int -> MoveNode a -> b) -> UCTPolicy a
 policyMaker val parentVisits numberedChildren =
-    snd $ maximumBy
-            (comparing ((val parentVisits) . fst))
-            numberedChildren
+    (nodeMove $ fst best, snd best)
+    where
+      best = maximumBy
+             (comparing ((val parentVisits) . fst))
+             numberedChildren
 
 
 
@@ -136,7 +138,6 @@ updateNodeValue value node =
 
 updateNodeVisits :: UCTMove a => Value -> MoveNode a -> MoveNode a
 updateNodeVisits _value node = node { nodeVisits = succ $ nodeVisits node }
-
 
 
 updateRaveMap :: (UCTMove a, Ord a) =>
