@@ -20,6 +20,7 @@ module Data.Tree.UCT.GameMap ( UCTTree
                              , selectChild
                              , selectLeafPath
                              , selectLeafPathMoveNodes
+                             , rootNodeVisits
                              , expandNode
                              , backpropagate
                              ) where
@@ -54,6 +55,9 @@ newUctTree fakeMove =
                 , children = []
           }
 
+rootNodeVisits :: (UCTMove a) => UCTTreeLoc a -> Count
+rootNodeVisits (TreeLoc (m, _)) =
+    nodeVisits $ moveNode $ (H.!) m 0
 
 selectLeafPathMoves :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a -> [a]
 selectLeafPathMoves policy loc@(TreeLoc (m, _k)) =
