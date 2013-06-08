@@ -10,7 +10,7 @@
    Stability  : experimental
    Portability: probably
 
-UCT tree search using Data.Tree.Zipper for updates in the Tree
+UCT tree search
 
 -}
 
