@@ -20,6 +20,7 @@ module Data.Tree.UCT.GameMap ( UCTTree
                              , selectChild
                              , selectLeafPath
                              , selectLeafPathMoveNodes
+                             , selectSubtree
                              , rootNodeVisits
                              , expandNode
                              , backpropagate
@@ -59,8 +60,10 @@ rootNodeVisits :: (UCTMove a) => UCTTreeLoc a -> Count
 rootNodeVisits (TreeLoc (m, _)) =
     nodeVisits $ moveNode $ (H.!) m 0
 
-selectLeafPathMoves :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a -> [a]
-selectLeafPathMoves policy loc@(TreeLoc (m, _k)) =
+selectSubtree :: (UCTMove a) => UCTTreeLoc a -> ZHash -> UCTTreeLoc a
+selectSubtree (TreeLoc (m, _)) hash =
+    TreeLoc (m, hash)
+
 selectLeafPathMoveNodes :: (UCTMove a) =>
                            UCTPolicy a -> UCTTreeLoc a -> [MoveNode a]
 selectLeafPathMoveNodes policy loc@(TreeLoc (m, _k)) =
