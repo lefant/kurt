@@ -42,7 +42,8 @@ import           Data.Goban.Utils            (rateScore, winningScore)
 import           Kurt.Config
 
 import           Data.Tree.UCT
-import           Data.Tree.UCT.GameMap       (UCTTreeLoc, newUctTree)
+import           Data.Tree.UCT.GameMap       (UCTKey, UCTTreeLoc, newUctTree,
+                                              rootNodeVisits, selectSubtree)
 import           Data.Tree.UCT.Types         (MoveNode (..), RaveMap,
                                               newRaveMap)
 
@@ -92,21 +93,9 @@ updateEngineState eState move =
       gState = getGameState eState
       loc' = case move of
                (Resign _) -> loc
-               _otherwise ->
-                   if hasChildren loc
-                   then selectSubtree loc move
-                   else newUctTree
+               _otherwise -> selectSubtree loc hash
       loc = getUctTree eState
-
-selectSubtree :: UCTTreeLoc Move -> Move -> UCTTreeLoc Move
-selectSubtree loc move =
-    loc''
-    where
-      loc'' = fromTree $ tree loc'
-      loc' =
-          fromMaybe newUctTree
-          $ findChild ((move ==) . nodeMove . rootLabel) loc
-
+      hash = zHash $ getState gState'
 
 
 genMove :: EngineState -> Color -> IO (Move, EngineState)
@@ -155,7 +144,7 @@ bestMoveFromLoc loc state score =
                   trace ("bestMoveFromLoc resign " ++ show node)
                   Resign color
           else
-              trace ("total sims: " ++ show (nodeVisits$rootLabel$tree$loc)
+              trace ("total sims: " ++ show (rootNodeVisits $ loc)
                      ++ " best: " ++ show node
                      ++ "\n")
                      -- ++ (drawTree $ fmap show $ tree loc)
