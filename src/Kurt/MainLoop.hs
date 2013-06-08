@@ -44,6 +44,7 @@ import           Data.Goban.Utils                      (influenceFromWinrate)
 import           Network.GoTextProtocol2.Server.Parser
 import           Network.GoTextProtocol2.Types
 
+import           Data.Tree.UCT.GameMap                 (childNodes)
 import           Data.Tree.UCT.Types                   (MoveNode (..),
                                                         newRaveMap)
 import           Kurt.Config
@@ -406,7 +407,7 @@ cmd_kurt_uct_tree [] state =
       ucts = map (nodeMove &&& nodeValue) nodes
       ucts' = map (nodeMove &&& nodeVisits) nodes
 
-      nodes = map rootLabel $ subForest $ tree $ getUctTree state
+      nodes = childNodes $ getUctTree state
       -- m = maximum $ map snd ucts
 
       color = thisMoveColor $ getState $ getGameState state
