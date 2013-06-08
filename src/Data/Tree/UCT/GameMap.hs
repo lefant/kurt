@@ -19,7 +19,7 @@ module Data.Tree.UCT.GameMap ( UCTTree
                              , newUctTree
                              , selectChild
                              , selectLeafPath
-                             , selectLeafPathMoves
+                             , selectLeafPathMoveNodes
                              , expandNode
                              , backpropagate
                              ) where
@@ -57,10 +57,13 @@ newUctTree fakeMove =
 
 selectLeafPathMoves :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a -> [a]
 selectLeafPathMoves policy loc@(TreeLoc (m, _k)) =
+selectLeafPathMoveNodes :: (UCTMove a) =>
+                           UCTPolicy a -> UCTTreeLoc a -> [MoveNode a]
+selectLeafPathMoveNodes policy loc@(TreeLoc (m, _k)) =
     map keyToMove keys
     where
-      keyToMove k = nodeMove $ moveNode $ (H.!) m k
-      keys = snd $ selectLeafPath policy loc
+      keyToMove k = moveNode $ (H.!) m k
+      keys = map snd $ snd $ selectLeafPath policy loc
 
 selectChild :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a -> UCTTreeLoc a
 selectChild policy loc =
