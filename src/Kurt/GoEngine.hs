@@ -66,10 +66,11 @@ data EngineState = EngineState {
 type LoopState = (UCTTreeLoc Move, RaveMap Move)
 
 -- result from playout: score, playedMoves, path to startnode in tree
-type Result = (Score, [Move], [Move])
+type Result = (Score, [Move], Paths)
 -- request for playout: gamestate, path to startnode in tree, seed
-type Request = (GameState, [Move], Seed)
+type Request = (GameState, Paths, Seed)
 
+type Paths = ([Move], [UCTKey])
 
 newEngineState :: KurtConfig -> EngineState
 newEngineState config =
@@ -210,25 +211,26 @@ runUCT initLoc rootGameState initRaveMap config deadline seed00 = do
             request = (leafGameState, path, seed)
             (loc, (leafGameState, path)) = nextNode st
 
-      nextNode :: LoopState -> (UCTTreeLoc Move, (GameState, [Move]))
+      nextNode :: LoopState -> (UCTTreeLoc Move, (GameState, Paths))
       nextNode (!loc, !raveMap) =
-          (loc''', (leafGameState, path))
+          (loc''', (leafGameState, path'))
               where
-                loc''' = backpropagate id updateNodeVisits path loc''
+                loc''' = backpropagate (const 0.0) updateNodeVisits hashPath loc''
                 loc'' = expandNode loc' slHeu moves
                 moves = nextMovesWithHash leafGameState $ nextMoveColor $ getState leafGameState
-                leafGameState = getLeafGameState rootGameState path
+                leafGameState = getLeafGameState rootGameState movePath
+                path'@(movePath, hashPath) = unzip path
                 (loc', path) = selectLeafPath policy loc
                 policy = policyRaveUCB1 (uctExplorationPercent config) (raveWeight config) raveMap
                 slHeu = makeStonesAndLibertyHeuristic leafGameState config
 
 
 updateTreeResult :: LoopState -> Result -> LoopState
-updateTreeResult (!loc, !raveMap) (!score, !playedMoves, !path) =
+updateTreeResult (!loc, !raveMap) (!score, !playedMoves, (_, !hashPath)) =
     (loc', raveMap')
     where
       raveMap' = updateRaveMap raveMap (rateScore score) $ drop (length playedMoves `div` 3) playedMoves
-      loc' = backpropagate (rateScore score) updateNodeValue path loc
+      loc' = backpropagate (rateScore score) updateNodeValue hashPath loc
 
 
 simulatePlayout :: GameState -> IO [Move]
