@@ -21,6 +21,7 @@ module Kurt.GoEngine ( genMove
                      , newEngineState
                      , updateEngineState
                      , newUctTree
+                     , fakeMove
                      ) where
 
 import           Control.Arrow               (second)

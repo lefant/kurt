@@ -49,11 +49,11 @@ import           Data.Tree.UCT.Types                   (MoveNode (..),
                                                         newRaveMap)
 import           Kurt.Config
 import           Kurt.GoEngine                         (EngineState (..),
-                                                        genMove, newEngineState,
+                                                        fakeMove, genMove,
+                                                        newEngineState,
                                                         newUctTree,
                                                         simulatePlayout,
                                                         updateEngineState)
-
 
 import           Debug.TraceOrId                       (trace)
 
@@ -224,7 +224,7 @@ cmd_clear_board :: CommandHandler
 cmd_clear_board [] state =
   return $ Right ("", state { getGameState =
                                   newGameState (boardSize state) (getKomi state)
-                            , getUctTree = newUctTree
+                            , getUctTree = newUctTree fakeMove
                             , getRaveMap = newRaveMap
                             })
 cmd_clear_board _ _ = error "cmd_clear_board called with illegal argument type"
