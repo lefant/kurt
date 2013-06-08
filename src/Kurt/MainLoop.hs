@@ -20,8 +20,6 @@ module Kurt.MainLoop ( startLoop
 import           Control.Arrow                         ((&&&))
 import           Data.List
 import qualified Data.Map                              as M (assocs)
-import           Data.Tree                             (rootLabel, subForest)
-import           Data.Tree.Zipper                      (tree)
 import           System.IO
 import           Text.Parsec.String                    (Parser)
 import           Text.Printf                           (printf)
