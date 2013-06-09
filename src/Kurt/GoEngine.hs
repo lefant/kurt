@@ -28,7 +28,7 @@ import           Control.Monad               (liftM)
 import           Control.Monad.Primitive     (PrimState)
 import           Control.Monad.ST            (ST, runST, stToIO)
 import           Control.Parallel.Strategies (parBuffer, rdeepseq, withStrategy)
-import           Data.List                   ((\\), unfoldr)
+import           Data.List                   (unfoldr, (\\))
 import qualified Data.Map                    as M (map)
 import           Data.Maybe                  (fromMaybe)
 import           Data.Time.Clock             (UTCTime (..), getCurrentTime,
