@@ -36,7 +36,7 @@ executable kurt
                , rosezipper < 0.2
                , time
                , unordered-containers
-  ghc-options: -O2 -threaded -rtsopts
+  ghc-options: -O2 -threaded -eventlog -rtsopts -Wall -Werror
   ghc-prof-options: -auto-all -caf-all
 
 source-repository head
