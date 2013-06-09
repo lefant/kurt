@@ -66,9 +66,12 @@ childNodes :: (UCTMove a) => UCTTreeLoc a -> [MoveNode a]
 childNodes (TreeLoc (m, k)) =
     map (moveNode . ((H.!) m)) $ children $ (H.!) m k
 
-selectSubtree :: (UCTMove a) => UCTTreeLoc a -> ZHash -> UCTTreeLoc a
-selectSubtree (TreeLoc (m, _)) hash =
-    TreeLoc (m, hash)
+selectSubtree :: (UCTMove a) =>
+                 UCTTreeLoc a -> ZHash -> a -> UCTTreeLoc a
+selectSubtree (TreeLoc (m, _)) hash fakeMove =
+    case H.lookup hash m of
+      Just _ -> TreeLoc(m, hash)
+      Nothing -> newUctTree fakeMove
 
 selectLeafPathMoveNodes :: (UCTMove a) =>
                            UCTPolicy a -> UCTTreeLoc a -> [MoveNode a]

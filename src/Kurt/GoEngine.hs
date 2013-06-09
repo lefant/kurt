@@ -94,7 +94,7 @@ updateEngineState eState move =
       gState = getGameState eState
       loc' = case move of
                (Resign _) -> loc
-               _otherwise -> selectSubtree loc hash
+               _otherwise -> selectSubtree loc hash fakeMove
       loc = getUctTree eState
       hash = zHash $ getState gState'
 
