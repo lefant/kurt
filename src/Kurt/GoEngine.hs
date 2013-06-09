@@ -198,14 +198,15 @@ runUCT initLoc rootGameState initRaveMap config deadline seed00 = do
 
       loop0 :: Seed -> LoopState -> [LoopState]
       loop0 seed0 st0 =
-          scanl updateTreeResult st0 $
+          map (uncurry updateTreeResult) $
                 withStrategy (parBuffer (maxThreads config) rdeepseq) $
-                             map runOne $
+                             map (second runOne) $
                              unfoldr requestor (st0, seed0)
 
-      requestor :: (LoopState, Seed) -> Maybe (Request, (LoopState, Seed))
+      requestor :: (LoopState, Seed) ->
+                   Maybe ((LoopState, Request), (LoopState, Seed))
       requestor (!st, seed) =
-          Just (request, (st', seed'))
+          Just ((st', request), (st', seed'))
           where
             seed' = incrSeed seed
             st' = (loc, raveMap)
