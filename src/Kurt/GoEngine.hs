@@ -27,8 +27,8 @@ import           Control.Arrow               (second)
 import           Control.Monad               (liftM)
 import           Control.Monad.Primitive     (PrimState)
 import           Control.Monad.ST            (ST, runST, stToIO)
-import           Control.Parallel.Strategies (parMap, rdeepseq)
-import           Data.List                   ((\\))
+import           Control.Parallel.Strategies (parBuffer, rdeepseq, withStrategy)
+import           Data.List                   ((\\), unfoldr)
 import qualified Data.Map                    as M (map)
 import           Data.Maybe                  (fromMaybe)
 import           Data.Time.Clock             (UTCTime (..), getCurrentTime,
@@ -198,32 +198,20 @@ runUCT initLoc rootGameState initRaveMap config deadline seed00 = do
 
       loop0 :: Seed -> LoopState -> [LoopState]
       loop0 seed0 st0 =
-          map (\(_, st, _) -> st) $ iterate loop (seed0, st0, [])
-          where
-            loop (seed, st, results0) =
-                (seed', st'', results)
-                where
-                  st'' = updater st' r
-                  r : results = results0 ++ (parMap rdeepseq runOne requests)
-                  (st', seed', requests) = requestor st seed reqNeeded
-                  reqNeeded = max 2 $ maxThreads config - length results0
+          scanl updateTreeResult st0 $
+                -- withStrategy (parBuffer (maxThreads config) rdeepseq) $
+                             map runOne $
+                             unfoldr requestor (st0, seed0)
 
-      updater :: LoopState -> Result -> LoopState
-      updater !st !res =
-          updateTreeResult st res
-
-      requestor :: LoopState -> Seed -> Int -> (LoopState, Seed, [Request])
-      requestor !st0 seed0 !n =
-          last $ take n $ iterate r (st0, seed0, [])
+      requestor :: (LoopState, Seed) -> Maybe (Request, (LoopState, Seed))
+      requestor (!st, seed) =
+          Just (request, (st', seed'))
           where
-            r :: (LoopState, Seed, [Request]) -> (LoopState, Seed, [Request])
-            r (!st, seed, rs) = (st', seed', request : rs)
-                where
-                  seed' = incrSeed seed
-                  st' = (loc, raveMap)
-                  (_, raveMap) = st
-                  request = (leafGameState, path, seed)
-                  (loc, (leafGameState, path)) = nextNode st
+            seed' = incrSeed seed
+            st' = (loc, raveMap)
+            (_, raveMap) = st
+            request = (leafGameState, path, seed)
+            (loc, (leafGameState, path)) = nextNode st
 
       nextNode :: LoopState -> (UCTTreeLoc Move, (GameState, [Move]))
       nextNode (!loc, !raveMap) =
