@@ -29,6 +29,7 @@ module Data.Tree.UCT.GameMap ( UCTTree
                              ) where
 
 
+import           Control.DeepSeq        (NFData)
 import qualified Data.HashMap.Lazy      as H
 import qualified Data.IntSet            as S
 import           Data.List              (foldl', unfoldr)
@@ -39,6 +40,7 @@ import           Data.Tree.UCT.Types
 
 
 data UCTTreeLoc a = TreeLoc (UCTTree a, UCTKey)
+instance UCTMove a => NFData (UCTTreeLoc a)
 type UCTKey = Int
 type UCTTree a = H.HashMap UCTKey (Entry a)
 data Entry a = Entry { moveNode :: MoveNode a
