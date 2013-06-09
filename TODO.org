@@ -1,5 +1,8 @@
 #+STARTUP: showall hidestars
 
+* debt
+** should "MoveNode a" and "Entry a" be merged and rename UctNode?
+
 * Roadmap june:
 ** transposition tables via zobrist hashes
 *** init zobrist hashmap, hash per node
