@@ -123,7 +123,11 @@ selectNode policy (TreeLoc (m, k)) =
       childIds = children currentEntry
       (selectedMove, selectedId) = policy parentVisits childIdPairs
       parentVisits = nodeVisits $ moveNode currentEntry
-      currentEntry = (H.!) m k
+      currentEntry =
+          H.lookupDefault
+               (error "invalid key in selectNode"
+                          ++ ((show k) ++ (show $ H.toList m)))
+               k m
 
 
 
