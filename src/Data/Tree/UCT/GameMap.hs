@@ -47,7 +47,7 @@ instance UCTMove a => NFData (UCTTreeLoc a)
 type UCTKey = Int
 type UCTTree a = H.HashMap UCTKey (Entry a)
 data Entry a = Entry { moveNode :: MoveNode a
-                     , parents  :: S.IntSet
+                     , parents  :: !S.IntSet
                      , children :: [UCTKey]
                      } deriving (Show)
 
