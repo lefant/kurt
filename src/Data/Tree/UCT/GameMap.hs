@@ -66,8 +66,9 @@ newEntry fakeMove =
           }
 
 rootNodeVisits :: (UCTMove a) => UCTTreeLoc a -> Count
-rootNodeVisits (TreeLoc (m, _)) =
-    nodeVisits $ moveNode $ (H.!) m 0
+rootNodeVisits (TreeLoc (m, k)) =
+    nodeVisits $ moveNode $
+               H.lookupDefault (error "invalid key in rootNodeVisits") k m
 
 childNodes :: (UCTMove a) => UCTTreeLoc a -> [MoveNode a]
 childNodes (TreeLoc (m, k)) =
