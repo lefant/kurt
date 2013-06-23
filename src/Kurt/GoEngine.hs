@@ -176,7 +176,7 @@ runUCT initLoc rootGameState initRaveMap config deadline seed00 = do
         now <- getCurrentTime
         let timeIsUp = (now > deadline)
         (if maxRuns || timeIsUp
-         then return st
+         then return $ trace ("total sims: " ++ show n) st
          else uctLoop stateStream (n + 1))
 
       stateStream0 = loop0 seed00 (initLoc, initRaveMap)
