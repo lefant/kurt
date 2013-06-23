@@ -75,7 +75,11 @@ rootNodeVisits (TreeLoc (m, k)) =
 
 childNodes :: (UCTMove a) => UCTTreeLoc a -> [MoveNode a]
 childNodes (TreeLoc (m, k)) =
-    map (moveNode . ((H.!) m)) $ children $ (H.!) m k
+    map (moveNode . lookupChild) $ children $
+        H.lookupDefault (error "invalid key in childNodes") k m
+    where
+      lookupChild childId =
+          H.lookupDefault (error "invalid childId in childNodes") childId m
 
 selectSubtree :: (UCTMove a) =>
                  UCTTreeLoc a -> ZHash -> a -> UCTTreeLoc a
