@@ -18,6 +18,7 @@ module Data.Goban.ZobristHash ( ZHash
                               , ZHashMap
                               , initMap
                               , updateHash
+                              , updateToMove
                               ) where
 
 
@@ -54,6 +55,11 @@ updateHash h v =
     where
       m = zMap
 
+updateToMove :: ZHash -> ZHash
+updateToMove h =
+    h `xor` whiteToMove
+
+whiteToMove = 2504203681539344334
 
 -- basically run "initMap 19" with derived show and copy paste it here
 zMap :: ZHashMap

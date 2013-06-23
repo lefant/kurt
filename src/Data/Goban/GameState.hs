@@ -43,7 +43,7 @@ import qualified Data.Set               as S
 import           Data.Goban.Incremental
 import           Data.Goban.Types
 import           Data.Goban.Utils
-import           Data.Goban.ZobristHash (ZHash, updateHash)
+import           Data.Goban.ZobristHash (ZHash, updateHash, updateToMove)
 import           Data.Tree.UCT          (UCTHeuristic)
 import           Data.Tree.UCT.Types    (Value)
 import           Kurt.Config
@@ -165,7 +165,7 @@ idStuff state move =
           case (koBlocked state) of
             Just p -> updateHash oldZHash (p, EmptyKoBlocked)
             _ -> oldZHash
-      oldZHash = zHash state
+      oldZHash = updateToMove $ zHash state
 
 updateStuff :: GameStateStuff -> Move -> [Stone] -> ChainMap -> GameStateStuff
 updateStuff state move@(Move (Stone p c)) dead chains' =
@@ -199,7 +199,7 @@ updateStuff state move@(Move (Stone p c)) dead chains' =
           case (koBlocked state) of
             Just k -> updateHash oldZHash (k, EmptyKoBlocked)
             _ -> oldZHash
-      oldZHash = zHash state
+      oldZHash = updateToMove $ zHash state
 
             -- str <- showGameStateST state'
             -- trace ("updateGameState" ++ str) $ return ()
