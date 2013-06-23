@@ -11,7 +11,7 @@ author:         Fabian Linzberger <e@lefant.net>
 maintainer:     Fabian Linzberger <e@lefant.net>
 homepage:       http://lefant.net/
 stability:      experimental
-tested-with:    GHC==6.10
+tested-with:    GHC==7.4
 cabal-version:  >= 1.6
 build-type:     Simple
 
@@ -36,8 +36,7 @@ executable kurt
                , rosezipper < 0.2
                , time
                , unordered-containers
-  ghc-options: -O2 -threaded -eventlog -rtsopts -Wall -Werror
-  ghc-prof-options: -auto-all -caf-all
+  ghc-options: -O2 -Wall -Werror -rtsopts -threaded -debug
 
 source-repository head
   type:     git
