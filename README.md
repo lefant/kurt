@@ -7,7 +7,9 @@ It is named after the logician [Kurt Gödel][2] and written by
 [Fabian Linzberger][3].
 
 
-Source code is [available online on github][4].
+Source code is [available online on github][4]. 
+
+[![Build Status](https://travis-ci.org/lefant/kurt.png)](https://travis-ci.org/lefant/kurt)
 
 Comments and contributions always welcome!
 
