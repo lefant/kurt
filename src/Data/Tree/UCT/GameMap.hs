@@ -15,7 +15,7 @@ UCT tree search using a zobrist hash keyed HashMap of MoveNodes
 -}
 
 module Data.Tree.UCT.GameMap ( UCTTree
-                             , UCTTreeLoc
+                             , UCTTreeLoc(..)
                              , UCTKey
                              , newUctTree
                              , selectChild

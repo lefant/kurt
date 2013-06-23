@@ -43,8 +43,9 @@ import           Data.Goban.Utils            (rateScore, winningScore)
 import           Kurt.Config
 
 import           Data.Tree.UCT
-import           Data.Tree.UCT.GameMap       (UCTKey, UCTTreeLoc, newUctTree,
-                                              rootNodeVisits, selectSubtree)
+import           Data.Tree.UCT.GameMap       (UCTKey, UCTTreeLoc (..),
+                                              newUctTree, rootNodeVisits,
+                                              selectSubtree)
 import           Data.Tree.UCT.Types         (MoveNode (..), RaveMap,
                                               newRaveMap)
 
@@ -199,16 +200,24 @@ runUCT initLoc rootGameState initRaveMap config deadline seed00 = do
             (loc, (leafGameState, path)) = nextNode st
 
       nextNode :: LoopState -> (UCTTreeLoc Move, (GameState, Paths))
-      nextNode (!loc, !raveMap) =
-          (loc''', (leafGameState, path'))
+      nextNode (!rootLoc, !raveMap) =
+          (rootLoc', (leafGameState, path'))
               where
-                loc''' = backpropagate (const 0.0) updateNodeVisits hashPath loc''
-                loc'' = expandNode loc' slHeu moves
-                moves = nextMovesWithHash leafGameState $ nextMoveColor $ getState leafGameState
+                rootLoc' = TreeLoc (m, k)
+                TreeLoc (_, k) = rootLoc
+                TreeLoc (m, _) = leafLoc''
+                leafLoc'' =
+                    backpropagate
+                      (const undefined) updateNodeVisits hashPath leafLoc'
+                leafLoc' = expandNode leafLoc slHeu moves
+                moves = nextMovesWithHash leafGameState
                 leafGameState = getLeafGameState rootGameState movePath
                 path'@(movePath, hashPath) = unzip path
-                (loc', path) = selectLeafPath policy loc
-                policy = policyRaveUCB1 (uctExplorationPercent config) (raveWeight config) raveMap
+                (leafLoc, path) = selectLeafPath policy rootLoc
+                policy = policyRaveUCB1
+                           (uctExplorationPercent config)
+                           (raveWeight config)
+                           raveMap
                 slHeu = makeStonesAndLibertyHeuristic leafGameState config
 
 
