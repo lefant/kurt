@@ -79,7 +79,7 @@ selectSubtree :: (UCTMove a) =>
 selectSubtree (TreeLoc (m, _)) hash fakeMove =
     case H.lookup hash m of
       Just _ -> TreeLoc(m, hash)
-      Nothing -> newUctTree fakeMove
+      Nothing -> newUctTree2 fakeMove hash
 
 selectLeafPathMoveNodes :: (UCTMove a) =>
                            UCTPolicy a -> UCTTreeLoc a -> [MoveNode a]
