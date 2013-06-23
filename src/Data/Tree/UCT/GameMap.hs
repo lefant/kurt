@@ -39,14 +39,16 @@ import           Data.Tree.UCT.Types
 
 
 
-data UCTTreeLoc a = TreeLoc (UCTTree a, UCTKey)
+data UCTTreeLoc a = TreeLoc (UCTTree a, UCTKey) deriving (Show)
+
 instance UCTMove a => NFData (UCTTreeLoc a)
+
 type UCTKey = Int
 type UCTTree a = H.HashMap UCTKey (Entry a)
 data Entry a = Entry { moveNode :: MoveNode a
                      , parents  :: S.IntSet
                      , children :: [UCTKey]
-                     }
+                     } deriving (Show)
 
 newUctTree :: (UCTMove a) => a -> UCTTreeLoc a
 newUctTree fakeMove =
