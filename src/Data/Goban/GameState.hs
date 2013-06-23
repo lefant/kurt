@@ -109,13 +109,13 @@ newGameState n initKomi =
     initFreeVertices = S.fromList $ allVertices n
 
 
-nextMovesWithHash :: GameState -> Color -> [(Move, ZHash)]
-nextMovesWithHash state color =
+nextMovesWithHash :: GameState -> [(Move, ZHash)]
+nextMovesWithHash state =
     map moveToMoveHash moves
     where
       moveToMoveHash move =
           (move, zHash $ getState $ updateGameState state move)
-      moves = nextMoves state color
+      moves = nextMoves state $ nextMoveColor $ getState state
 
 nextMoves :: GameState -> Color -> [Move]
 nextMoves (GameState goban state) color =
