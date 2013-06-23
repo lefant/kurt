@@ -37,6 +37,7 @@ import           Data.List              (foldl', unfoldr)
 import           Data.Goban.ZobristHash (ZHash)
 import           Data.Tree.UCT.Types
 
+import           Debug.TraceOrId        (trace)
 
 
 data UCTTreeLoc a = TreeLoc (UCTTree a, UCTKey) deriving (Show)
@@ -97,11 +98,12 @@ selectChild policy loc =
 
 selectLeafPath :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a
                -> (UCTTreeLoc a, [(a, UCTKey)])
-selectLeafPath policy loc@(TreeLoc (m, _k)) =
-    (TreeLoc (m, snd $ head rpath), reverse rpath)
+selectLeafPath policy loc@(TreeLoc (m, k)) =
+    (TreeLoc (m, k'), rpath)
     where
-      -- path = reverse $ map locToMove rpath
-      -- locToMove (TreeLoc (m, k)) = nodeMove $ moveNode $ (H.!) m k
+      k' = if null rpath
+           then trace ("selectLeafPath null path" ++ show k) k
+           else snd $ head rpath
       rpath = unfoldr selector loc
       selector = selectNode2 policy
 
