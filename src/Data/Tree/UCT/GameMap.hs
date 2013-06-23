@@ -87,9 +87,11 @@ selectSubtree (TreeLoc (m, _)) hash fakeMove =
 selectLeafPathMoveNodes :: (UCTMove a) =>
                            UCTPolicy a -> UCTTreeLoc a -> [MoveNode a]
 selectLeafPathMoveNodes policy loc@(TreeLoc (m, _k)) =
-    map keyToMove keys
+    map (moveNode . keyToNode) keys
     where
-      keyToMove k = moveNode $ (H.!) m k
+      keyToNode k =
+          H.lookupDefault
+               (error "invalid key in selectLeafPathMoveNodes") k m
       keys = map snd $ snd $ selectLeafPath policy loc
 
 selectChild :: (UCTMove a) => UCTPolicy a -> UCTTreeLoc a -> UCTTreeLoc a
