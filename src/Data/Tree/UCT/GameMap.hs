@@ -50,14 +50,19 @@ data Entry a = Entry { moveNode :: MoveNode a
 
 newUctTree :: (UCTMove a) => a -> UCTTreeLoc a
 newUctTree fakeMove =
-    TreeLoc (H.singleton 0 entry, 0)
-    where
-      entry =
-          Entry { moveNode = MoveNode { nodeMove = fakeMove
-                                      , nodeVisits = 1
-                                      , nodeValue = 0.5 }
-                , parents = S.empty
-                , children = []
+    TreeLoc (H.singleton 0 (newEntry fakeMove), 0)
+
+newUctTree2 :: (UCTMove a) => a -> UCTKey -> UCTTreeLoc a
+newUctTree2 fakeMove k =
+    TreeLoc (H.singleton k (newEntry fakeMove), k)
+
+newEntry :: (UCTMove a) => a -> Entry a
+newEntry fakeMove =
+    Entry { moveNode = MoveNode { nodeMove = fakeMove
+                                , nodeVisits = 1
+                                , nodeValue = 0.5 }
+          , parents = S.empty
+          , children = []
           }
 
 rootNodeVisits :: (UCTMove a) => UCTTreeLoc a -> Count
