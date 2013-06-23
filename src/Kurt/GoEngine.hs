@@ -146,7 +146,7 @@ bestMoveFromLoc loc state score =
                   trace ("bestMoveFromLoc resign " ++ show node)
                   Resign color
           else
-              trace ("total sims: " ++ show (rootNodeVisits $ loc)
+              trace ("total sims: " ++ show (rootNodeVisits loc)
                      ++ " best: " ++ show node
                      ++ "\n")
                      -- ++ (drawTree $ fmap show $ tree loc)
