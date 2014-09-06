@@ -1,5 +1,5 @@
-kgsGtp:
-  build: kgsGtp
+kgsgtp:
+  image: lefant/kgsgtp
   command: mode=custom opponent=lefant gameNotes="for lefant"
   #command: mode=custom opponent=lefant gameNotes="9x9 only, about 25k on a good day"
   #command: mode=tournament
@@ -7,6 +7,8 @@ kgsGtp:
     NAME:
     PASSWORD:
 kurt:
-  build: .
+  image: lefant/kurt
+  #build: .
+  #command: "nc.traditional kgsgtp_1 12345 -e /.cabal/bin/kurt"
   links:
-    - kgsGtp
+    - kgsgtp
