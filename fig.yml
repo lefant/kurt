@@ -1,14 +1,16 @@
 kgsgtp:
   image: lefant/kgsgtp
+  #build: ../docker-kgsgtp
   command: mode=custom opponent=lefant gameNotes="for lefant"
   #command: mode=custom opponent=lefant gameNotes="9x9 only, about 25k on a good day"
   #command: mode=tournament
   environment:
     NAME:
     PASSWORD:
+    KGSGTP_ARGS:
 kurt:
   image: lefant/kurt
   #build: .
-  #command: "nc.traditional kgsgtp_1 12345 -e /.cabal/bin/kurt"
+  #command: "nc.traditional kurt_kgsgtp_1 12345 -e /.cabal/bin/kurt"
   links:
     - kgsgtp
