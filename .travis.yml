@@ -14,7 +14,9 @@ before_install:
   - export PATH=$HOME/.local/bin:$PATH
   - travis_retry curl -L https://www.stackage.org/stack/linux-x86_64 | tar xz --wildcards --strip-components=1 -C ~/.local/bin '*/stack'
 
-install: true
+install:
+    - stack setup --no-terminal
+    - stack build --only-snapshot --no-terminal
 
 script:
   - stack --no-terminal --skip-ghc-check build
