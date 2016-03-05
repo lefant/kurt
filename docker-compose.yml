@@ -11,6 +11,6 @@ kgsgtp:
 kurt:
   image: lefant/kurt
   #build: .
-  #command: "nc.traditional kurt_kgsgtp_1 12345 -e /.cabal/bin/kurt"
+  command: "nc.traditional -w 2 kgsgtp_1 12345 -e /root/.cabal/bin/kurt"
   links:
     - kgsgtp

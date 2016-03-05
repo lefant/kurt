@@ -20,4 +20,5 @@ RUN cabal install
 RUN apt-get -y install netcat && apt-get clean
 
 ENV GHCRTS -N
-CMD ["nc.traditional", "-w", "2", "kgsgtp_1", "12345", "-e", "/root/.cabal/bin/kurt"]
+CMD ["/root/.cabal/bin/kurt"]
+#CMD ["nc.traditional", "-w", "2", "kgsgtp_1", "12345", "-e", "/root/.cabal/bin/kurt"]
