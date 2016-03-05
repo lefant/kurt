@@ -19,7 +19,7 @@ data-files:
 extra-tmp-files:
 extra-source-files:
   COPYING
-  README
+  README.md
 
 executable kurt
   main-is:        kurt.hs
