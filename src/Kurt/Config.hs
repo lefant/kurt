@@ -1,18 +1,4 @@
-{-# OPTIONS -Wall -Werror -Wwarn #-}
-{-# OPTIONS_GHC -funbox-strict-fields #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-
-{- |
-   Module     : Kurt.Config
-   Copyright  : Copyright (C) 2010 Fabian Linzberger
-   License    : GNU GPL, version 3 or above
-
-   Maintainer : Fabian Linzberger <e@lefant.net>
-   Stability  : experimental
-
-Program configuration
-
--}
+-- Program configuration
 
 module Kurt.Config ( KurtConfig(..)
                    , kurtDefaultConfig

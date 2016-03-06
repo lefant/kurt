@@ -1,19 +1,4 @@
-{-# OPTIONS -Wall -Werror -Wwarn #-}
-{-# OPTIONS_GHC -funbox-strict-fields #-}
-{-# LANGUAGE BangPatterns       #-}
-{-# LANGUAGE DeriveDataTypeable #-}
-
-{- |
-   Module     : Kurt.GoEngine
-   Copyright  : Copyright (C) 2010 Fabian Linzberger
-   License    : GNU GPL, version 3 or above
-
-   Maintainer : Fabian Linzberger <e@lefant.net>
-   Stability  : experimental
-
-Move generator logic
-
--}
+-- Move generator logic
 
 module Kurt.GoEngine ( genMove
                      , simulatePlayout
@@ -55,12 +40,12 @@ import           Debug.TraceOrId             (trace)
 -- import Data.Tree (drawTree)
 
 data EngineState = EngineState {
-      getGameState    :: !GameState
-    , getUctTree      :: !(UCTTreeLoc Move)
-    , getRaveMap      :: !(RaveMap Move)
-    , boardSize       :: !Int
-    , getKomi         :: !Score
-    , getConfig       :: !KurtConfig
+      getGameState :: !GameState
+    , getUctTree   :: !(UCTTreeLoc Move)
+    , getRaveMap   :: !(RaveMap Move)
+    , boardSize    :: !Int
+    , getKomi      :: !Score
+    , getConfig    :: !KurtConfig
     }
 
 type LoopState = (UCTTreeLoc Move, RaveMap Move)
