@@ -4,6 +4,7 @@ kgsgtp:
   command: mode=custom opponent=lefant gameNotes="for lefant"
   #command: mode=custom opponent=lefant gameNotes="9x9 only, about 25k on a good day"
   #command: mode=tournament
+  restart: unless-stopped
   environment:
     NAME:
     PASSWORD:
@@ -12,5 +13,6 @@ kurt:
   image: lefant/kurt
   #build: .
   command: "nc.traditional -w 2 kgsgtp_1 12345 -e /root/.cabal/bin/kurt"
+  restart: unless-stopped
   links:
     - kgsgtp
