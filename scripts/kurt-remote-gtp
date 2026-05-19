@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+host="${KURT_GTP_HOST:-lefant-kurt.exe.xyz}"
+remote_script="${KURT_GTP_REMOTE_SCRIPT:-/home/exedev/git/lefant/kurt/scripts/kurt-gtp}"
+
+exec /usr/bin/ssh -T -o BatchMode=yes "$host" "$remote_script"
