@@ -1,4 +1,6 @@
 dist
+dist-newstyle
+.devenv
 *.hi
 *.o
 TAGS

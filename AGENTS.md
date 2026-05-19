@@ -23,7 +23,14 @@ This is an older Stack/Cabal Haskell project:
 - Historical CI used GHC 7.8 and `stack --skip-ghc-check build`.
 - The Dockerfile is based on Ubuntu 14.04 and should be treated as historical unless intentionally modernizing it.
 
-Historical builds used Stack, but current Stack releases no longer support the Cabal library bundled with GHC 7.8. In this environment, use Cabal with a modern GHC from Nix:
+Historical builds used Stack, but current Stack releases no longer support the Cabal library bundled with GHC 7.8. Use the project devenv shell for documented build dependencies:
+
+```sh
+devenv shell
+build
+```
+
+Equivalent direct Nix command:
 
 ```sh
 nix shell nixpkgs#ghc nixpkgs#cabal-install -c cabal v2-build
@@ -36,8 +43,7 @@ If intentionally reproducing the historical build, use an old Stack release that
 After a successful build, run a basic GTP smoke test against the executable. Keep move generation cheap so the test is fast:
 
 ```sh
-printf 'name\nprotocol_version\nboardsize 5\nkomi 0\nkurt_configure maxplayouts 5\nkurt_configure maxtime 50\nclear_board\nplay b A1\ngenmove w\nquit\n' \
-  | nix shell nixpkgs#ghc nixpkgs#cabal-install -c cabal v2-run kurt -- +RTS -N1
+devenv shell smoke
 ```
 
 Expected behavior:
