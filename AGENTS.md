@@ -23,22 +23,21 @@ This is an older Stack/Cabal Haskell project:
 - Historical CI used GHC 7.8 and `stack --skip-ghc-check build`.
 - The Dockerfile is based on Ubuntu 14.04 and should be treated as historical unless intentionally modernizing it.
 
-Prefer Stack for reproducible builds:
+Historical builds used Stack, but current Stack releases no longer support the Cabal library bundled with GHC 7.8. In this environment, use Cabal with a modern GHC from Nix:
 
 ```sh
-stack setup --no-terminal
-stack build --no-terminal --skip-ghc-check
+nix shell nixpkgs#ghc nixpkgs#cabal-install -c cabal v2-build
 ```
 
-If Stack cannot fetch the old resolver or install the old compiler, first diagnose environment/toolchain availability before changing code.
+If intentionally reproducing the historical build, use an old Stack release that still supports Cabal 1.18, or update the resolver/toolchain deliberately.
 
 ## Smoke testing
 
 After a successful build, run a basic GTP smoke test against the executable. Keep move generation cheap so the test is fast:
 
 ```sh
-printf 'name\nprotocol_version\nboardsize 5\nkomi 0\nkurt_configure max_playouts 5\nkurt_configure max_time 50\nclear_board\nplay b A1\ngenmove w\nquit\n' \
-  | stack exec -- kurt +RTS -N1
+printf 'name\nprotocol_version\nboardsize 5\nkomi 0\nkurt_configure maxplayouts 5\nkurt_configure maxtime 50\nclear_board\nplay b A1\ngenmove w\nquit\n' \
+  | nix shell nixpkgs#ghc nixpkgs#cabal-install -c cabal v2-run kurt -- +RTS -N1
 ```
 
 Expected behavior:

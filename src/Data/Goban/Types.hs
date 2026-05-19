@@ -42,7 +42,7 @@ module Data.Goban.Types ( Move(..)
                         ) where
 
 
-import           Control.DeepSeq        (NFData)
+import           Control.DeepSeq        (NFData, rnf)
 import           Data.Char              (chr, ord, toUpper)
 import           Data.Set               (Set)
 import           Data.Tree.UCT.GameTree (UCTMove)
@@ -60,13 +60,19 @@ instance Show Move where
 
 instance UCTMove Move
 
-instance NFData Move
+instance NFData Move where
+    rnf (Move stone) = rnf stone
+    rnf (Pass color) = rnf color
+    rnf (Resign color) = rnf color
 
 
 data Stone = Stone { stoneVertex :: !Vertex
                    , stoneColor  :: !Color
                    }
            deriving (Eq, Ord)
+
+instance NFData Stone where
+    rnf (Stone vertex color) = rnf vertex `seq` rnf color
 
 instance Show Stone where
     show (Stone vertex color) =
@@ -90,6 +96,10 @@ instance Show VertexState where
 data Color = Black
            | White
              deriving (Eq, Ord, Enum)
+
+instance NFData Color where
+    rnf Black = ()
+    rnf White = ()
 
 instance Show Color where
     show Black = "b"

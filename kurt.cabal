@@ -12,7 +12,7 @@ maintainer:     Fabian Linzberger <e@lefant.net>
 homepage:       http://lefant.net/
 stability:      experimental
 tested-with:    GHC==7.8.3
-cabal-version:  >= 1.6
+cabal-version:  >= 1.10
 build-type:     Simple
 
 data-files:
@@ -24,6 +24,19 @@ extra-source-files:
 executable kurt
   main-is:        kurt.hs
   hs-source-dirs: src
+  other-modules:  Data.Goban.GameState
+                , Data.Goban.Incremental
+                , Data.Goban.Types
+                , Data.Goban.Utils
+                , Data.Goban.ZobristHash
+                , Data.Tree.UCT
+                , Data.Tree.UCT.GameTree
+                , Debug.TraceOrId
+                , Kurt.Config
+                , Kurt.GoEngine
+                , Kurt.MainLoop
+                , Network.GoTextProtocol2.Server.Parser
+                , Network.GoTextProtocol2.Types
   build-depends: base >= 3 && < 5
                , cmdargs
                , containers >= 0.3
@@ -45,4 +58,4 @@ executable kurt
 
 source-repository head
   type:     git
-  location: git://github.com/lefant/kurt
+  location: https://github.com/lefant/kurt

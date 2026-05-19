@@ -10,7 +10,6 @@ module Kurt.GoEngine ( genMove
 
 import           Control.Arrow               (second)
 import           Control.Monad               (liftM)
-import           Control.Monad.Primitive     (PrimState)
 import           Control.Monad.ST            (ST, runST, stToIO)
 import           Control.Parallel.Strategies (parMap, rdeepseq)
 import           Data.List                   ((\\))
@@ -21,8 +20,8 @@ import           Data.Time.Clock             (UTCTime (..), getCurrentTime,
 import           Data.Tree                   (rootLabel)
 import           Data.Tree.Zipper            (findChild, fromTree, hasChildren,
                                               tree)
-import           System.Random.MWC           (Gen, Seed, restore, save, uniform,
-                                              withSystemRandom)
+import           System.Random.MWC           (Gen, Seed, createSystemSeed,
+                                              restore, save, uniform)
 
 import           Data.Goban.GameState
 import           Data.Goban.Types            (Color (..), Move (..), Score,
@@ -113,7 +112,7 @@ genMove eState color = do
        then return (Pass color, eState)
        else return (Resign color, eState)
    else (do
-          seed <- withSystemRandom (save :: Gen (PrimState IO) -> IO Seed)
+          seed <- createSystemSeed
           (loc', raveMap') <- runUCT loc gState raveMap config deadline seed
           let eState' = eState { getUctTree = loc', getRaveMap = raveMap' }
           return (bestMoveFromLoc loc' (getState gState) score, eState')))
@@ -189,7 +188,10 @@ runUCT initLoc rootGameState initRaveMap config deadline seed00 = do
                 (seed', st'', results)
                 where
                   st'' = updater st' r
-                  r : results = results0 ++ (parMap rdeepseq runOne requests)
+                  (r, results) =
+                      case results0 ++ parMap rdeepseq runOne requests of
+                        [] -> error "runUCT: expected at least one playout result"
+                        r' : results' -> (r', results')
                   (st', seed', requests) = requestor st seed reqNeeded
                   reqNeeded = max 2 $ maxThreads config - length results0
 
@@ -232,7 +234,7 @@ updateTreeResult (!loc, !raveMap) (!score, !playedMoves, !path) =
 
 simulatePlayout :: GameState -> IO [Move]
 simulatePlayout gState = do
-  seed <- withSystemRandom (save :: Gen (PrimState IO) -> IO Seed)
+  seed <- createSystemSeed
   let gState' = getLeafGameState gState []
   (oneState, playedMoves) <- stToIO $ runOneRandom gState' seed
   let score = scoreGameState oneState
