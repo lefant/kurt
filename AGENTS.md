@@ -40,7 +40,7 @@ If intentionally reproducing the historical build, use an old Stack release that
 
 ## Smoke testing
 
-`scripts/kurt-gtp` runs the built engine for GTP clients. If the expected Cabal binary is missing, it builds first with `cabal v2-build` while keeping build output off stdout.
+`scripts/kurt-gtp` runs the engine for GTP clients. When `cabal` is available, it builds with `cabal v2-build` while keeping build output off stdout, then runs the path reported by `cabal list-bin kurt`. Without `cabal`, it uses an existing Cabal build artifact or falls back to `nix shell`.
 
 After a successful build, run a basic GTP smoke test against the executable. Keep move generation cheap so the test is fast:
 
@@ -63,6 +63,10 @@ Expected behavior:
 - The only file under `test/` imports modules that are not present in this checkout (`Data.Goban.Goban`, `Data.Goban.STVector`) and is not wired into `kurt.cabal`. Treat it as stale until repaired.
 - The parser lowercases the entire input before parsing; be careful when adding commands or arguments where case matters.
 - GTP coordinates skip the letter `I` by design.
+
+## Documented Solutions
+
+`docs/solutions/` contains documented solutions to past problems and workflow learnings, organized by category with YAML frontmatter (`module`, `tags`, `problem_type`). Relevant when implementing or debugging in documented areas.
 
 ## Development guidelines
 

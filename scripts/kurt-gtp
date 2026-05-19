@@ -3,8 +3,24 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-if [[ ! -x ./dist-newstyle/build/x86_64-linux/ghc-9.10.3/kurt-0.0.4/x/kurt/build/kurt/kurt ]]; then
+if command -v cabal >/dev/null 2>&1; then
   cabal v2-build >/dev/null
+  exec "$(cabal list-bin kurt)" +RTS -N1
 fi
 
-exec ./dist-newstyle/build/x86_64-linux/ghc-9.10.3/kurt-0.0.4/x/kurt/build/kurt/kurt +RTS -N1
+for bin in ./dist-newstyle/build/*/ghc-*/kurt-*/x/kurt/build/kurt/kurt; do
+  if [[ -x "$bin" ]]; then
+    exec "$bin" +RTS -N1
+  fi
+done
+
+if command -v nix >/dev/null 2>&1; then
+  exec nix shell nixpkgs#ghc nixpkgs#cabal-install -c bash -lc '
+    cd "$1"
+    cabal v2-build >/dev/null
+    exec "$(cabal list-bin kurt)" +RTS -N1
+  ' bash "$PWD"
+fi
+
+echo "scripts/kurt-gtp: need cabal, nix, or an existing cabal build artifact" >&2
+exit 127
