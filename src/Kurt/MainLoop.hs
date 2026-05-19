@@ -167,7 +167,11 @@ loop oldState =
                       newLineFlush
                       loop oldState
                 Just (_, handler) ->
-                    do
+                    if cmd == "quit" || cmd == "kgs-game_over"
+                    then do
+                      putStrLn $ "=" ++ outputIdOrBlank maybeId
+                      newLineFlush
+                    else do
                       result <- handler args oldState
                       case result of
                         Left err ->
@@ -211,8 +215,8 @@ cmd_protocol_version _ state =
     return $ Right ("2", state)
 
 cmd_quit :: CommandHandler
-cmd_quit _ _ =
-    error "bye!"
+cmd_quit _ state =
+    return $ Right ("", state)
 
 cmd_version :: CommandHandler
 cmd_version _ state =

@@ -54,7 +54,7 @@ Expected behavior:
 - `name` returns `kurt`.
 - `protocol_version` returns `2`.
 - `genmove` returns a legal coordinate, `pass`, or `resign`.
-- `quit` currently exits by raising `error "bye!"`; do not treat that historical behavior as a smoke-test failure unless changing shutdown semantics.
+- `quit` returns a normal empty success response and exits cleanly.
 
 ## Current caveats
 

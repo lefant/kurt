@@ -16,8 +16,8 @@
     status=$?
     cat /tmp/kurt-smoke.log
     echo "SMOKE_EXIT=$status"
+    test "$status" -eq 0
 
-    # quit currently exits via error "bye!" after successful GTP responses.
     grep -q '= kurt' /tmp/kurt-smoke.log
     grep -q '= 2' /tmp/kurt-smoke.log
     grep -Eq '^= ([A-HJ-Z][0-9]+|pass|resign)$' /tmp/kurt-smoke.log
