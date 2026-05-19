@@ -1,0 +1,66 @@
+# AGENTS.md
+
+## Project overview
+
+Kurt is a Haskell Computer Go engine. It runs as a Go Text Protocol (GTP) server on stdin/stdout so clients such as GoGui, KGS GTP, or simple shell scripts can drive it.
+
+Key areas:
+
+- `src/kurt.hs` is the executable entry point. It parses command-line options from `Kurt.Config` and starts the main loop.
+- `src/Kurt/MainLoop.hs` implements the GTP command loop and command handlers.
+- `src/Kurt/GoEngine.hs` contains move generation, UCT/RAVE search, playout simulation, and engine state updates.
+- `src/Kurt/Config.hs` defines runtime knobs such as board size, komi, max playouts, max time, threads, and heuristic weights.
+- `src/Data/Goban/*` contains board state, rules, scoring, incremental board data structures, utilities, and Zobrist hashing.
+- `src/Data/Tree/UCT/*` contains generic UCT tree support and move-node/rave-map types.
+- `src/Network/GoTextProtocol2/*` contains GTP parsing and protocol types.
+
+## Build system
+
+This is an older Stack/Cabal Haskell project:
+
+- `stack.yaml` pins `resolver: lts-2.14` and `rosezipper-0.1`.
+- `kurt.cabal` declares the `kurt` executable only.
+- Historical CI used GHC 7.8 and `stack --skip-ghc-check build`.
+- The Dockerfile is based on Ubuntu 14.04 and should be treated as historical unless intentionally modernizing it.
+
+Prefer Stack for reproducible builds:
+
+```sh
+stack setup --no-terminal
+stack build --no-terminal --skip-ghc-check
+```
+
+If Stack cannot fetch the old resolver or install the old compiler, first diagnose environment/toolchain availability before changing code.
+
+## Smoke testing
+
+After a successful build, run a basic GTP smoke test against the executable. Keep move generation cheap so the test is fast:
+
+```sh
+printf 'name\nprotocol_version\nboardsize 5\nkomi 0\nkurt_configure max_playouts 5\nkurt_configure max_time 50\nclear_board\nplay b A1\ngenmove w\nquit\n' \
+  | stack exec -- kurt +RTS -N1
+```
+
+Expected behavior:
+
+- GTP responses start with `=` for accepted commands.
+- `name` returns `kurt`.
+- `protocol_version` returns `2`.
+- `genmove` returns a legal coordinate, `pass`, or `resign`.
+- `quit` currently exits by raising `error "bye!"`; do not treat that historical behavior as a smoke-test failure unless changing shutdown semantics.
+
+## Current caveats
+
+- Compiler warnings are treated as errors in multiple modules and in `kurt.cabal` (`-Wall -Werror`). Newer GHC versions may fail on warnings that old CI did not see.
+- `cmd_version` reports `0.0.3` while `kurt.cabal` says `0.0.4`.
+- The only file under `test/` imports modules that are not present in this checkout (`Data.Goban.Goban`, `Data.Goban.STVector`) and is not wired into `kurt.cabal`. Treat it as stale until repaired.
+- The parser lowercases the entire input before parsing; be careful when adding commands or arguments where case matters.
+- GTP coordinates skip the letter `I` by design.
+
+## Development guidelines
+
+- Preserve the stdin/stdout GTP contract. Do not print diagnostics to stdout from command handlers; use stderr or tracing that is explicitly disabled/enabled.
+- Keep GTP command additions in sync between `commandargparserlist` and `commandHandlers` in `Kurt.MainLoop`.
+- Keep board rule changes covered by small deterministic command sequences or focused unit tests where possible.
+- Prefer small, behavior-preserving modernization steps when fixing compilation on a newer toolchain.
+- Avoid broad rewrites of UCT/search code while solving build or smoke-test failures.
