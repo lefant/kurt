@@ -40,6 +40,8 @@ If intentionally reproducing the historical build, use an old Stack release that
 
 ## Smoke testing
 
+`scripts/kurt-gtp` runs the built engine for GTP clients. If the expected Cabal binary is missing, it builds first with `cabal v2-build` while keeping build output off stdout.
+
 After a successful build, run a basic GTP smoke test against the executable. Keep move generation cheap so the test is fast:
 
 ```sh
