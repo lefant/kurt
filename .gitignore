@@ -3,6 +3,8 @@ dist-newstyle
 .devenv
 *.hi
 *.o
+__pycache__/
+*.pyc
 TAGS
 tags
 kurt.prof

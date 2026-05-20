@@ -23,7 +23,7 @@ This is an older Stack/Cabal Haskell project:
 - Historical CI used GHC 7.8 and `stack --skip-ghc-check build`.
 - The Dockerfile is based on Ubuntu 14.04 and should be treated as historical unless intentionally modernizing it.
 
-Historical builds used Stack, but current Stack releases no longer support the Cabal library bundled with GHC 7.8. Use the project devenv shell for documented build dependencies:
+Historical builds used Stack, but current Stack releases no longer support the Cabal library bundled with GHC 7.8. Use the project devenv shell for documented build and test dependencies (GHC, cabal-install, Python, Stack):
 
 ```sh
 devenv shell
@@ -42,7 +42,13 @@ If intentionally reproducing the historical build, use an old Stack release that
 
 `scripts/kurt-gtp` runs the engine for GTP clients. When `cabal` is available, it builds with `cabal v2-build` while keeping build output off stdout, then runs the path reported by `cabal list-bin kurt`. Without `cabal`, it uses an existing Cabal build artifact or falls back to `nix shell`.
 
-After a successful build, run a basic GTP smoke test against the executable. Keep move generation cheap so the test is fast:
+Run the local GTP regression suite:
+
+```sh
+scripts/gtp-regression
+```
+
+Or through devenv:
 
 ```sh
 devenv shell smoke
@@ -50,11 +56,14 @@ devenv shell smoke
 
 Expected behavior:
 
+- Protocol basics pass for direct engine startup and `scripts/kurt-gtp` wrapper startup.
 - GTP responses start with `=` for accepted commands.
 - `name` returns `kurt`.
 - `protocol_version` returns `2`.
-- `genmove` returns a legal coordinate, `pass`, or `resign`.
+- `known_command` and `list_commands` cover core commands.
+- `genmove` returns an in-board coordinate, `pass`, or `resign`.
 - `quit` returns a normal empty success response and exits cleanly.
+- Engine stdout remains GTP-clean; stderr diagnostics are tolerated.
 
 ## Current caveats
 

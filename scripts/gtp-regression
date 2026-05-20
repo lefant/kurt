@@ -1,0 +1,228 @@
+#!/usr/bin/env python3
+import os
+import re
+import subprocess
+import sys
+from dataclasses import dataclass
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+BOARD_LETTERS = "ABCDEFGHJKLMNOPQRSTUVWXYZ"
+
+
+@dataclass
+class RunResult:
+    name: str
+    stdout: str
+    stderr: str
+    returncode: int
+
+
+failures: list[str] = []
+
+
+def fail(name: str, message: str, result: RunResult | None = None) -> None:
+    details = [f"[{name}] {message}"]
+    if result is not None:
+        details.extend([
+            f"exit: {result.returncode}",
+            "stdout:",
+            result.stdout.rstrip() or "<empty>",
+            "stderr:",
+            result.stderr.rstrip() or "<empty>",
+        ])
+    failures.append("\n".join(details))
+
+
+def existing_engine() -> str | None:
+    for candidate in ROOT.glob("dist-newstyle/build/*/ghc-*/kurt-*/x/kurt/build/kurt/kurt"):
+        if candidate.is_file() and os.access(candidate, os.X_OK):
+            return str(candidate)
+    return None
+
+
+def build_engine() -> str:
+    try:
+        subprocess.run(["cabal", "v2-build"], cwd=ROOT, stdout=subprocess.DEVNULL, check=True)
+        completed = subprocess.run(
+            ["cabal", "list-bin", "kurt"],
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            check=True,
+        )
+        return completed.stdout.strip()
+    except FileNotFoundError as exc:
+        fallback = existing_engine()
+        if fallback is not None:
+            return fallback
+        print(f"Could not build or locate kurt with cabal: {exc}", file=sys.stderr)
+        sys.exit(1)
+    except subprocess.CalledProcessError as exc:
+        print(f"Could not build kurt with cabal: {exc}", file=sys.stderr)
+        sys.exit(1)
+
+
+def text_or_empty(value: str | bytes | None) -> str:
+    if value is None:
+        return ""
+    if isinstance(value, bytes):
+        return value.decode(errors="replace")
+    return value
+
+
+def run_gtp(name: str, command: list[str], gtp_input: str) -> RunResult:
+    try:
+        completed = subprocess.run(
+            command,
+            cwd=ROOT,
+            input=gtp_input,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            timeout=30,
+        )
+        return RunResult(name, completed.stdout, completed.stderr, completed.returncode)
+    except subprocess.TimeoutExpired as exc:
+        return RunResult(name, text_or_empty(exc.stdout), text_or_empty(exc.stderr), 124)
+
+
+def response_blocks(stdout: str) -> list[list[str]]:
+    blocks: list[list[str]] = []
+    current: list[str] = []
+    for line in stdout.replace("\r\n", "\n").split("\n"):
+        if line == "":
+            if current:
+                blocks.append(current)
+                current = []
+            continue
+        if not current and not (line.startswith("=") or line.startswith("?")):
+            raise AssertionError(f"non-GTP stdout before response: {line!r}")
+        current.append(line)
+    if current:
+        blocks.append(current)
+    return blocks
+
+
+def assert_clean_successes(result: RunResult, expected_count: int | None = None) -> list[list[str]]:
+    try:
+        blocks = response_blocks(result.stdout)
+    except AssertionError as exc:
+        fail(result.name, str(exc), result)
+        return []
+
+    for block in blocks:
+        if not block[0].startswith("="):
+            fail(result.name, f"expected success response, got {block[0]!r}", result)
+            return blocks
+
+    if expected_count is not None and len(blocks) != expected_count:
+        fail(result.name, f"expected {expected_count} response blocks, got {len(blocks)}", result)
+
+    return blocks
+
+
+def response_payload(block: list[str]) -> str:
+    first = block[0]
+    first_payload = first[1:].lstrip()
+    lines = [first_payload] + block[1:]
+    return "\n".join(lines).strip("\n")
+
+
+def assert_exit_zero(result: RunResult) -> None:
+    if result.returncode != 0:
+        fail(result.name, "expected exit status 0", result)
+
+
+def assert_generated_move(name: str, payload: str, board_size: int) -> None:
+    move = payload.strip().lower()
+    if move in {"pass", "resign"}:
+        return
+
+    match = re.fullmatch(r"([A-HJ-Z])(\d+)", payload.strip())
+    if not match:
+        fail(name, f"genmove returned invalid move payload {payload!r}")
+        return
+
+    x = BOARD_LETTERS.index(match.group(1)) + 1 if match.group(1) in BOARD_LETTERS else 0
+    y = int(match.group(2))
+    if x < 1 or x > board_size or y < 1 or y > board_size:
+        fail(name, f"genmove returned out-of-board move {payload!r} for board size {board_size}")
+
+
+def protocol_basics(command: list[str], name: str) -> None:
+    gtp = "\n".join([
+        "name",
+        "protocol_version",
+        "known_command name",
+        "known_command not_a_command",
+        "list_commands",
+        "quit",
+        "",
+    ])
+    result = run_gtp(name, command, gtp)
+    blocks = assert_clean_successes(result, 6)
+    assert_exit_zero(result)
+    if len(blocks) < 6:
+        return
+
+    expectations = [
+        (0, "kurt"),
+        (1, "2"),
+        (2, "true"),
+        (3, "false"),
+        (5, ""),
+    ]
+    for index, expected in expectations:
+        actual = response_payload(blocks[index]).strip()
+        if actual != expected:
+            fail(name, f"response {index + 1} expected {expected!r}, got {actual!r}", result)
+
+    commands = set(response_payload(blocks[4]).splitlines())
+    for required in ["name", "protocol_version", "known_command", "list_commands", "quit", "genmove", "play"]:
+        if required not in commands:
+            fail(name, f"list_commands missing {required!r}", result)
+
+
+def gameplay(command: list[str]) -> None:
+    name = "gameplay"
+    board_size = 5
+    gtp = "\n".join([
+        "boardsize 5",
+        "komi 0",
+        "kurt_configure maxplayouts 5",
+        "kurt_configure maxtime 50",
+        "clear_board",
+        "play b A1",
+        "genmove w",
+        "quit",
+        "",
+    ])
+    result = run_gtp(name, command, gtp)
+    blocks = assert_clean_successes(result, 8)
+    assert_exit_zero(result)
+    if len(blocks) >= 7:
+        assert_generated_move(name, response_payload(blocks[6]).strip(), board_size)
+
+
+def main() -> int:
+    engine = build_engine()
+    direct = [engine, "+RTS", "-N1"]
+    wrapper = [str(ROOT / "scripts" / "kurt-gtp")]
+
+    protocol_basics(direct, "protocol basics (direct)")
+    gameplay(direct)
+    protocol_basics(wrapper, "protocol basics (wrapper)")
+
+    if failures:
+        print(f"gtp-regression: {len(failures)} failure(s)", file=sys.stderr)
+        print("\n\n".join(failures), file=sys.stderr)
+        return 1
+
+    print("gtp-regression: all scenarios passed")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
