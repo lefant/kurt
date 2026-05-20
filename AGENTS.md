@@ -28,6 +28,7 @@ Historical builds used Stack, but current Stack releases no longer support the C
 ```sh
 devenv shell
 build
+test
 ```
 
 Equivalent direct Nix command:
@@ -37,6 +38,22 @@ nix shell nixpkgs#ghc nixpkgs#cabal-install -c cabal v2-build
 ```
 
 If intentionally reproducing the historical build, use an old Stack release that still supports Cabal 1.18, or update the resolver/toolchain deliberately.
+
+## Haskell unit/property testing
+
+Run the Cabal-backed Haskell invariant suite with:
+
+```sh
+cabal v2-test
+```
+
+Or through devenv:
+
+```sh
+devenv shell test
+```
+
+This suite covers internal board, coordinate, game-state, chain, and hash invariants. It complements the black-box GTP regression suite; it does not replace client-facing GTP checks.
 
 ## Smoke testing
 
@@ -69,7 +86,6 @@ Expected behavior:
 
 - Compiler warnings are treated as errors in multiple modules and in `kurt.cabal` (`-Wall -Werror`). Newer GHC versions may fail on warnings that old CI did not see.
 - `cmd_version` reports `0.0.3` while `kurt.cabal` says `0.0.4`.
-- The only file under `test/` imports modules that are not present in this checkout (`Data.Goban.Goban`, `Data.Goban.STVector`) and is not wired into `kurt.cabal`. Treat it as stale until repaired.
 - The parser lowercases the entire input before parsing; be careful when adding commands or arguments where case matters.
 - GTP coordinates skip the letter `I` by design.
 
