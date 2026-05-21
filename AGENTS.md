@@ -16,14 +16,13 @@ Key areas:
 
 ## Build system
 
-This is an older Stack/Cabal Haskell project:
+This is an older Haskell project that now uses Cabal through devenv as the supported local workflow:
 
-- `stack.yaml` pins `resolver: lts-2.14` and `rosezipper-0.1`.
-- `kurt.cabal` declares the `kurt` executable only.
-- Historical CI used GHC 7.8 and `stack --skip-ghc-check build`.
+- `kurt.cabal` declares the `kurt` executable and `kurt-test` test suite.
+- The former Stack/Travis setup targeted GHC 7.8 and was removed from active tooling because current Stack releases no longer support that old Cabal/GHC combination cleanly.
 - The Dockerfile is based on Ubuntu 14.04 and should be treated as historical unless intentionally modernizing it.
 
-Historical builds used Stack, but current Stack releases no longer support the Cabal library bundled with GHC 7.8. Use the project devenv shell for documented build and test dependencies (GHC, cabal-install, Python, Stack):
+Use the project devenv shell for documented build and test dependencies (GHC, cabal-install, Python):
 
 ```sh
 devenv shell
@@ -37,7 +36,7 @@ Equivalent direct Nix command:
 nix shell nixpkgs#ghc nixpkgs#cabal-install -c cabal v2-build
 ```
 
-If intentionally reproducing the historical build, use an old Stack release that still supports Cabal 1.18, or update the resolver/toolchain deliberately.
+If intentionally reproducing the historical Stack build, recover it from git history and use an old Stack release that still supports Cabal 1.18, or reintroduce Stack with a current resolver deliberately.
 
 ## Haskell unit/property testing
 

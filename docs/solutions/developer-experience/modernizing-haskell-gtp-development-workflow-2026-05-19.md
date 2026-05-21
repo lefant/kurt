@@ -72,7 +72,7 @@ When reviving a legacy Haskell GTP engine for current agent and GUI workflows, s
    ```
 
 4. Put development dependencies and commands in `devenv.nix`.
-   - Include `ghc`, `cabal-install`, `python3`, and `stack` to document the modern build/test path, the Python GTP regression harness, and historical tooling.
+   - Include `ghc`, `cabal-install`, and `python3` to document the modern build/test path and the Python GTP regression harness. Keep Stack out of active tooling unless it is deliberately reintroduced with a current resolver.
    - Add scripts for the verified build, Haskell test suite, and GTP regression suite.
 
    ```nix
@@ -83,7 +83,6 @@ When reviving a legacy Haskell GTP engine for current agent and GUI workflows, s
        pkgs.ghc
        pkgs.cabal-install
        pkgs.python3
-       pkgs.stack
      ];
 
      scripts.build.exec = "cabal v2-build";

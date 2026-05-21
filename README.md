@@ -9,8 +9,6 @@ It is named after the logician [Kurt Gödel][kurt_goedel] and written by
 
 Source code is [available online on github][github_kurt]. 
 
-[![Build Status](https://travis-ci.org/lefant/kurt.png)](https://travis-ci.org/lefant/kurt)
-
 Comments and contributions always welcome!
 
 

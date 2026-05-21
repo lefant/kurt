@@ -1,6 +1,0 @@
-flags: {}
-packages:
-- '.'
-extra-deps:
-- rosezipper-0.1
-resolver: lts-2.14

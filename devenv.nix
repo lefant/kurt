@@ -5,7 +5,6 @@
     pkgs.ghc
     pkgs.cabal-install
     pkgs.python3
-    pkgs.stack
   ];
 
   scripts.build.exec = "cabal v2-build";
