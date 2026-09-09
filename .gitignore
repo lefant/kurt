@@ -1,6 +1,7 @@
 dist
 dist-newstyle
 .devenv
+.amp/in/artifacts/
 .amp/portals/*
 *.hi
 *.o

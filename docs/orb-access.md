@@ -10,11 +10,30 @@ To test Kurt there:
 printf 'name\nprotocol_version\nquit\n' | scripts/kurt-gtp
 cabal v2-test
 scripts/gtp-regression
+python3 -m unittest discover -s test -p 'test_web_bridge.py' -v
 ```
 
 You can also use the orb's **Desktop** pane for graphical Linux applications. Neither the Terminal nor Desktop pane requires an additional login or connection string.
 
-Amp portals expose HTTP or HTTPS services. They do not expose an SSH daemon or Kurt's stdin/stdout GTP stream. Starting `sshd` and passing its port to `amp orb portal` will therefore not provide working SSH access.
+## Browser board portal
+
+The repository includes an HTTP bridge and a 9×9 browser board. Start its declared supervised service from the repository root:
+
+```sh
+amp orb services ensure
+```
+
+Open the **Kurt · 9×9 Go** URL printed by the command or shown in the Portal pane. The service runs `scripts/kurt-web`, and each browser session receives an isolated `scripts/kurt-gtp` process. A new game replaces that session's process; inactive sessions are cleaned up after 30 minutes; stopping the service cleans up all remaining engines.
+
+For non-orb development, run:
+
+```sh
+scripts/kurt-web --port 8080
+```
+
+Then open `http://127.0.0.1:8080`. No external account, database, JavaScript package install, or secret is required.
+
+Amp portals expose HTTP or HTTPS services. They do not expose an SSH daemon or Kurt's raw stdin/stdout GTP stream. Starting `sshd` and passing its port to `amp orb portal` will therefore not provide working SSH access.
 
 ## Optional temporary SSH shell with tmate
 

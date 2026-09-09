@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#202c3b">
+    <title>Kurt — 9×9 Go</title>
+    <link rel="stylesheet" href="/app.css">
+  </head>
+  <body>
+    <main class="shell">
+      <header class="masthead">
+        <div>
+          <p class="eyebrow">Local engine · 9×9</p>
+          <h1>Play <em>Kurt</em></h1>
+        </div>
+        <button class="reset" id="reset" type="button">New game</button>
+      </header>
+
+      <section class="game" aria-label="Go game">
+        <div class="board-wrap">
+          <div id="board" class="board" role="grid" aria-label="9 by 9 Go board"></div>
+          <div class="status-strip" aria-live="polite">
+            <span id="turn-dot" class="turn-dot"></span>
+            <strong id="status">Connecting to Kurt…</strong>
+          </div>
+        </div>
+
+        <aside class="desk">
+          <div class="players" aria-label="Players">
+            <div class="player active" id="human-player">
+              <span class="stone black"></span>
+              <div><small>Black</small><strong>You</strong></div>
+            </div>
+            <span class="versus">vs</span>
+            <div class="player" id="kurt-player">
+              <span class="stone white"></span>
+              <div><small>White</small><strong>Kurt</strong></div>
+            </div>
+          </div>
+
+          <div class="ledger">
+            <div class="ledger-head"><span>Move record</span><span id="move-count">0 moves</span></div>
+            <ol id="moves"><li class="empty">The first move is yours.</li></ol>
+          </div>
+
+          <button class="pass" id="pass" type="button">Pass turn</button>
+          <p class="rules">Area rules · Komi 7.5 · Two passes end the game</p>
+        </aside>
+      </section>
+    </main>
+    <div id="toast" class="toast" role="alert" hidden></div>
+    <script src="/app.js"></script>
+  </body>
+</html>

@@ -73,7 +73,7 @@ devenv shell smoke
 
 In an Amp orb, `.agents/setup` installs and caches the pinned devenv toolchain, builds Kurt, and runs both test suites. New login shells opened at the repository root already have that environment active, so `cabal`, `build`, and `smoke` can be run directly. Use `cabal v2-test` for unit tests; bare `test` is a shell builtin.
 
-GTP is a stateful stdin/stdout protocol, not HTTP, so `scripts/kurt-gtp` is intentionally not declared as an orb portal service. Drive it from the orb Terminal, or use `scripts/kurt-remote-gtp` from a desktop GTP client when an SSH-reachable engine host is available. A browser board would require a separate HTTP/WebSocket-to-GTP bridge.
+GTP is a stateful stdin/stdout protocol, so `scripts/kurt-gtp` is not itself an orb portal service. Drive it from the orb Terminal, use `scripts/kurt-remote-gtp` from a desktop GTP client when an SSH-reachable engine host is available, or use the repository's browser bridge.
 
 See `docs/orb-access.md` before setting up interactive access to an orb. Amp provides the thread Terminal and Desktop panes, but not a direct SSH connection string. The documented tmate fallback is temporary, third-party, and unsuitable as a GTP transport.
 
@@ -87,6 +87,20 @@ Expected behavior:
 - `genmove` returns an in-board coordinate, `pass`, or `resign`.
 - `quit` returns a normal empty success response and exits cleanly.
 - Engine stdout remains GTP-clean; stderr diagnostics are tolerated.
+
+## Browser bridge
+
+`scripts/kurt-web` starts the dependency-free Python bridge in `web/bridge.py`. It serves the 9×9 UI and starts one isolated `scripts/kurt-gtp` engine per browser session. Browser requests never select an executable or command.
+
+Run it locally with `scripts/kurt-web --port 8080`. In an Amp orb, use `amp orb services ensure`; `.amp/services.yaml` supervises the process and publishes the portal. Do not start it as an ad-hoc background process.
+
+Run focused bridge tests with:
+
+```sh
+python3 -m unittest discover -s test -p 'test_web_bridge.py' -v
+```
+
+When changing the bridge, also run `cabal v2-test` and `scripts/gtp-regression`. Exercise the actual UI through the declared portal for interaction or appearance changes.
 
 ## Current caveats
 
