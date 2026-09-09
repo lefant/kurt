@@ -75,6 +75,8 @@ In an Amp orb, `.agents/setup` installs and caches the pinned devenv toolchain, 
 
 GTP is a stateful stdin/stdout protocol, not HTTP, so `scripts/kurt-gtp` is intentionally not declared as an orb portal service. Drive it from the orb Terminal, or use `scripts/kurt-remote-gtp` from a desktop GTP client when an SSH-reachable engine host is available. A browser board would require a separate HTTP/WebSocket-to-GTP bridge.
 
+See `docs/orb-access.md` before setting up interactive access to an orb. Amp provides the thread Terminal and Desktop panes, but not a direct SSH connection string. The documented tmate fallback is temporary, third-party, and unsuitable as a GTP transport.
+
 Expected behavior:
 
 - Protocol basics pass for direct engine startup and `scripts/kurt-gtp` wrapper startup.

@@ -20,6 +20,11 @@ is about 25 kyu.
 KGS also provides an archive of [all of kurtBots games][kgs_kurt].
 
 
+## running and testing in an Amp orb
+
+Fresh orbs prepare the Haskell toolchain and build Kurt automatically. See [Accessing Kurt in an Amp orb](docs/orb-access.md) for Terminal testing, optional temporary SSH access, and the limitations of portals for stdin/stdout GTP engines.
+
+
 
 ## running stdin/stdout gtp through docker (for example to attach gogui)
 
