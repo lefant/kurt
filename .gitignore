@@ -1,6 +1,7 @@
 dist
 dist-newstyle
 .devenv
+.amp/portals/*
 *.hi
 *.o
 __pycache__/

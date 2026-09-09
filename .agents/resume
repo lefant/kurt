@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+env_file="$HOME/.cache/amp/kurt-devenv-env.sh"
+if [[ ! -s "$env_file" ]]; then
+  echo "Kurt's cached devenv environment is missing; run .agents/setup" >&2
+  exit 1
+fi

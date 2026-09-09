@@ -27,7 +27,8 @@ Use the project devenv shell for documented build and test dependencies (GHC, ca
 ```sh
 devenv shell
 build
-test
+cabal v2-test
+smoke
 ```
 
 Equivalent direct Nix command:
@@ -69,6 +70,10 @@ Or through devenv:
 ```sh
 devenv shell smoke
 ```
+
+In an Amp orb, `.agents/setup` installs and caches the pinned devenv toolchain, builds Kurt, and runs both test suites. New login shells opened at the repository root already have that environment active, so `cabal`, `build`, and `smoke` can be run directly. Use `cabal v2-test` for unit tests; bare `test` is a shell builtin.
+
+GTP is a stateful stdin/stdout protocol, not HTTP, so `scripts/kurt-gtp` is intentionally not declared as an orb portal service. Drive it from the orb Terminal, or use `scripts/kurt-remote-gtp` from a desktop GTP client when an SSH-reachable engine host is available. A browser board would require a separate HTTP/WebSocket-to-GTP bridge.
 
 Expected behavior:
 

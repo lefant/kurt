@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+repo_root="$(pwd -P)"
+nix_profile_script="/nix/var/nix/profiles/default/etc/profile.d/nix-daemon.sh"
+env_file="$HOME/.cache/amp/kurt-devenv-env.sh"
+
+run_step() {
+  local description="$1"
+  shift
+  echo "==> $description"
+  time "$@"
+}
+
+if [[ -r "$nix_profile_script" ]]; then
+  # shellcheck disable=SC1090
+  source "$nix_profile_script"
+elif [[ -r "$HOME/.nix-profile/etc/profile.d/nix.sh" ]]; then
+  # shellcheck disable=SC1091
+  source "$HOME/.nix-profile/etc/profile.d/nix.sh"
+fi
+
+if ! command -v nix >/dev/null 2>&1; then
+  installer="$(mktemp)"
+  trap 'rm -f "$installer"' EXIT
+  curl --fail --location --retry 3 --output "$installer" https://nixos.org/nix/install
+  run_step "Install Nix" sh "$installer" --daemon --yes
+  rm -f "$installer"
+  trap - EXIT
+  # shellcheck disable=SC1090
+  source "$nix_profile_script"
+fi
+
+mkdir -p "$HOME/.config/nix"
+touch "$HOME/.config/nix/nix.conf"
+if ! grep -Eq '^experimental-features[[:space:]]*=' "$HOME/.config/nix/nix.conf"; then
+  echo 'experimental-features = nix-command flakes' >> "$HOME/.config/nix/nix.conf"
+fi
+if ! grep -Eq '^accept-flake-config[[:space:]]*=' "$HOME/.config/nix/nix.conf"; then
+  echo 'accept-flake-config = true' >> "$HOME/.config/nix/nix.conf"
+fi
+
+if ! command -v devenv >/dev/null 2>&1; then
+  run_step "Install devenv CLI" \
+    nix-env --install --attr devenv \
+      --file https://github.com/NixOS/nixpkgs/tarball/nixpkgs-unstable
+fi
+
+run_step "Update Cabal package index" devenv shell -- cabal v2-update
+run_step "Build Kurt" devenv shell -- cabal v2-build
+run_step "Run Haskell tests" devenv shell -- cabal v2-test
+run_step "Run GTP regression tests" devenv shell -- scripts/gtp-regression
+
+mkdir -p "$(dirname "$env_file")"
+env_tmp="$(mktemp "${env_file}.XXXXXX")"
+devenv print-dev-env > "$env_tmp"
+mv "$env_tmp" "$env_file"
+
+profile_marker="# kurt devenv environment"
+if ! grep -Fqx "$profile_marker" "$HOME/.bash_profile" 2>/dev/null; then
+  cat >> "$HOME/.bash_profile" <<EOF
+
+$profile_marker
+if [[ "\${PWD:-}" == "$repo_root" && -r "$env_file" && -z "\${KURT_DEVENV_ACTIVE:-}" ]]; then
+  export KURT_DEVENV_ACTIVE=1
+  # shellcheck disable=SC1090
+  source "$env_file"
+fi
+EOF
+fi
+
+echo "==> Kurt orb setup complete"
