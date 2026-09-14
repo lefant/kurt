@@ -40,6 +40,38 @@ docker run -i lefant/kurt
 NAME=myBot PASSWORD=secret KGSGTP_ARGS='opponent=lefant' docker-compose up
 ```
 
+## Documentation & Process
+
+This is a small legacy maintenance repository. Add documentation only when it has
+durable value; do not create empty documentation directories.
+
+- **`docs/orb-access.md`**: Current operational access guidance.
+- **`docs/brainstorms/`**: Requirements and design exploration.
+- **`docs/plans/`**: Implementation plans for non-trivial changes.
+- **`docs/solutions/`**: Verified reusable Haskell, GTP, and workflow lessons,
+  organized by category with YAML frontmatter (`module`, `tags`, `problem_type`).
+- **`docs/research/`**, **`docs/devlog/`**, **`docs/specs/`**,
+  **`docs/decisions/`**, and **`docs/changelog/`**: Create only when a change needs
+  that type of durable record.
+
+**Workflow**: Research/Plan → Implement → Review → Compound
+
+Understand the current GTP behavior and old-toolchain constraints before planning.
+Implement the smallest change, run the relevant Cabal and GTP checks, review protocol
+correctness and coverage, then capture only genuinely reusable learning in
+`docs/solutions/`. Put durable research in `docs/research/`, plans in `docs/plans/`,
+and meaningful session outcomes in `docs/devlog/`.
+
+Prefer Compound Engineering skills or an equivalent workflow bundle when available.
+Use verified names and output paths. Supporting documentation skills are
+`feature-specs`, `architecture-decision-records`, `changelog-fragments`, `devlog`,
+and `atomically-land`; recommend missing skills rather than assuming they are
+installed. Use `docs/` for new work even when an older template says
+`thoughts/shared/`.
+
+Commit small, reviewable checkpoints and push only after authorization for the
+agreed remote and branch.
+
 
 [computer_go]: http://en.wikipedia.org/wiki/Computer_Go
 [kurt_goedel]: http://en.wikipedia.org/wiki/Kurt_G%C3%B6del

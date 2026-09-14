@@ -1,5 +1,9 @@
 # AGENTS.md
 
+Follow [Documentation & Process](README.md#documentation--process) for documentation
+ownership, the development workflow, and current `docs/` output paths. These paths
+take precedence over legacy `thoughts/shared/` paths in skill templates for new work.
+
 ## Project overview
 
 Kurt is a Haskell Computer Go engine. It runs as a Go Text Protocol (GTP) server on stdin/stdout so clients such as GoGui, KGS GTP, or simple shell scripts can drive it.
