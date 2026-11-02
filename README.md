@@ -41,6 +41,23 @@ Then open `http://127.0.0.1:8080`. Run the focused bridge tests with:
 python3 -m unittest discover -s test -p 'test_web_bridge.py' -v
 ```
 
+Run the browser request-recovery logic tests with Node.js 18 or newer (no packages required):
+
+```sh
+node --test test/test_web_ui.cjs
+```
+
+If a move response is lost, the browser reads the current game before allowing
+another move; it never automatically resubmits a move. If Kurt itself times out
+or loses GTP synchronization, the game stops and asks you to start a new game.
+Bridge logs include request durations and flush immediately for troubleshooting.
+
+After two passes, the sidebar counts stones plus empty territory bordered by
+only that color, with 7.5 komi for White. Shared or unclaimed empty regions are
+neutral. Captures are not added separately. All stones remaining on the board
+count as alive; the bridge does not detect or remove dead stones. Resignation
+shows a win by resignation, not a counted score.
+
 In an Amp orb, start the supervised bridge and print its portal URL:
 
 ```sh

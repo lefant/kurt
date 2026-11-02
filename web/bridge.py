@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import argparse
 import atexit
+import copy
 import json
 import os
 import re
@@ -28,6 +29,7 @@ ROOT = Path(__file__).resolve().parents[1]
 STATIC_DIR = Path(__file__).resolve().parent / "static"
 ENGINE_COMMAND = (str(ROOT / "scripts" / "kurt-gtp"),)
 BOARD_SIZE = 9
+KOMI = 7.5
 BOARD_LETTERS = "ABCDEFGHJKLMNOPQRSTUVWXYZ"
 SESSION_COOKIE = "kurt_session"
 SESSION_TTL_SECONDS = 30 * 60
@@ -241,6 +243,37 @@ class Board:
     def pass_turn(self) -> None:
         self.history.append(self.position())
 
+    def area_score(self) -> dict:
+        """Count stones and single-color-bordered empty regions; all stones are alive."""
+        points = [value for row in self.grid for value in row]
+        score = {
+            color: {"stones": points.count(color), "territory": 0}
+            for color in ("black", "white")
+        }
+        neutral = 0
+        empty = {(r, c) for r in range(self.size) for c in range(self.size) if self.grid[r][c] is None}
+        while empty:
+            pending = [empty.pop()]
+            size = 0
+            borders = set()
+            while pending:
+                row, col = pending.pop()
+                size += 1
+                for r, c in self.neighbors(row, col):
+                    color = self.grid[r][c]
+                    if color is not None:
+                        borders.add(color)
+                    elif (r, c) in empty:
+                        empty.remove((r, c))
+                        pending.append((r, c))
+            if len(borders) == 1:
+                score[borders.pop()]["territory"] += size
+            else:
+                neutral += size
+        for color, counts in score.items():
+            counts["total"] = counts["stones"] + counts["territory"] + (KOMI if color == "white" else 0)
+        return {**score, "komi": KOMI, "neutral": neutral}
+
 
 def point_to_vertex(row: int, col: int, size: int = BOARD_SIZE) -> str:
     return f"{BOARD_LETTERS[col]}{size - row}"
@@ -273,12 +306,13 @@ class GameSession:
         self.moves: list[Move] = []
         self.consecutive_passes = 0
         self.game_over = False
+        self.score: dict | None = None
         self.revision = 0
         self.last_seen = time.monotonic()
         try:
             for command in (
                 "boardsize 9",
-                "komi 7.5",
+                f"komi {KOMI}",
                 "kurt_configure maxplayouts 1000",
                 "kurt_configure maxtime 800",
                 "clear_board",
@@ -297,6 +331,7 @@ class GameSession:
             "status": self.status,
             "moves": [move.__dict__ for move in self.moves],
             "gameOver": self.game_over,
+            "score": self.score,
             "revision": self.revision,
         }
 
@@ -313,48 +348,62 @@ class GameSession:
             if self.turn != "black":
                 raise BridgeError("Wait for Kurt to finish its move.")
 
+            board = copy.deepcopy(self.board)
             if row is None or col is None:
                 vertex = "pass"
-                self.board.pass_turn()
-                self.consecutive_passes += 1
+                board.pass_turn()
             else:
                 if type(row) is not int or type(col) is not int:
                     raise BridgeError("Move coordinates must be whole numbers.")
-                self.board.play("black", row, col)
+                board.play("black", row, col)
                 vertex = point_to_vertex(row, col)
-                self.consecutive_passes = 0
 
-            self.client.command(f"play b {vertex}")
-            self.moves.append(Move("black", vertex.upper()))
-            self.turn = "white"
-            self.status = "Kurt is thinking…"
-            self.revision += 1
+            try:
+                self.client.command(f"play b {vertex}")
+                self.board = board
+                self.consecutive_passes = self.consecutive_passes + 1 if vertex == "pass" else 0
+                self.moves.append(Move("black", vertex.upper()))
+                self.turn = "white"
+                self.status = "Kurt is thinking…"
+                self.revision += 1
 
-            response = self.client.command("genmove w").strip().lower()
-            if response == "resign":
-                self.moves.append(Move("white", "RESIGN"))
-                self.game_over = True
-                self.turn = "none"
-                self.status = "Kurt resigned. You win."
-            elif response == "pass":
-                self.board.pass_turn()
-                self.moves.append(Move("white", "PASS"))
-                self.consecutive_passes += 1
+                # A human pass can be the second pass; do not ask Kurt to move again.
+                if self.consecutive_passes < 2:
+                    response = self.client.command("genmove w").strip().lower()
+                    if response == "resign":
+                        self.moves.append(Move("white", "RESIGN"))
+                        self.game_over = True
+                        self.turn = "none"
+                        self.status = "Kurt resigned. You win."
+                    elif response == "pass":
+                        self.board.pass_turn()
+                        self.moves.append(Move("white", "PASS"))
+                        self.consecutive_passes += 1
+                        self.turn = "black"
+                        self.status = "Kurt passed. Your turn."
+                    else:
+                        kurt_row, kurt_col = vertex_to_point(response)
+                        self.board.play("white", kurt_row, kurt_col)
+                        self.moves.append(Move("white", response.upper()))
+                        self.consecutive_passes = 0
+                        self.turn = "black"
+                        self.status = f"Kurt played {response.upper()}. Your turn."
+                    self.revision += 1
                 if self.consecutive_passes >= 2:
                     self.game_over = True
                     self.turn = "none"
-                    self.status = "Both players passed. Game over."
-                else:
-                    self.turn = "black"
-                    self.status = "Kurt passed. Your turn."
-            else:
-                kurt_row, kurt_col = vertex_to_point(response)
-                self.board.play("white", kurt_row, kurt_col)
-                self.moves.append(Move("white", response.upper()))
-                self.consecutive_passes = 0
-                self.turn = "black"
-                self.status = f"Kurt played {response.upper()}. Your turn."
-            self.revision += 1
+                    self.score = self.board.area_score()
+                    margin = self.score["black"]["total"] - self.score["white"]["total"]
+                    winner = "Black" if margin > 0 else "White"
+                    self.status = f"{winner} wins by {abs(margin):g} points."
+            except BridgeError as exc:
+                # After a failed GTP exchange, engine and bridge may disagree.
+                self.game_over = True
+                self.turn = "none"
+                self.status = f"Game stopped: {exc} Start a new game."
+                self.revision += 1
+                self.client.close()
+                raise
             return self._state()
 
     def close(self) -> None:
@@ -413,7 +462,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
     server_version = "KurtBridge/1.0"
 
     def log_message(self, format: str, *args: object) -> None:
-        print(f"{self.address_string()} - {format % args}")
+        print(f"{self.log_date_time_string()} {self.address_string()} - {format % args}", flush=True)
 
     def do_GET(self) -> None:
         path = urlparse(self.path).path
@@ -453,14 +502,18 @@ class BridgeHandler(BaseHTTPRequestHandler):
 
     def _api(self, action: Callable[[GameSession], dict[str, object]]) -> None:
         session_id, is_new = self._session_id()
+        started = time.monotonic()
         try:
             result = action(REGISTRY.get(session_id))
             self._json(result, cookie=session_id if is_new else None)
         except (BridgeError, TypeError, ValueError) as exc:
+            self.log_message("%s %s: %s", self.command, self.path, exc)
             self._json({"error": str(exc)}, status=HTTPStatus.CONFLICT)
         except Exception as exc:
-            print(f"bridge error: {exc}")
+            self.log_message("bridge error: %s", exc)
             self._json({"error": "The bridge hit an unexpected error."}, status=HTTPStatus.INTERNAL_SERVER_ERROR)
+        finally:
+            self.log_message("%s %s finished in %.3fs", self.command, self.path, time.monotonic() - started)
 
     def _session_id(self) -> tuple[str, bool]:
         cookie = SimpleCookie(self.headers.get("Cookie", ""))
@@ -492,8 +545,11 @@ class BridgeHandler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         if cookie is not None:
             self.send_header("Set-Cookie", f"{SESSION_COOKIE}={cookie}; Path=/; HttpOnly; SameSite=Lax")
-        self.end_headers()
-        self.wfile.write(encoded)
+        try:
+            self.end_headers()
+            self.wfile.write(encoded)
+        except (BrokenPipeError, ConnectionResetError):
+            self.log_message("%s %s: client disconnected before receiving response", self.command, self.path)
 
     def _static(self, name: str, content_type: str) -> None:
         body = (STATIC_DIR / name).read_bytes()
