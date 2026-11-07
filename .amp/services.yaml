@@ -1,0 +1,10 @@
+services:
+  kurt-web:
+    command: scripts/kurt-web --host 0.0.0.0 --port "$PORT"
+    health: /healthz
+    agent: control
+    review: true
+    portal:
+      url: /
+      title: Kurt · 9×9 Go
+      description: Play a browser game against the local Kurt GTP engine.

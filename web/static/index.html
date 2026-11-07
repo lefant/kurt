@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="theme-color" content="#202c3b">
+    <title>Kurt — 9×9 Go</title>
+    <link rel="stylesheet" href="/app.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section class="game" aria-label="Go game">
+        <header class="masthead">
+          <div>
+            <p class="eyebrow">Local engine · 9×9</p>
+            <h1>Play <em>Kurt</em></h1>
+          </div>
+          <button class="reset" id="reset" type="button" disabled>New game</button>
+        </header>
+
+        <div class="board-wrap">
+          <div id="board" class="board" role="grid" aria-label="9 by 9 Go board"></div>
+        </div>
+
+        <aside class="desk">
+          <div class="players" aria-label="Players">
+            <div class="player active" id="human-player">
+              <span class="stone black"></span>
+              <div><small>Black</small><strong>You</strong></div>
+            </div>
+            <span class="versus">vs</span>
+            <div class="player" id="kurt-player">
+              <span class="stone white"></span>
+              <div><small>White</small><strong>Kurt</strong></div>
+            </div>
+          </div>
+
+          <div class="status-strip" aria-live="polite">
+            <span id="turn-dot" class="turn-dot"></span>
+            <strong id="status">Connecting to Kurt…</strong>
+          </div>
+          <div id="toast" class="toast" role="alert" hidden></div>
+
+          <section id="score" class="score" aria-label="Area count" hidden>
+            <h2>Area count · two passes</h2>
+            <table>
+              <thead><tr><th scope="col">Points</th><th scope="col">Black</th><th scope="col">White</th></tr></thead>
+              <tbody>
+                <tr><th scope="row">Stones</th><td id="black-stones"></td><td id="white-stones"></td></tr>
+                <tr><th scope="row">Territory</th><td id="black-territory"></td><td id="white-territory"></td></tr>
+                <tr><th scope="row">Komi</th><td>—</td><td id="komi"></td></tr>
+                <tr class="total"><th scope="row">Total</th><td id="black-total"></td><td id="white-total"></td></tr>
+              </tbody>
+            </table>
+            <p>Neutral points: <span id="neutral"></span></p>
+            <p>All remaining stones count as alive. Dead stones are not removed automatically.</p>
+          </section>
+
+          <div class="ledger">
+            <div class="ledger-head"><span>Move record</span><span id="move-count">0 moves</span></div>
+            <ol id="moves"><li class="empty">The first move is yours.</li></ol>
+          </div>
+
+          <button class="pass" id="pass" type="button" disabled>Pass turn</button>
+          <p class="rules">Area rules · Komi 7.5 · Two passes end the game</p>
+        </aside>
+      </section>
+    </main>
+    <script src="/app.js"></script>
+  </body>
+</html>
